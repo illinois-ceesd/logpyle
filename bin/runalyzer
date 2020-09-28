@@ -8,6 +8,8 @@ def main():
     parser = argparse.ArgumentParser(description="Analyze a logpyle database.")
     parser.add_argument("-m", "--mangle", action="store_true",
             help="whether to try and mangle SQL queries")
+    parser.add_argument("-c", "--commands", action="store",
+            help="commands to execute")
     parser.add_argument("dbfile", help="database file to read")
     parser.add_argument("scriptfile", nargs="?", help="script file to read")
     args = parser.parse_args()
@@ -16,8 +18,11 @@ def main():
 
     if args.scriptfile:
         db = make_wrapped_db(args.dbfile, mangle=args.mangle, interactive=False)
-        exec(compile(open(args.scriptfile).read(), args.scriptfile, 'exec'),
+        exec(compile(open(args.scriptfile).read(), args.scriptfile, "exec"),
                 make_runalyzer_symbols(db))
+    elif args.commands:
+        db = make_wrapped_db(args.dbfile, mangle=args.mangle, interactive=False)
+        exec(compile(args.commands, "--commands", "exec"), make_runalyzer_symbols(db))
     else:
         db = make_wrapped_db(args.dbfile, mangle=args.mangle, interactive=True)
         from logpyle.runalyzer import RunalyzerConsole
