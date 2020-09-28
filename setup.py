@@ -39,6 +39,7 @@ setup(name="logpyle",
           "six>=1.8.0",
           "pytools>=2011.1",
           "matplotlib",
+          "pymbolic",
       ],
 
       package_data={"logpyle": ["py.typed"]},
