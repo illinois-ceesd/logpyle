@@ -10,3 +10,7 @@ setuptools*egg
 setuptools.pth
 distribute*egg
 distribute*tar.gz
+
+_build/
+
+mylog.dat*
