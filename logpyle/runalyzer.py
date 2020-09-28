@@ -233,9 +233,9 @@ class MagicRunDB(RunDB):
             else:
                 first_clause_idx = min(clause_indices.values())
                 qry = (
-                        qry[:first_clause_idx] +
-                        from_clause +
-                        qry[first_clause_idx:])
+                        qry[:first_clause_idx]
+                        + from_clause
+                        + qry[first_clause_idx:])
 
         return qry
 

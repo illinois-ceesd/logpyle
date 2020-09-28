@@ -61,7 +61,8 @@ author = 'Andreas Kloeckner'
 #
 # The short X.Y version.
 ver_dic = {}
-exec(compile(open("../logpyle/version.py").read(), "../logpyle/version.py", 'exec'), ver_dic)
+exec(compile(open("../logpyle/version.py").read(),
+    "../logpyle/version.py", 'exec'), ver_dic)
 version = ".".join(str(x) for x in ver_dic["VERSION"])
 release = ver_dic["VERSION_TEXT"]
 
