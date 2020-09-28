@@ -23,4 +23,4 @@ jobs:
             flake8
             pip install -e .
             python examples/log.py
-            runalyze-gather summary.dat mylog.dat
+            runalyzer-gather summary.dat mylog.dat
