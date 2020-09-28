@@ -357,9 +357,8 @@ class LogManager(object):
     If MPI parallelism is used, the "head rank" below always refers to
     rank 0.
 
-    Command line tools called :command:`runalyzer` (in the `datapyle package
-    <https://github.com/inducer/datapyle>`__) are available for looking at the
-    data in a saved log.
+    Command line tools called :command:`runalyzer` are available for looking
+    at the data in a saved log.
 
     .. automethod:: __init__
     .. automethod:: save
@@ -1290,7 +1289,7 @@ def add_simulation_quantities(mgr, dt=None):
     if dt is not None:
         from warnings import warn
         warn("Specifying dt ahead of time is a deprecated practice. "
-                "Use pytools.log.set_dt() instead.")
+                "Use logpyle.set_dt() instead.")
 
     mgr.add_quantity(SimulationTime(dt))
     mgr.add_quantity(Timestep(dt))

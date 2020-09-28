@@ -9,17 +9,14 @@ Consider this example of a 'simulation' logging various quantities:
 .. literalinclude:: ../examples/log.py
 
 (You can find this example as
-:download:`examples/log.py <../examples/log.py>` in the pytools
+:download:`examples/log.py <../examples/log.py>` in the logpyle
 source distribution.)
 
 Running this script will give you a file ``mylog.dat``. Note how log quantities
 given as "watches" are also periodically logged to the console.
 
-To analyze this data, we need some tools that are distributed as part of the
-`'datapyle' package on Github <https://github.com/inducer/datapyle>`__, which
-we need to install first::
-
-    $ pip install git+https://github.com/inducer/datapyle.git
+To analyze this data, we need some tools that are distributed as part of this
+package.
 
 To prepare this data set for analysis, run ``runalyzer-gather`` as a script::
 
@@ -35,7 +32,7 @@ This step may look unnecessary here, but it serves two important functions:
   multiple ranks to be gathered in a single file for centralized analysis.
 - As well as, naturally, any combination of the above.
 
-After this, you may use ``runalyzer`` (also in ``datapyle``) to analyze
+After this, you may use ``runalyzer`` (also in  this package) to analyze
 the summary file::
 
     # -m enables '$quantity' in SQL
@@ -104,6 +101,6 @@ your time series data, for example:
   step 2000 and 3000
 - Make a scatterplot correlating memory transfer amounts and simulation time
 
-.. automodule:: pytools.log
+.. automodule:: logpyle
 
 .. no-doctest

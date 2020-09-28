@@ -37,7 +37,8 @@ setup(name="logpyle",
 
       install_requires=[
           "six>=1.8.0",
-          "pytools>=2011.1"
+          "pytools>=2011.1",
+          "matplotlib",
       ],
 
       package_data={"logpyle": ["py.typed"]},

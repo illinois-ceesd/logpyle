@@ -13,7 +13,7 @@ class Fifteen(LogQuantity):
 
 
 def main():
-    logmgr = LogManager("mylog.dat", "wu")  # , comm=...
+    logmgr = LogManager("mylog.dat", "w")  # , comm=...
 
     # set a run property
     logmgr.set_constant("myconst", uniform(0, 1))

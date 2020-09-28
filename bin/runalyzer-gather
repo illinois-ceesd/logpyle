@@ -137,7 +137,7 @@ def scan(fg, dbnames, progress=True):
         pb = ProgressBar("Scanning...", len(dbnames))
 
     for dbname in dbnames:
-        from pytools.log import LogManager
+        from logpyle import LogManager
         try:
             logmgr = LogManager(dbname, "r")
         except Exception:
@@ -206,7 +206,7 @@ def gather_single_file(outfile, infiles):
     import sqlite3
     db_conn = sqlite3.connect(outfile)
 
-    from pytools.log import _set_up_schema
+    from logpyle import _set_up_schema
     _set_up_schema(db_conn)
 
     from pickle import dumps
@@ -217,7 +217,7 @@ def gather_single_file(outfile, infiles):
     for dbname in infiles:
         pb.progress()
 
-        from pytools.log import LogManager
+        from logpyle import LogManager
         logmgr = LogManager(dbname, "r")
 
         # transfer warnings
@@ -303,7 +303,7 @@ def gather_multi_file(outfile, infiles, fmap, qmap, fg, features,
 
         run_id = dbname_to_run_id[dbname]
 
-        from pytools.log import LogManager
+        from logpyle import LogManager
         logmgr = LogManager(dbname, "r")
 
         if run_id not in written_run_ids:

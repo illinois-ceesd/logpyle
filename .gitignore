@@ -14,3 +14,4 @@ distribute*tar.gz
 _build/
 
 mylog.dat*
+*.dat
