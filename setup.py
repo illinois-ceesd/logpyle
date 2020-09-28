@@ -11,9 +11,14 @@ finally:
 
 exec(compile(version_file_contents, "logpyle/version.py", 'exec'), ver_dic)
 
+with open("README.md", "r") as fh:
+    long_description = fh.read()
+
 setup(name="logpyle",
       version=ver_dic["VERSION_TEXT"],
       description="Time series logging for Python",
+      long_description=long_description,
+      long_description_content_type="text/markdown",
       classifiers=[
           'Development Status :: 4 - Beta',
           'Intended Audience :: Developers',
@@ -50,7 +55,7 @@ setup(name="logpyle",
       ],
 
       author="Andreas Kloeckner",
-      url="http://pypi.python.org/pypi/logpyle",
+      url="https://github.com/illinois-ceesd/logpyle",
       author_email="inform@tiker.net",
       license="MIT",
       packages=["logpyle"])
