@@ -389,7 +389,8 @@ class LogManager:
           If this database exists, the current state is loaded from it.
         :param mode: One of "w", "r" for write, read. "w" assumes that the
           database is initially empty. May also be "wu" to indicate that
-          a unique filename should be chosen automatically.
+          a unique filename should be chosen automatically. May also be "wo"
+          to indicate that the file should be overwritten.
         :arg mpi_comm: A `mpi4py.MPI.Comm`. If given, logs are
             periodically synchronized to the head node, which then writes them
             out to disk.
@@ -400,7 +401,7 @@ class LogManager:
         """
 
         assert isinstance(mode, str), "mode must be a string"
-        assert mode in ["w", "r", "wu"], "invalid mode"
+        assert mode in ["w", "r", "wu", "wo"], "invalid mode"
 
         self.quantity_data = {}
         self.last_values = {}
@@ -450,6 +451,13 @@ class LogManager:
             if mode == "wu":
                 suffix = "-"+_get_random_suffix(6)
 
+            if mode == "wo":
+                import os
+                try:
+                    os.remove(filename+suffix)
+                except OSError:
+                    pass
+
             self.db_conn = sqlite.connect(filename+suffix, timeout=30)
             self.mode = mode
             try:
@@ -484,6 +492,10 @@ class LogManager:
 
                 if mode == "wu":
                     # try again with a new suffix
+                    continue
+
+                if mode == "wo":
+                    # try again, someone might have created a file with the same name
                     continue
 
                 self._load()
