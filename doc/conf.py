@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 #
 # logpyle documentation build configuration file, created by
 # sphinx-quickstart on Wed Jun 14 16:28:43 2017.

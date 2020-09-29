@@ -11,7 +11,7 @@ finally:
 
 exec(compile(version_file_contents, "logpyle/version.py", "exec"), ver_dic)
 
-with open("README.md", "r") as fh:
+with open("README.md") as fh:
     long_description = fh.read()
 
 setup(name="logpyle",
@@ -41,7 +41,6 @@ setup(name="logpyle",
       python_requires="~=3.6",
 
       install_requires=[
-          "six>=1.8.0",
           "pytools>=2011.1",
           "matplotlib",
           "pymbolic",
