@@ -101,6 +101,6 @@ your time series data, for example:
   step 2000 and 3000
 - Make a scatterplot correlating memory transfer amounts and simulation time
 
-.. automodule:: logpyle
+.. automodule:: logpyle.__init__
 
 .. no-doctest
