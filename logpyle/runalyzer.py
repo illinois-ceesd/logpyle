@@ -1,9 +1,6 @@
 #! /usr/bin/env python
 
-from __future__ import absolute_import
-from __future__ import print_function
 import code
-from six.moves import zip
 
 
 try:
@@ -29,7 +26,7 @@ PLOT_STYLES = [
             )]
 
 
-class RunDB(object):
+class RunDB:
     def __init__(self, db, interactive):
         self.db = db
         self.interactive = interactive
@@ -42,7 +39,7 @@ class RunDB(object):
         return qry
 
     def get_rank_agg_table(self, qty, rank_aggregator):
-        tbl_name = "rankagg_%s_%s" % (rank_aggregator, qty)
+        tbl_name = f"rankagg_{rank_aggregator}_{qty}"
 
         if (qty, rank_aggregator) in self.rank_agg_tables:
             return tbl_name
@@ -84,7 +81,7 @@ class RunDB(object):
             small_legend = kwargs.pop("small_legend", True)
 
             def format_label(kv_pairs):
-                return " ".join("%s:%s" % (column, value)
+                return " ".join(f"{column}:{value}"
                             for column, value in kv_pairs)
             format_label = kwargs.pop("format_label", format_label)
 
@@ -169,7 +166,7 @@ class MagicRunDB(RunDB):
             if rank_aggregator is not None:
                 rank_aggregator = rank_aggregator[1:]
                 magic_columns.add((qty_name, rank_aggregator))
-                return "%s_%s.value" % (rank_aggregator, qty_name)
+                return f"{rank_aggregator}_{qty_name}.value"
             else:
                 magic_columns.add((qty_name, None))
                 return "%s.value" % qty_name
@@ -186,13 +183,13 @@ class MagicRunDB(RunDB):
         last_tbl = None
         for tbl, rank_aggregator in magic_columns:
             if rank_aggregator is not None:
-                full_tbl = "%s_%s" % (rank_aggregator, tbl)
-                full_tbl_src = "%s as %s" % (
+                full_tbl = f"{rank_aggregator}_{tbl}"
+                full_tbl_src = "{} as {}".format(
                         self.get_rank_agg_table(tbl, rank_aggregator),
                         full_tbl)
 
                 if last_tbl is not None:
-                    addendum = " and %s.step = %s.step" % (last_tbl, full_tbl)
+                    addendum = f" and {last_tbl}.step = {full_tbl}.step"
                 else:
                     addendum = ""
             else:
@@ -200,12 +197,12 @@ class MagicRunDB(RunDB):
                 full_tbl_src = tbl
 
                 if last_tbl is not None:
-                    addendum = " and %s.step = %s.step and %s.rank=%s.rank" % (
+                    addendum = " and {}.step = {}.step and {}.rank={}.rank".format(
                             last_tbl, full_tbl, last_tbl, full_tbl)
                 else:
                     addendum = ""
 
-            from_clause += " inner join %s on (%s.run_id = runs.id%s) " % (
+            from_clause += " inner join {} on ({}.run_id = runs.id{}) ".format(
                     full_tbl_src, full_tbl, addendum)
             last_tbl = full_tbl
 
