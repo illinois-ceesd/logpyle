@@ -57,9 +57,6 @@ THE SOFTWARE.
 
 
 import logging
-import six
-from six.moves import range
-from six.moves import zip
 logger = logging.getLogger(__name__)
 
 
@@ -83,7 +80,7 @@ def time():
 
 # {{{ abstract logging interface
 
-class LogQuantity(object):
+class LogQuantity:
     """A source of loggable scalars.
 
     .. automethod:: __init__
@@ -128,7 +125,7 @@ class PostLogQuantity(LogQuantity):
         pass
 
 
-class MultiLogQuantity(object):
+class MultiLogQuantity:
     """A source of multiple loggable scalars."""
 
     sort_weight = 0
@@ -165,7 +162,7 @@ class MultiPostLogQuantity(MultiLogQuantity, PostLogQuantity):
     pass
 
 
-class DtConsumer(object):
+class DtConsumer:
     def __init__(self, dt):
         self.dt = dt
 
@@ -220,13 +217,13 @@ class CallableLogQuantityAdapter(LogQuantity):
 
 # {{{ manager functionality
 
-class _GatherDescriptor(object):
+class _GatherDescriptor:
     def __init__(self, quantity, interval):
         self.quantity = quantity
         self.interval = interval
 
 
-class _QuantityData(object):
+class _QuantityData:
     def __init__(self, unit, description, default_aggregator):
         self.unit = unit
         self.description = description
@@ -326,7 +323,7 @@ def _set_up_schema(db_conn):
     return schema_version
 
 
-class LogManager(object):
+class LogManager:
     """A distributed-memory-capable diagnostic time-series logging facility.
     It is meant to log data from a computation, with certain log quantities
     available before a cycle, and certain other ones afterwards. A timeline of
@@ -402,7 +399,7 @@ class LogManager(object):
           is requested.
         """
 
-        assert isinstance(mode, six.string_types), "mode must be a string"
+        assert isinstance(mode, str), "mode must be a string"
         assert mode in ["w", "r", "wu"], "invalid mode"
 
         self.quantity_data = {}
@@ -805,10 +802,10 @@ class LogManager(object):
         if unit is None:
             from pymbolic import substitute, parse
 
-            unit_dict = dict((dd.varname, dd.qdat.unit) for dd in dep_data)
+            unit_dict = {dd.varname: dd.qdat.unit for dd in dep_data}
             from pytools import all
-            if all(v is not None for v in six.itervalues(unit_dict)):
-                unit_dict = dict((k, parse(v)) for k, v in six.iteritems(unit_dict))
+            if all(v is not None for v in unit_dict.values()):
+                unit_dict = {k: parse(v) for k, v in unit_dict.items()}
                 unit = substitute(parsed, unit_dict)
             else:
                 unit = None
@@ -891,9 +888,9 @@ class LogManager(object):
                 expr_x, expr_y)
 
         outf = open(filename, "w")
-        outf.write("# %s vs. %s" % (label_x, label_y))
+        outf.write(f"# {label_x} vs. {label_y}")
         for dx, dy in zip(data_x, data_y):
-            outf.write("%s\t%s\n" % (repr(dx), repr(dy)))
+            outf.write("{}\t{}\n".format(repr(dx), repr(dy)))
         outf.close()
 
     def plot_matplotlib(self, expr_x, expr_y):
@@ -902,8 +899,8 @@ class LogManager(object):
         (data_x, descr_x, unit_x), (data_y, descr_y, unit_y) = \
                 self.get_plot_data(expr_x, expr_y)
 
-        xlabel("%s [%s]" % (descr_x, unit_x))
-        ylabel("%s [%s]" % (descr_y, unit_y))
+        xlabel(f"{descr_x} [{unit_x}]")
+        ylabel(f"{descr_y} [{unit_y}]")
         plot(data_x, data_y)
 
     # {{{ private functionality
@@ -993,7 +990,7 @@ class LogManager(object):
         # substitute in the "logvar" variable names
         from pymbolic import var, substitute
         parsed = substitute(parsed,
-                dict((dd.expr, var(dd.varname)) for dd in dep_data))
+                {dd.expr: var(dd.varname) for dd in dep_data})
 
         return parsed, dep_data
 
@@ -1001,8 +998,8 @@ class LogManager(object):
         if not self.have_nonlocal_watches and self.rank != self.head_rank:
             return
 
-        data_block = dict((qname, self.last_values.get(qname, 0))
-                for qname in six.iterkeys(self.quantity_data))
+        data_block = {qname: self.last_values.get(qname, 0)
+                for qname in self.quantity_data.keys()}
 
         if self.mpi_comm is not None and self.have_nonlocal_watches:
             gathered_data = self.mpi_comm.gather(data_block, self.head_rank)
@@ -1012,12 +1009,12 @@ class LogManager(object):
         if self.rank == self.head_rank:
             values = {}
             for data_block in gathered_data:
-                for name, value in six.iteritems(data_block):
+                for name, value in data_block.items():
                     values.setdefault(name, []).append(value)
 
             def compute_watch_str(watch):
                 try:
-                    return "%s=%g" % (watch.display, watch.compiled(
+                    return "{}={:g}".format(watch.display, watch.compiled(
                         *[dd.agg_func(values[dd.name])
                             for dd in watch.dep_data]))
                 except ZeroDivisionError:
