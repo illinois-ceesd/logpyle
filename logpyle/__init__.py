@@ -437,13 +437,7 @@ class LogManager:
         self.have_nonlocal_watches = False
 
         # database binding
-        try:
-            import sqlite3 as sqlite
-        except ImportError:
-            try:
-                from pysqlite2 import dbapi2 as sqlite
-            except ImportError:
-                raise ImportError("could not find a usable version of sqlite.")
+        import sqlite3 as sqlite
 
         if filename is None:
             filename = ":memory:"
