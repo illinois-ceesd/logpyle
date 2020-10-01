@@ -42,7 +42,6 @@ setup(name="logpyle",
 
       install_requires=[
           "pytools>=2011.1",
-          "matplotlib",
           "pymbolic",
       ],
 
