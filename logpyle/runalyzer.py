@@ -311,7 +311,7 @@ Commands:
  .help        show this help message
  .q SQL       execute a (potentially mangled) query
  .runprops    show a list of run properties
- .quantities  show a list of time-dependent quantites
+ .quantities  show a list of time-dependent quantities
 
 Plotting:
  .plot SQL    plot results of (potentially mangled) query.
