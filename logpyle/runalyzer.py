@@ -56,13 +56,19 @@ class RunDB:
         return tbl_name
 
     def scatter_cursor(self, cursor, *args, **kwargs):
-        from matplotlib.pyplot import scatter, show
+        import matplotlib.pyplot as plt
+
+        xlabel = kwargs.pop("xlabel", "")
+        ylabel = kwargs.pop("ylabel", "")
 
         data_args = tuple(zip(*list(cursor)))
-        scatter(*(data_args + args), **kwargs)
+        plt.scatter(*(data_args + args), **kwargs)
+
+        plt.xlabel(xlabel)
+        plt.ylabel(ylabel)
 
         if self.interactive:
-            show()
+            plt.show()
 
     def plot_cursor(self, cursor, *args, **kwargs):
         from matplotlib.pyplot import plot, show, legend
@@ -363,8 +369,10 @@ Available Python symbols:
             self.db.plot_cursor(self.db.db.execute(
                 self.db.mangle_sql(args)), **{"xlabel": xlabel, "ylabel": ylabel})
         elif cmd == "scatter":
+            import re
+            xlabel, ylabel = re.split(", +|,| +", args)[1:3]
             self.db.scatter_cursor(self.db.db.execute(
-                self.db.mangle_sql(args)))
+                self.db.mangle_sql(args)), **{"xlabel": xlabel, "ylabel": ylabel})
         else:
             print("invalid magic command")
 
