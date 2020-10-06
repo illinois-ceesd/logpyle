@@ -68,6 +68,8 @@ class RunDB:
         from matplotlib.pyplot import plot, show, legend
 
         auto_style = kwargs.pop("auto_style", True)
+        xlabel = kwargs.pop("xlabel", "")
+        ylabel = kwargs.pop("ylabel", "")
 
         if len(cursor.description) == 2:
             if auto_style:
@@ -76,7 +78,10 @@ class RunDB:
                 kwargs["color"] = style.color
 
             x, y = list(zip(*list(cursor)))
-            plot(x, y, *args, **kwargs)
+            p = plot(x, y, *args, **kwargs)
+            p[0].axes.set_xlabel(xlabel)
+            p[0].axes.set_ylabel(ylabel)
+
         elif len(cursor.description) > 2:
             small_legend = kwargs.pop("small_legend", True)
 
@@ -353,8 +358,10 @@ Available Python symbols:
             from pylab import title
             title(args)
         elif cmd == "plot":
+            import re
+            xlabel, ylabel = re.split(", +|,| +", args)[1:3]
             self.db.plot_cursor(self.db.db.execute(
-                self.db.mangle_sql(args)))
+                self.db.mangle_sql(args)), **{"xlabel": xlabel, "ylabel": ylabel})
         elif cmd == "scatter":
             self.db.scatter_cursor(self.db.db.execute(
                 self.db.mangle_sql(args)))
