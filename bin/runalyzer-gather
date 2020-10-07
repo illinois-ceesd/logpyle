@@ -185,7 +185,9 @@ def make_name_map(map_str):
     map_re = re.compile(r"^([a-z_A-Z0-9]+)=([a-z_A-Z0-9]+)$")
     for fmap_entry in map_str.split(","):
         match = map_re.match(fmap_entry)
-        assert match is not None
+        if not (match and match.group(1) and match.group(2)):
+            raise RuntimeError(
+            "Arguments to -m should have the form F1=FNAME1,F2=FNAME2,...")
         result[match.group(1)] = match.group(2)
 
     return result
@@ -385,9 +387,9 @@ def main():
     infiles = [fn for fn in args[1:] if exists(fn)]
     not_found_files = [fn for fn in args[1:] if not exists(fn)]
     if not_found_files:
-        print("Warning: The follwing files were not found and are being ignored:")
-        for fn in not_found_files:
-            print("  ", fn)
+        from warnings import warn
+        warn("Warning: The following files were not found and are being ignored:\n  "
+             + "\n  ".join(not_found_files))
 
     # list of run features as {name: sql_type}
     fg = FeatureGatherer(options.dir_features, options.file_features)
