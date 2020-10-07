@@ -55,27 +55,22 @@ class RunDB:
         self.rank_agg_tables.add((qty, rank_aggregator))
         return tbl_name
 
-    def scatter_cursor(self, cursor, *args, **kwargs):
+    def scatter_cursor(self, cursor, labels=[], *args, **kwargs):
         import matplotlib.pyplot as plt
-
-        xlabel = kwargs.pop("xlabel", "")
-        ylabel = kwargs.pop("ylabel", "")
 
         data_args = tuple(zip(*list(cursor)))
         plt.scatter(*(data_args + args), **kwargs)
 
-        plt.xlabel(xlabel)
-        plt.ylabel(ylabel)
+        plt.xlabel(labels.pop(0) if labels else "")
+        plt.ylabel(labels.pop(0) if labels else "")
 
         if self.interactive:
             plt.show()
 
-    def plot_cursor(self, cursor, *args, **kwargs):
+    def plot_cursor(self, cursor, labels=[], *args, **kwargs):
         from matplotlib.pyplot import plot, show, legend
 
         auto_style = kwargs.pop("auto_style", True)
-        xlabel = kwargs.pop("xlabel", "")
-        ylabel = kwargs.pop("ylabel", "")
 
         if len(cursor.description) == 2:
             if auto_style:
@@ -85,8 +80,8 @@ class RunDB:
 
             x, y = list(zip(*list(cursor)))
             p = plot(x, y, *args, **kwargs)
-            p[0].axes.set_xlabel(xlabel)
-            p[0].axes.set_ylabel(ylabel)
+            p[0].axes.set_xlabel(labels.pop(0) if labels else "")
+            p[0].axes.set_ylabel(labels.pop(0) if labels else "")
 
         elif len(cursor.description) > 2:
             small_legend = kwargs.pop("small_legend", True)
@@ -177,10 +172,10 @@ class MagicRunDB(RunDB):
             if rank_aggregator is not None:
                 rank_aggregator = rank_aggregator[1:]
                 magic_columns.add((qty_name, rank_aggregator))
-                return f"{rank_aggregator}_{qty_name}.value"
+                return f"{rank_aggregator}_{qty_name}.value AS {qty_name}"
             else:
                 magic_columns.add((qty_name, None))
-                return "%s.value" % qty_name
+                return "%s.value AS %s" % (qty_name, qty_name)
 
         import re
         magic_column_re = re.compile(r"\$([a-zA-Z][A-Za-z0-9_]*)(\.[a-z]*)?")
@@ -364,15 +359,15 @@ Available Python symbols:
             from pylab import title
             title(args)
         elif cmd == "plot":
-            import re
-            xlabel, ylabel = re.split(", +|,| +", args)[1:3]
+            cursor = self.db.db.execute(self.db.mangle_sql(args))
+            columnnames = [column[0] for column in cursor.description]
             self.db.plot_cursor(self.db.db.execute(
-                self.db.mangle_sql(args)), **{"xlabel": xlabel, "ylabel": ylabel})
+                self.db.mangle_sql(args)), columnnames)
         elif cmd == "scatter":
-            import re
-            xlabel, ylabel = re.split(", +|,| +", args)[1:3]
+            cursor = self.db.db.execute(self.db.mangle_sql(args))
+            columnnames = [column[0] for column in cursor.description]
             self.db.scatter_cursor(self.db.db.execute(
-                self.db.mangle_sql(args)), **{"xlabel": xlabel, "ylabel": ylabel})
+                self.db.mangle_sql(args)), columnnames)
         else:
             print("invalid magic command")
 
