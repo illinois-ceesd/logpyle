@@ -28,7 +28,6 @@ def main():
         from logpyle.runalyzer import RunalyzerConsole
         cons = RunalyzerConsole(db)
         cons.interact("Runalyzer running on Python %s\n"
-                "Copyright (c) Andreas Kloeckner 2008\n"
                 "Run .help to see help for 'magic' commands" % sys.version)
 
 
