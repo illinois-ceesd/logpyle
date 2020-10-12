@@ -55,7 +55,7 @@ class RunDB:
         self.rank_agg_tables.add((qty, rank_aggregator))
         return tbl_name
 
-    def scatter_cursor(self, cursor, labels=[], *args, **kwargs):
+    def scatter_cursor(self, cursor, labels=None, *args, **kwargs):
         import matplotlib.pyplot as plt
 
         data_args = tuple(zip(*list(cursor)))
@@ -67,7 +67,7 @@ class RunDB:
         if self.interactive:
             plt.show()
 
-    def plot_cursor(self, cursor, labels=[], *args, **kwargs):
+    def plot_cursor(self, cursor, labels=None, *args, **kwargs):
         from matplotlib.pyplot import plot, show, legend
 
         auto_style = kwargs.pop("auto_style", True)
@@ -361,13 +361,11 @@ Available Python symbols:
         elif cmd == "plot":
             cursor = self.db.db.execute(self.db.mangle_sql(args))
             columnnames = [column[0] for column in cursor.description]
-            self.db.plot_cursor(self.db.db.execute(
-                self.db.mangle_sql(args)), columnnames)
+            self.db.plot_cursor(cursor, columnnames)
         elif cmd == "scatter":
             cursor = self.db.db.execute(self.db.mangle_sql(args))
             columnnames = [column[0] for column in cursor.description]
-            self.db.scatter_cursor(self.db.db.execute(
-                self.db.mangle_sql(args)), columnnames)
+            self.db.scatter_cursor(cursor, columnnames)
         else:
             print("invalid magic command")
 
