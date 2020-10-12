@@ -61,8 +61,12 @@ class RunDB:
         data_args = tuple(zip(*list(cursor)))
         plt.scatter(*(data_args + args), **kwargs)
 
-        plt.xlabel(labels.pop(0) if labels else "")
-        plt.ylabel(labels.pop(0) if labels else "")
+        if isinstance(labels, list) and len(labels) == 2:
+            plt.xlabel(labels[0])
+            plt.ylabel(labels[1])
+        else:
+            from warnings import warn
+            warn("The 'labels' parameter must be a list with two elements.")
 
         if self.interactive:
             plt.show()
@@ -80,8 +84,13 @@ class RunDB:
 
             x, y = list(zip(*list(cursor)))
             p = plot(x, y, *args, **kwargs)
-            p[0].axes.set_xlabel(labels.pop(0) if labels else "")
-            p[0].axes.set_ylabel(labels.pop(0) if labels else "")
+
+            if isinstance(labels, list) and len(labels) == 3:
+                p[0].axes.set_xlabel(labels[0])
+                p[0].axes.set_ylabel(labels[1])
+            else:
+                from warnings import warn
+                warn("The 'labels' parameter must be a list with two elements.")
 
         elif len(cursor.description) > 2:
             small_legend = kwargs.pop("small_legend", True)
