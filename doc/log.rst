@@ -39,7 +39,6 @@ the summary file::
     $ runalyzer -m summary.dat
     Runalyzer running on Python 3.8.5 (default, Aug  2 2020, 15:09:07)
     [GCC 10.2.0]
-    Copyright (c) Andreas Kloeckner 2008
     Run .help to see help for 'magic' commands
     >>>
 
