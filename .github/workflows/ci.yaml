@@ -32,6 +32,7 @@ jobs:
                 python-version: '3.x'
         - name: Run and test examples
           run: |
+            pip install matplotlib
             pip install -e .
             python examples/log.py
             runalyzer-gather summary.dat mylog.dat
