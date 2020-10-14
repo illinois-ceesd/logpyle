@@ -65,8 +65,8 @@ class RunDB:
             plt.xlabel(labels[0])
             plt.ylabel(labels[1])
         elif labels is not None:
-            from warnings import warn
-            raise TypeError("The 'labels' parameter must be a list with two elements.")
+            raise TypeError("The 'labels' parameter must be a list with two"
+                            "elements.")
 
         if self.interactive:
             plt.show()
@@ -89,8 +89,8 @@ class RunDB:
                 p[0].axes.set_xlabel(labels[0])
                 p[0].axes.set_ylabel(labels[1])
             elif labels is not None:
-                from warnings import warn
-                raise TypeError("The 'labels' parameter must be a list with two elements.")
+                raise TypeError("The 'labels' parameter must be a list with two"
+                                " elements.")
 
         elif len(cursor.description) > 2:
             small_legend = kwargs.pop("small_legend", True)
