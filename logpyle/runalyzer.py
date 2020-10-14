@@ -66,7 +66,7 @@ class RunDB:
             plt.ylabel(labels[1])
         elif labels is not None:
             from warnings import warn
-            warn("The 'labels' parameter must be a list with two elements.")
+            raise TypeError("The 'labels' parameter must be a list with two elements.")
 
         if self.interactive:
             plt.show()
