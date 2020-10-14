@@ -90,7 +90,7 @@ class RunDB:
                 p[0].axes.set_ylabel(labels[1])
             elif labels is not None:
                 from warnings import warn
-                warn("The 'labels' parameter must be a list with two elements.")
+                raise TypeError("The 'labels' parameter must be a list with two elements.")
 
         elif len(cursor.description) > 2:
             small_legend = kwargs.pop("small_legend", True)
@@ -370,11 +370,11 @@ Available Python symbols:
         elif cmd == "plot":
             cursor = self.db.db.execute(self.db.mangle_sql(args))
             columnnames = [column[0] for column in cursor.description]
-            self.db.plot_cursor(cursor, columnnames)
+            self.db.plot_cursor(cursor, labels=columnnames)
         elif cmd == "scatter":
             cursor = self.db.db.execute(self.db.mangle_sql(args))
             columnnames = [column[0] for column in cursor.description]
-            self.db.scatter_cursor(cursor, columnnames)
+            self.db.scatter_cursor(cursor, labels=columnnames)
         else:
             print("invalid magic command")
 
