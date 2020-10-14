@@ -35,3 +35,4 @@ jobs:
             pip install -e .
             python examples/log.py
             runalyzer-gather summary.dat mylog.dat
+            runalyzer -m summary.dat -c 'dbplot(q("select $t_sim, $t_step"))'
