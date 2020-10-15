@@ -55,16 +55,23 @@ class RunDB:
         self.rank_agg_tables.add((qty, rank_aggregator))
         return tbl_name
 
-    def scatter_cursor(self, cursor, *args, **kwargs):
-        from matplotlib.pyplot import scatter, show
+    def scatter_cursor(self, cursor, labels=None, *args, **kwargs):
+        import matplotlib.pyplot as plt
 
         data_args = tuple(zip(*list(cursor)))
-        scatter(*(data_args + args), **kwargs)
+        plt.scatter(*(data_args + args), **kwargs)
+
+        if isinstance(labels, list) and len(labels) == 2:
+            plt.xlabel(labels[0])
+            plt.ylabel(labels[1])
+        elif labels is not None:
+            raise TypeError("The 'labels' parameter must be a list with two"
+                            "elements.")
 
         if self.interactive:
-            show()
+            plt.show()
 
-    def plot_cursor(self, cursor, *args, **kwargs):
+    def plot_cursor(self, cursor, labels=None, *args, **kwargs):
         from matplotlib.pyplot import plot, show, legend
 
         auto_style = kwargs.pop("auto_style", True)
@@ -76,7 +83,15 @@ class RunDB:
                 kwargs["color"] = style.color
 
             x, y = list(zip(*list(cursor)))
-            plot(x, y, *args, **kwargs)
+            p = plot(x, y, *args, **kwargs)
+
+            if isinstance(labels, list) and len(labels) == 2:
+                p[0].axes.set_xlabel(labels[0])
+                p[0].axes.set_ylabel(labels[1])
+            elif labels is not None:
+                raise TypeError("The 'labels' parameter must be a list with two"
+                                " elements.")
+
         elif len(cursor.description) > 2:
             small_legend = kwargs.pop("small_legend", True)
 
@@ -166,10 +181,10 @@ class MagicRunDB(RunDB):
             if rank_aggregator is not None:
                 rank_aggregator = rank_aggregator[1:]
                 magic_columns.add((qty_name, rank_aggregator))
-                return f"{rank_aggregator}_{qty_name}.value"
+                return f"{rank_aggregator}_{qty_name}.value AS {qty_name}"
             else:
                 magic_columns.add((qty_name, None))
-                return "%s.value" % qty_name
+                return "%s.value AS %s" % (qty_name, qty_name)
 
         import re
         magic_column_re = re.compile(r"\$([a-zA-Z][A-Za-z0-9_]*)(\.[a-z]*)?")
@@ -353,11 +368,13 @@ Available Python symbols:
             from pylab import title
             title(args)
         elif cmd == "plot":
-            self.db.plot_cursor(self.db.db.execute(
-                self.db.mangle_sql(args)))
+            cursor = self.db.db.execute(self.db.mangle_sql(args))
+            columnnames = [column[0] for column in cursor.description]
+            self.db.plot_cursor(cursor, labels=columnnames)
         elif cmd == "scatter":
-            self.db.scatter_cursor(self.db.db.execute(
-                self.db.mangle_sql(args)))
+            cursor = self.db.db.execute(self.db.mangle_sql(args))
+            columnnames = [column[0] for column in cursor.description]
+            self.db.scatter_cursor(cursor, labels=columnnames)
         else:
             print("invalid magic command")
 
