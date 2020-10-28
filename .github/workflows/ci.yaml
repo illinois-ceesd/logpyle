@@ -40,6 +40,7 @@ jobs:
           run: |
             pip install wheel
             if [ "$RUNNER_OS" == "macOS" ]; then
+              # work around for https://github.com/numpy/numpy/issues/15947
               brew install openblas
               OPENBLAS="$(brew --prefix openblas)" pip install numpy
             fi
