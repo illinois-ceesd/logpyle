@@ -39,11 +39,6 @@ jobs:
         - name: Install prerequisites
           run: |
             pip install wheel
-            if [ "$RUNNER_OS" == "macOS" ]; then
-              # workaround for https://github.com/numpy/numpy/issues/15947
-              brew install openblas
-              OPENBLAS="$(brew --prefix openblas)" pip install numpy
-            fi
             pip install matplotlib
             pip install -e .      
         - name: Run and test example
