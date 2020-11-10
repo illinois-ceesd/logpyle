@@ -721,6 +721,8 @@ class LogManager:
         if self.tick_count == self.next_watch_tick:
             self._watch_tick()
 
+        # Reset dt so we don't get stale data on the next tick
+        set_dt(self, 0)
         self.t_log += time() - tick_start_time
 
     def _commit(self):
