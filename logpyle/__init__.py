@@ -1061,7 +1061,6 @@ class _SubTimer:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.stop()
         self.submit()
-        return self
 
     def submit(self):
         self.itimer.add_time(self.elapsed)
