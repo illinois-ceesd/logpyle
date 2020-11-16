@@ -80,6 +80,14 @@ def time():
 
 # {{{ abstract logging interface
 
+class LogText:
+    def __init__(self, name, description):
+        self.name = name
+        self.description = description
+
+    def __call__(self):
+        raise NotImplementedError
+
 class LogQuantity:
     """A source of loggable scalars.
 
@@ -228,6 +236,10 @@ class _QuantityData:
         self.unit = unit
         self.description = description
         self.default_aggregator = default_aggregator
+
+class _LogTextData:
+    def __init__(self, description):
+        self.description = description
 
 
 def _join_by_first_of_tuple(list_of_iterables):
@@ -400,10 +412,13 @@ class LogManager:
           is requested.
         """
 
+        # print(filename,)
+
         assert isinstance(mode, str), "mode must be a string"
         assert mode in ["w", "r", "wu", "wo"], "invalid mode"
 
         self.quantity_data = {}
+        self.logtext_data = {}
         self.last_values = {}
         self.before_gather_descriptors = []
         self.after_gather_descriptors = []
@@ -738,6 +753,24 @@ class LogManager:
             warn("encountered sqlite error during commit: %s" % e)
 
         self.last_save_time = time()
+
+    def add_logtext(self, logtext, interval=1):
+
+        def add_internal(name, description):
+            logger.debug("add log quantity '%s'" % name)
+
+            if name in self.logtext_data:
+                raise RuntimeError("cannot add the same logtext '%s' twice" % name)
+            self.logtext_data[name] = _LogTextData(description)
+
+            self.db_conn.execute("""insert into logtext values (?,?)""", (
+                name, description))
+            self.db_conn.execute("""create table %s
+              (step integer, rank integer, value blob)""" % name)
+
+            self._commit()
+
+
 
     def add_quantity(self, quantity, interval=1):
         """Add an object derived from :class:`LogQuantity` to this manager."""
