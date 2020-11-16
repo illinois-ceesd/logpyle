@@ -25,7 +25,7 @@ def main():
     vis_timer = IntervalTimer("t_vis", "Time spent visualizing")
     logmgr.add_quantity(vis_timer)
     logmgr.add_quantity(Fifteen("fifteen"))
-    logmgr.add_watches(["step.max", "t_sim.max", "t_step.max"])
+    logmgr.add_watches(["step.max", "t_sim.max", "t_step.max", "fifteen", "t_vis"])
 
     for istep in range(200):
         logmgr.tick_before()
