@@ -514,7 +514,7 @@ class LogManager:
                 # cater to Python 2.5 and earlier
                 self.old_showwarning(message, category, filename, lineno)
 
-            if self.schema_version >= 1 and self.mode == "w":
+            if self.schema_version >= 1 and self.mode[0] == "w":
                 if self.schema_version >= 2:
                     self.db_conn.execute("insert into warnings values (?,?,?,?,?,?)",
                             (self.rank, self.tick_count, str(message), str(category),
