@@ -20,7 +20,7 @@ class Fifteen(LogQuantity):
 
 
 def main():
-    logmgr = LogManager("mpi-log.dat", "wu", MPI.COMM_WORLD)  # , comm=...
+    logmgr = LogManager("mpi-log.dat", "wu", comm=MPI.COMM_WORLD)
 
     # Set a run property
     logmgr.set_constant("myconst", uniform(0, 1))
