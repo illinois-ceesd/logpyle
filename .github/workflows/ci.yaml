@@ -38,8 +38,9 @@ jobs:
             python-version: ${{ matrix.python-version }}
         - name: Install prerequisites
           run: |
-            pip install wheel
-            pip install matplotlib mpi4py
+            [[ $(uname) == "Darwin" ]] && brew install open-mpi
+            [[ $(uname) == "Linux" ]] && sudo apt-get install -y mpich libmpich-dev
+            pip install wheel matplotlib mpi4py
             pip install -e .
         - name: Run and test example
           run: |
