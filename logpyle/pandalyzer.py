@@ -4,14 +4,6 @@ from sqlalchemy import create_engine
 from warnings import warn
 from pytools import Table
 
-try:
-    import readline
-    import rlcompleter  # noqa: F401
-    HAVE_READLINE = True
-except ImportError:
-    HAVE_READLINE = False
-
-
 # Commands:
 #  .help        show this help message
 #  .q SQL       execute a (potentially mangled) query
@@ -43,6 +35,7 @@ except ImportError:
 #     split_cursor(cursor): x,y,data gather that .plot uses internally
 #     table_from_cursor(cursor)
 
+
 def table_from_df(df, header=None, skip_index=True) -> Table:
     if df is None:
         return None
@@ -69,21 +62,14 @@ Commands:
  help()       show this help message
  runprops()   show a list of run properties
  quantities() show a list of time-dependent quantities
+ warnings()   show a list of warnings
+ dump()       show an SQL table
 
 Plotting:
- plot()       plot list of quantities.
-
-Custom SQLite aggregates:
-    stddev, var, norm1, norm2
+ dbplot()     plot list of quantities.
 
 Available Python symbols:
-    db: the database
-    q(query_str): get db cursor for mangled query_str
-    dbplot(cursor): plot result of cursor
-    dbscatter(cursor): make scatterplot result of cursor
-    dbprint(cursor): print result of cursor
-    split_cursor(cursor): x,y,data gather that .plot uses internally
-    table_from_cursor(cursor)
+    db        the database
 """)
 
 
@@ -97,7 +83,7 @@ def make_pandalyzer_symbols(db):
             "warnings": db.warnings,
             "db": db,
             "dump": db.dump,
-            "plot": db.plot,
+            "dbplot": db.plot,
             # "q": db.q,
             # "dbplot": db.plot_cursor,
             # "dbscatter": db.scatter_cursor,
@@ -123,7 +109,7 @@ class RunDB:
                 return self.tables[table_name]
             except ValueError:
                 if table_name == "runs":
-                    warn(f"No such table '{table_name}'."
+                    warn(f"No such table '{table_name}'. "
                           "Run runalyzer-gather first.")
                 else:
                     warn(f"No such table '{table_name}'.")
@@ -203,7 +189,9 @@ class PandalyzerConsole(code.InteractiveConsole):
         except RuntimeError:
             pass
 
-        if HAVE_READLINE:
+        try:
+            import readline
+            import rlcompleter  # noqa: F401
             import os
             import atexit
 
@@ -212,6 +200,8 @@ class PandalyzerConsole(code.InteractiveConsole):
                 readline.read_history_file(histfile)
             atexit.register(readline.write_history_file, histfile)
             readline.parse_and_bind("tab: complete")
+        except ImportError:
+            pass
 
         self.last_push_result = False
 
