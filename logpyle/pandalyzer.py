@@ -43,7 +43,10 @@ except ImportError:
 #     split_cursor(cursor): x,y,data gather that .plot uses internally
 #     table_from_cursor(cursor)
 
-def table_from_df(df, header=None, skip_index=True):
+def table_from_df(df, header=None, skip_index=True) -> Table:
+    if df is None:
+        return None
+
     tbl = Table()
 
     if header:
@@ -58,6 +61,7 @@ def table_from_df(df, header=None, skip_index=True):
             tbl.add_row(row)
 
     return tbl
+
 
 def pandalyzer_help():
     print("""
@@ -82,17 +86,19 @@ Available Python symbols:
     table_from_cursor(cursor)
 """)
 
+
 def make_pandalyzer_symbols(db):
     return {
             "__name__": "__console__",
             "__doc__": None,
-            "help" : pandalyzer_help,
-            "runprops" : db.runprops,
-            "quantities" : db.quantities,
+            "help": pandalyzer_help,
+            "runprops": db.runprops,
+            "quantities": db.quantities,
+            "warnings": db.warnings,
             "db": db,
             "dump": db.dump,
             "plot": db.plot,
-            ## "q": db.q,
+            # "q": db.q,
             # "dbplot": db.plot_cursor,
             # "dbscatter": db.scatter_cursor,
             # "dbprint": db.print_cursor,
@@ -117,38 +123,47 @@ class RunDB:
                 return self.tables[table_name]
             except ValueError:
                 if table_name == "runs":
-                    warn("Run runalyzer-gather first.")
+                    warn(f"No such table '{table_name}'."
+                          "Run runalyzer-gather first.")
                 else:
                     warn(f"No such table '{table_name}'.")
-
+                return None
 
     def runprops(self):
-        print(table_from_df(self._get_table("runs").transpose(), header=["Property", "Value"], skip_index=False))
+        print(table_from_df(self._get_table("runs").transpose(),
+              header=["Property", "Value"], skip_index=False))
 
     def quantities(self) -> None:
         print(table_from_df(self._get_table("quantities")))
 
-    def plot(self, values: list, kind: str = "line"):
-        from matplotlib.pyplot import plot, show, legend
+    def plot(self, values: list, kind: str = "scatter"):
+        from matplotlib.pyplot import show, legend
+
+        if len(values) < 2:
+            raise ValueError("Need at least two elements in 'values'.")
+
+        import itertools
+
+        colors = itertools.cycle(["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728",
+              "#9467bd", "#8c564b", "#e377c2", "#7f7f7f",
+              "#bcbd22", "#17becf"])
 
         data = []
         legend_entries = []
         for v in values:
             data.append(self._get_table(v).value)
-            legend_entries.append(v+ " ["+self.get_unit_for_quantity(v)+"]")
-
+            legend_entries.append(v + " [" + self.get_unit_for_quantity(v) + "]")
 
         df = pd.concat(data, axis=1, keys=values)
 
-        # print(data)
-        # df = pd.DataFrame([data]).transpose()
-        # print(df)
-        p = df.plot(kind=kind)
-        # print(keys)
-        legend(legend_entries)
-        # for v in values:
-        # p.axes.set_xlabel(values[0])
-        p.axes.set_xlabel("step")
+        p = df.plot(x=values[0], y=values[1], kind=kind, color=next(colors))
+
+        for v in values[2:]:
+            p = df.plot(x=values[0], y=v, kind=kind, ax=p, color=next(colors))
+
+        legend(legend_entries[1:])
+        p.axes.set_xlabel(legend_entries[0])
+        p.axes.set_ylabel(", ".join(legend_entries[1:]))
         show()
         return p
 
@@ -157,9 +172,10 @@ class RunDB:
 
     def get_unit_for_quantity(self, quantity: str) -> str:
         q = self._get_table("quantities")
-        print(type(q.loc[q.name==quantity].unit))
-        return q.loc[q.name==quantity].unit.to_string(index=False)
+        return q.loc[q.name == quantity].unit.to_string(index=False).strip()
 
+    def warnings(self) -> None:
+        print(table_from_df(self._get_table("warnings")))
 
 
 def make_db(file, interactive):
@@ -214,4 +230,3 @@ class PandalyzerConsole(code.InteractiveConsole):
         #     self.db.scatter_cursor(cursor, labels=columnnames)
         # else:
         #     print("invalid magic command")
-
