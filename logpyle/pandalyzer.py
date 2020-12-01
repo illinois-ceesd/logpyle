@@ -122,7 +122,7 @@ class RunDB:
     def quantities(self) -> None:
         print(table_from_df(self._get_table("quantities")))
 
-    def plot(self, values: list, kind: str = "scatter"):
+    def plot(self, values: list, kind: str = "line"):
         from matplotlib.pyplot import show, legend
 
         if len(values) < 2:
@@ -138,7 +138,10 @@ class RunDB:
         legend_entries = []
         for v in values:
             data.append(self._get_table(v).value)
-            legend_entries.append(v + " [" + self.get_unit_for_quantity(v) + "]")
+            unit = self.get_unit_for_quantity(v)
+            unit = " [" + unit + "]" if unit != "1" else ""
+
+            legend_entries.append(v + unit)
 
         df = pd.concat(data, axis=1, keys=values)
 
