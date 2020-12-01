@@ -294,6 +294,11 @@ def gather_multi_file(outfile, infiles, fmap, qmap, fg, features,
             rank_aggregator text
             )""")
 
+    db_conn.execute("""create table warnings (
+            run_id integer, step integer, rank integer, message text,
+            category text, filename text, lineno integer
+            )""")
+
     created_tables = set()
 
     from os.path import dirname, basename
@@ -319,6 +324,17 @@ def gather_multi_file(outfile, infiles, fmap, qmap, fg, features,
                     + [_normalize_types(f[2]) for f in dbfeatures])
 
             written_run_ids.add(run_id)
+
+        def transfer_data_table_multi(db_conn, tbl_name, data_table):
+            my_data = [ (run_id,)+d for d in data_table.data ]
+
+            db_conn.executemany(f"insert into {tbl_name} (%s) values (%s)" %
+            ("run_id,"+
+                ", ".join(data_table.column_names),
+                ", ".join("?" * (len(data_table.column_names)+1))),
+            my_data)
+
+        transfer_data_table_multi(db_conn, "warnings", logmgr.get_warnings())
 
         for qname, qdat in six.iteritems(logmgr.quantity_data):
             tgt_qname = qmap.get(qname, qname)
