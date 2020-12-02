@@ -435,7 +435,8 @@ class LogManager:
         import sqlite3 as sqlite
 
         if filename is None:
-            filename = ":memory:"
+            file_base = ":memory:"
+            file_extension = ""
         else:
             import os
             file_base, file_extension = os.path.splitext(filename)
@@ -445,7 +446,7 @@ class LogManager:
         while True:
             suffix = ""
 
-            if mode == "wu":
+            if mode == "wu" and not file_base == ":memory:":
                 suffix = self.mpi_comm.bcast(_get_unique_suffix(),
                                              root=self.head_rank)
 
