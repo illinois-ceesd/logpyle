@@ -287,14 +287,9 @@ def _get_unique_id():
         return uuid1().hex
 
 
-def _get_random_suffix(n):
-    characters = (
-            [chr(65+i) for i in range(26)]
-            + [chr(97+i) for i in range(26)]
-            + [chr(48+i) for i in range(10)])
-
-    from random import choice
-    return "".join(choice(characters) for i in range(n))
+def _get_unique_suffix():
+    from datetime import datetime
+    return "-" + datetime.utcnow().strftime("%Y%m%d%H%M%S")
 
 
 def _set_up_schema(db_conn):
@@ -442,23 +437,28 @@ class LogManager:
         if filename is None:
             filename = ":memory:"
         else:
+            import os
+            file_base, file_extension = os.path.splitext(filename)
             if self.is_parallel:
-                filename += "-rank%d" % self.rank
+                file_base += "-rank%d" % self.rank
+
 
         while True:
             suffix = ""
 
             if mode == "wu":
-                suffix = "-"+_get_random_suffix(6)
+                suffix = self.mpi_comm.bcast(_get_unique_suffix(), root=self.head_rank)
+
+            filename = file_base + suffix + file_extension
 
             if mode == "wo":
                 import os
                 try:
-                    os.remove(filename+suffix)
+                    os.remove(filename)
                 except OSError:
                     pass
 
-            self.db_conn = sqlite.connect(filename+suffix, timeout=30)
+            self.db_conn = sqlite.connect(filename, timeout=30)
             self.mode = mode
             try:
                 self.db_conn.execute("select * from quantities;")
