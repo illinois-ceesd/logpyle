@@ -442,12 +442,12 @@ class LogManager:
             if self.is_parallel:
                 file_base += "-rank%d" % self.rank
 
-
         while True:
             suffix = ""
 
             if mode == "wu":
-                suffix = self.mpi_comm.bcast(_get_unique_suffix(), root=self.head_rank)
+                suffix = self.mpi_comm.bcast(_get_unique_suffix(),
+                                             root=self.head_rank)
 
             filename = file_base + suffix + file_extension
 
