@@ -289,7 +289,7 @@ def _get_unique_id():
 
 def _get_unique_suffix():
     from datetime import datetime
-    return "-" + datetime.utcnow().strftime("%Y%m%d%H%M%S")
+    return "-" + datetime.utcnow().strftime("%Y%m%d-%H%M%S")
 
 
 def _set_up_schema(db_conn):
