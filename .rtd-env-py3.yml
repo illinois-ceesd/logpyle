@@ -6,5 +6,5 @@ dependencies:
 - python=3
 - pip
 - pip:
-    - furo
-    - sphinx-copybutton
+    - "furo"
+    - "sphinx-copybutton"
