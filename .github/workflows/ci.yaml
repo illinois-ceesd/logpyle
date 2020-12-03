@@ -22,6 +22,7 @@ jobs:
           run: |
             pip install flake8
             flake8 && echo "Flake8 found no errors."
+
     Examples:
         runs-on: ${{ matrix.os }}
         strategy:
@@ -49,3 +50,19 @@ jobs:
             runalyzer -m summary.dat -c 'dbplot(q("select $t_sim, $t_step"))'
 
             mpirun -n 4 examples/log-mpi.py
+
+    docs:
+        name: Documentation
+        runs-on: ubuntu-latest
+        steps:
+        -   uses: actions/checkout@v2
+        -
+            uses: actions/setup-python@v1
+            with:
+                python-version: '3.x'
+        -   name: "Main Script"
+            run: |
+                curl -L -O -k https://gitlab.tiker.net/inducer/ci-support/raw/master/ci-support.sh
+                . ci-support.sh
+                build_py_project_in_venv
+                build_docs
