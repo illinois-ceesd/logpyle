@@ -447,8 +447,11 @@ class LogManager:
             suffix = ""
 
             if mode == "wu" and not file_base == ":memory:":
-                suffix = self.mpi_comm.bcast(_get_unique_suffix(),
-                                             root=self.head_rank)
+                if self.is_parallel:
+                    suffix = self.mpi_comm.bcast(_get_unique_suffix(),
+                                                 root=self.head_rank)
+                else:
+                    suffix = _get_unique_suffix()
 
             filename = file_base + suffix + file_extension
 
