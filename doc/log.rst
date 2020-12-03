@@ -1,5 +1,7 @@
-Time series logging
-===================
+.. _tutorial:
+
+Tutorial
+========
 
 How do I use this?
 ------------------
@@ -99,7 +101,5 @@ your time series data, for example:
 - Plot the solution 2-norms of all runs that were run on a Tuesday between time
   step 2000 and 3000
 - Make a scatterplot correlating memory transfer amounts and simulation time
-
-.. automodule:: logpyle
 
 .. no-doctest
