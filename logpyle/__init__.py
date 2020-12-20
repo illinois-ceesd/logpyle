@@ -56,6 +56,10 @@ THE SOFTWARE.
 """
 
 
+import logpyle.version
+__version__ = logpyle.version.VERSION_TEXT
+
+
 import logging
 logger = logging.getLogger(__name__)
 
