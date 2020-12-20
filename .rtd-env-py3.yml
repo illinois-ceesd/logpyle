@@ -1,0 +1,10 @@
+name: rtd-env-py3
+channels:
+- conda-forge
+- nodefaults
+dependencies:
+- python=3.8
+- pip
+- sphinx-copybutton
+- pip:
+    - "furo"

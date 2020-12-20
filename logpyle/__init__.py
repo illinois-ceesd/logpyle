@@ -289,7 +289,7 @@ def _get_unique_id():
 
 def _get_unique_suffix():
     from datetime import datetime
-    return "-" + datetime.utcnow().strftime("%Y%m%d%H%M%S")
+    return "-" + datetime.utcnow().strftime("%Y%m%d-%H%M%S")
 
 
 def _set_up_schema(db_conn):
@@ -447,8 +447,11 @@ class LogManager:
             suffix = ""
 
             if mode == "wu" and not file_base == ":memory:":
-                suffix = self.mpi_comm.bcast(_get_unique_suffix(),
-                                             root=self.head_rank)
+                if self.is_parallel:
+                    suffix = self.mpi_comm.bcast(_get_unique_suffix(),
+                                                 root=self.head_rank)
+                else:
+                    suffix = _get_unique_suffix()
 
             filename = file_base + suffix + file_extension
 

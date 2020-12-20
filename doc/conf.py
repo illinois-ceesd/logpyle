@@ -30,11 +30,14 @@
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named "sphinx.ext.*") or your custom
 # ones.
-extensions = ["sphinx.ext.autodoc",
+extensions = [
+    "sphinx.ext.autodoc",
     "sphinx.ext.doctest",
     "sphinx.ext.intersphinx",
     "sphinx.ext.mathjax",
-    "sphinx.ext.viewcode"]
+    "sphinx.ext.viewcode",
+    "sphinx_copybutton",
+]
 autoclass_content = "class"
 
 # Add any paths that contain templates here, relative to this directory.
@@ -60,8 +63,10 @@ author = "Andreas Kloeckner"
 #
 # The short X.Y version.
 ver_dic = {}
-exec(compile(open("../logpyle/version.py").read(),
-    "../logpyle/version.py", "exec"), ver_dic)
+exec(
+    compile(open("../logpyle/version.py").read(), "../logpyle/version.py", "exec"),
+    ver_dic,
+)
 version = ".".join(str(x) for x in ver_dic["VERSION"])
 release = ver_dic["VERSION_TEXT"]
 
@@ -89,23 +94,10 @@ todo_include_todos = False
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = "alabaster"
+html_theme = "furo"
 
 html_theme_options = {
-        "extra_nav_links": {
-            "🚀 Github": "https://github.com/illinois-ceesd/logpyle",
-            "💾 Download Releases": "https://pypi.python.org/pypi/logpyle",
-            }
         }
-
-html_sidebars = {
-    "**": [
-        "about.html",
-        "navigation.html",
-        "relations.html",
-        "searchbox.html",
-    ]
-}
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -130,16 +122,13 @@ htmlhelp_basename = "logpyledoc"
 latex_elements = {
     # The paper size ("letterpaper" or "a4paper").
     #
-    # "papersize": "letterpaper",
-
-    # The font size ("10pt", "11pt" or "12pt").
+    # 'papersize': 'letterpaper',
+    # The font size ('10pt', '11pt' or '12pt').
     #
-    # "pointsize": "10pt",
-
+    # 'pointsize': '10pt',
     # Additional stuff for the LaTeX preamble.
     #
-    # "preamble": ",
-
+    # 'preamble': '',
     # Latex figure (float) alignment
     #
     # "figure_align": "htbp",
@@ -149,8 +138,8 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, "logpyle.tex", "logpyle Documentation",
-     "Andreas Kloeckner", "manual"),
+    (master_doc, "logpyle.tex", "logpyle Documentation", "Andreas Kloeckner",
+        "manual"),
 ]
 
 
@@ -158,10 +147,7 @@ latex_documents = [
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [
-    (master_doc, "logpyle", "logpyle Documentation",
-     [author], 1)
-]
+man_pages = [(master_doc, "logpyle", "logpyle Documentation", [author], 1)]
 
 
 # -- Options for Texinfo output -------------------------------------------
@@ -170,9 +156,15 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, "logpyle", "logpyle Documentation",
-     author, "logpyle", "One line description of project.",
-     "Miscellaneous"),
+    (
+        master_doc,
+        "logpyle",
+        "logpyle Documentation",
+        author,
+        "logpyle",
+        "One line description of project.",
+        "Miscellaneous",
+    ),
 ]
 
 
@@ -180,4 +172,4 @@ intersphinx_mapping = {
     "https://docs.python.org/3": None,
     "https://numpy.org/doc/stable": None,
     "https://documen.tician.de/pymbolic/": None,
-    }
+}
