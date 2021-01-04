@@ -119,8 +119,10 @@ class RunDB:
         print(table_from_df(self._get_table("runs").transpose(),
               header=["Property", "Value"], skip_index=False))
 
-    def quantities(self) -> None:
-        print(table_from_df(self._get_table("quantities")))
+    def quantities(self, where = None) -> None:
+        res = self._get_table("quantities")
+        print(len(res), "quantities.")
+        print(table_from_df(res))
 
     def plot(self, values: list, kind: str = "line"):
         from matplotlib.pyplot import show, legend
@@ -153,7 +155,7 @@ class RunDB:
         legend(legend_entries[1:])
         p.axes.set_xlabel(legend_entries[0])
         p.axes.set_ylabel(", ".join(legend_entries[1:]))
-        show()
+        show(block=False)
         return p
 
     def dump(self, table_name: str) -> None:
@@ -164,7 +166,7 @@ class RunDB:
         return q.loc[q.name == quantity].unit.to_string(index=False).strip()
 
     def warnings(self) -> None:
-        print(table_from_df(self._get_table("warnings")))
+        self.dump("warnings")
 
 
 def make_db(file, interactive):
