@@ -21,6 +21,7 @@ Built-in Log General-Purpose Quantities
 .. autoclass:: TimestepCounter
 .. autoclass:: StepToStepDuration
 .. autoclass:: TimestepDuration
+.. autoclass:: InitTime
 .. autoclass:: CPUTime
 .. autoclass:: ETA
 .. autofunction:: add_general_quantities
@@ -1218,6 +1219,37 @@ class TimestepDuration(PostLogQuantity):
         del self.last_start
         return result
 
+class InitTime(LogQuantity):
+    """Stores the time it took for the application to initialize.
+
+    Measures the time from process start to the start of the first time step.
+
+    .. automethod:: __init__
+    """
+
+    def __init__(self, name="t_init"):
+        LogQuantity.__init__(self, name, "s", "Init time")
+
+        import os
+        try:
+            import psutil
+        except ImportError:
+            from warnings import warn
+            warn("Measuring the init time requires the 'psutil' module.")
+            self.done = True
+        else:
+            p = psutil.Process(os.getpid())
+            self.start_time = p.create_time()
+            self.done = False
+
+    def __call__(self):
+        if self.done:
+            return 0.
+
+        self.done = True
+        now = time()
+        return now - self.start_time
+
 
 class CPUTime(LogQuantity):
     """Records (monotonically increasing) CPU time.
@@ -1263,6 +1295,7 @@ def add_general_quantities(mgr):
     mgr.add_quantity(CPUTime())
     mgr.add_quantity(LogUpdateDuration(mgr))
     mgr.add_quantity(TimestepCounter())
+    mgr.add_quantity(InitTime())
 
 
 class SimulationTime(TimeTracker, LogQuantity):
