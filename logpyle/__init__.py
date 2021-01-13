@@ -1219,6 +1219,7 @@ class TimestepDuration(PostLogQuantity):
         del self.last_start
         return result
 
+
 class InitTime(LogQuantity):
     """Stores the time it took for the application to initialize.
 
