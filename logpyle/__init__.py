@@ -1234,7 +1234,7 @@ class InitTime(LogQuantity):
         import os
         try:
             import psutil
-        except ImportError:
+        except ModuleNotFoundError:
             from warnings import warn
             warn("Measuring the init time requires the 'psutil' module.")
             self.done = True
@@ -1245,7 +1245,7 @@ class InitTime(LogQuantity):
 
     def __call__(self):
         if self.done:
-            return 0.
+            return None
 
         self.done = True
         now = time()
