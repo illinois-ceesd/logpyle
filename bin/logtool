@@ -1,9 +1,5 @@
-#! /usr/bin/python
+#! /usr/bin/env python3
 
-from __future__ import absolute_import
-from __future__ import print_function
-import six
-from six.moves import zip
 def main():
     from logpyle import LogManager
     import sys
@@ -71,13 +67,14 @@ following:
     legend_prefix = ""
 
     from pytools import cartesian_product, Record
+
     class PlotStyle(Record):
         pass
 
     styles = [
             PlotStyle(dashes=dashes, color=color)
             for dashes, color in cartesian_product(
-                [(), (12, 2), (4, 2),  (2,2), (2,8) ],
+                [(), (12, 2), (4, 2),  (2, 2), (2, 8)],
                 ["blue", "green", "red", "magenta", "cyan"],
                 )]
 
@@ -95,8 +92,8 @@ following:
             print("Time series")
             print("-----------")
 
-            items = list(six.iteritems(logmgr.quantity_data))
-            items.sort(lambda a,b: cmp(a[0], b[0]))
+            items = list(logmgr.quantity_data.items())
+            items.sort(key=lambda item: item[0])
 
             if items:
                 col0_len = max(len(k) for k, v in items) + 1
@@ -104,13 +101,13 @@ following:
                 col0_len = 0
 
             for key, qdat in items:
-                print("%s\t%s" % (key.ljust(col0_len), qdat.description))
+                print("{}\t{}".format(key.ljust(col0_len), qdat.description))
 
             print()
             print("Constants")
             print("---------")
-            items = list(six.iteritems(logmgr.constants))
-            items.sort(lambda a,b: cmp(a[0], b[0]))
+            items = list(logmgr.constants.items())
+            items.sort(key=lambda item: item[0])
 
             if items:
                 col0_len = max(len(k) for k, v in items) + 1
@@ -118,7 +115,7 @@ following:
                 col0_len = 0
 
             for key, value in items:
-                print("%s\t%s" % (key.ljust(col0_len), str(value)))
+                print("{}\t{}".format(key.ljust(col0_len), str(value)))
         elif cmd == "plot":
             check_no_file()
 
@@ -135,7 +132,7 @@ following:
                 if options.units_x:
                     xlabel(unit_x)
                 else:
-                    xlabel("%s [%s]" % (descr_x, unit_x))
+                    xlabel(f"{descr_x} [{unit_x}]")
 
             if options.label_y:
                 ylabel(options.label_y)
@@ -143,7 +140,7 @@ following:
                 if options.units_y:
                     ylabel(unit_y)
                 else:
-                    ylabel("%s [%s]" % (descr_y, unit_y))
+                    ylabel(f"{descr_y} [{unit_y}]")
 
             kwargs = {}
 
@@ -190,7 +187,7 @@ following:
 
             from pytools import Table
             tbl = Table()
-            tbl.add_row(["step"]+["%s [%s]" % (d, u) for d,u in zip(descrs, units)])
+            tbl.add_row(["step"]+[f"{d} [{u}]" for d, u in zip(descrs, units)])
 
             for row in data:
                 tbl.add_row([row[0]]+row[1])
@@ -206,7 +203,7 @@ following:
             if access(cmd, R_OK):
                 logmgr = LogManager(cmd, "r")
             else:
-                raise IOError("file '%s' not found" % cmd)
+                raise OSError("file '%s' not found" % cmd)
 
     if did_plot:
         from matplotlib.pyplot import show, title, legend, axis, grid, rc, savefig
@@ -226,13 +223,15 @@ following:
 
         xmin, xmax, ymin, ymax = axis()
         if options.scale_x:
-            xmin_new, xmax_new = [float_or_none(x) for x in options.scale_x.split(",")]
+            xmin_new, xmax_new = [
+                    float_or_none(x) for x in options.scale_x.split(",")]
             if xmin_new is not None:
                 xmin = xmin_new
             if xmax_new is not None:
                 xmax = xmax_new
         if options.scale_y:
-            ymin_new, ymax_new = [float_or_none(x) for x in options.scale_y.split(",")]
+            ymin_new, ymax_new = [
+                    float_or_none(x) for x in options.scale_y.split(",")]
             if ymin_new is not None:
                 ymin = ymin_new
             if ymax_new is not None:

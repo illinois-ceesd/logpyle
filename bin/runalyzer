@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 
 
 def main():
@@ -22,7 +22,8 @@ def main():
                 make_runalyzer_symbols(db))
     elif args.commands:
         db = make_wrapped_db(args.dbfile, mangle=args.mangle, interactive=False)
-        exec(compile(args.commands, "--commands", "exec"), make_runalyzer_symbols(db))
+        exec(compile(args.commands, "--commands", "exec"),
+                make_runalyzer_symbols(db))
     else:
         db = make_wrapped_db(args.dbfile, mangle=args.mangle, interactive=True)
         from logpyle.runalyzer import RunalyzerConsole
