@@ -1344,8 +1344,14 @@ def add_simulation_quantities(mgr, dt=None):
 def add_run_info(mgr):
     """Add generic run metadata, such as command line, host, and time."""
 
-    import sys
-    mgr.set_constant("cmdline", " ".join(sys.argv))
+    try:
+        import psutil
+    except ModuleNotFoundError:
+        import sys
+        mgr.set_constant("cmdline", " ".join(sys.argv))
+    else:
+        mgr.set_constant("cmdline", " ".join(psutil.Process().cmdline()))
+
     from socket import gethostname
     mgr.set_constant("machine", gethostname())
     from time import localtime, strftime, time
