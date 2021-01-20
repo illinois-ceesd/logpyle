@@ -793,13 +793,14 @@ class LogManager:
 
         :arg expression: A :mod:`pymbolic` expression that may involve
           the time-series variables and the constants in this :class:`LogManager`.
-          If there is data from multiple ranks for a quantity occuring in
+          If there is data from multiple ranks for a quantity occurring in
           this expression, an aggregator may have to be specified.
         :returns: ``(description, unit, table)``, where *table*
           is a list of tuples ``(tick_nbr, value)``.
 
         Aggregators are specified as follows:
-        - ``qty.min``, ``qty.max``, ``qty.avg``, ``qty.sum``, ``qty.norm2``
+        - ``qty.min``, ``qty.max``, ``qty.avg``, ``qty.sum``, ``qty.norm2``,
+        ``qty.median``
         - ``qty[rank_nbr]``
         - ``qty.loc``
         """
@@ -973,8 +974,11 @@ class LogManager:
                 elif agg_name == "max":
                     agg_func = max
                 elif agg_name == "avg":
-                    from pytools import average
-                    agg_func = average
+                    from statistics import fmean
+                    agg_func = fmean
+                elif agg_name == "median":
+                    from statistics import median
+                    agg_func = median
                 elif agg_name == "sum":
                     agg_func = sum
                 elif agg_name == "norm2":
