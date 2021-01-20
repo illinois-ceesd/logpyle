@@ -974,8 +974,8 @@ class LogManager:
                 elif agg_name == "max":
                     agg_func = max
                 elif agg_name == "avg":
-                    from pytools import average
-                    agg_func = average
+                    from statistics import fmean
+                    agg_func = fmean
                 elif agg_name == "median":
                     from statistics import median
                     agg_func = median
