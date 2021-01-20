@@ -800,7 +800,7 @@ class LogManager:
 
         Aggregators are specified as follows:
         - ``qty.min``, ``qty.max``, ``qty.avg``, ``qty.sum``, ``qty.norm2``,
-          ``qty.median``
+        ``qty.median``
         - ``qty[rank_nbr]``
         - ``qty.loc``
         """
