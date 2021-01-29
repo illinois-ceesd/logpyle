@@ -1041,7 +1041,8 @@ class LogManager:
 
             if self.watches:
                 print(" | ".join(
-                        compute_watch_str(watch) for watch in self.watches), flush=True)
+                        compute_watch_str(watch) for watch in self.watches),
+                      flush=True)
 
         ticks_per_sec = self.tick_count/max(1, time()-self.start_time)
         self.next_watch_tick = self.tick_count + int(max(1, ticks_per_sec))
