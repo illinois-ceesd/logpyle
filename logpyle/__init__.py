@@ -372,6 +372,7 @@ class LogManager:
 
     .. automethod:: capture_warnings
     .. automethod:: add_watches
+    .. automethod:: set_watch_format
     .. automethod:: set_constant
     .. automethod:: add_quantity
 
@@ -606,6 +607,8 @@ class LogManager:
 
         from pytools import Record
 
+        default_format = "{display}={value:g}{unit} | "
+
         class WatchInfo(Record):
             pass
 
@@ -629,9 +632,13 @@ class LogManager:
             compiled = compile(parsed, [dd.varname for dd in dep_data])
 
             watch_info = WatchInfo(display=display, parsed=parsed, dep_data=dep_data,
-                    compiled=compiled, unit=unit)
+                    compiled=compiled, unit=unit, format=default_format)
 
             self.watches.append(watch_info)
+
+    def set_watch_format(self, format_list: list):
+        for index, elem in enumerate(format_list):
+            self.watches[index].format = elem
 
     def set_constant(self, name, value):
         """Make a named, constant value available in the log."""
@@ -1034,16 +1041,19 @@ class LogManager:
                     values.setdefault(name, []).append(value)
 
             def compute_watch_str(watch):
-                try:
-                    return "{}={:g}{}".format(watch.display, watch.compiled(
+                display = watch.display
+                unit = watch.unit if watch.unit not in ["1", None] else ""
+                value = watch.compiled(
                         *[dd.agg_func(values[dd.name])
-                            for dd in watch.dep_data]),
-                        watch.unit if watch.unit not in ["1", None] else "")
+                            for dd in watch.dep_data])
+                try:
+                    return f"{watch.format}".format(display=display, value=value, unit=unit)
                 except ZeroDivisionError:
                     return "%s:div0" % watch.display
-
+            if self.watch_format:
+                print("".join)
             if self.watches:
-                print(" | ".join(
+                print("".join(
                         compute_watch_str(watch) for watch in self.watches),
                       flush=True)
 
