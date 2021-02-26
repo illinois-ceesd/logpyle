@@ -1038,7 +1038,7 @@ class LogManager:
                     return "{}={:g}{}".format(watch.display, watch.compiled(
                         *[dd.agg_func(values[dd.name])
                             for dd in watch.dep_data]),
-                    watch.unit if watch.unit != "1" and watch.unit is not None else "")
+                        watch.unit if watch.unit not in ["1", None] else "")
                 except ZeroDivisionError:
                     return "%s:div0" % watch.display
 
