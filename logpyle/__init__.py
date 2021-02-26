@@ -1050,8 +1050,6 @@ class LogManager:
                     return f"{watch.format}".format(display=display, value=value, unit=unit)
                 except ZeroDivisionError:
                     return "%s:div0" % watch.display
-            if self.watch_format:
-                print("".join)
             if self.watches:
                 print("".join(
                         compute_watch_str(watch) for watch in self.watches),
