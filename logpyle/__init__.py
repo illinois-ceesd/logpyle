@@ -637,6 +637,16 @@ class LogManager:
             self.watches.append(watch_info)
 
     def set_watch_format(self, format_list: list):
+        """Set custom format strings for watches.
+
+        Each item in `format_list` specifies the format string for a watch added by
+        `add_watches`, in the order watches were added.
+
+        You can use the custom fields `{display}`, `{value}`, and `{unit}` to
+        indicate where the watch name, value, and unit should be printed.
+
+        The default format string for each watch is `"{display}={value:g}{unit} | "`.
+        """
         for index, elem in enumerate(format_list):
             self.watches[index].format = elem
 
@@ -1047,7 +1057,8 @@ class LogManager:
                         *[dd.agg_func(values[dd.name])
                             for dd in watch.dep_data])
                 try:
-                    return f"{watch.format}".format(display=display, value=value, unit=unit)
+                    return f"{watch.format}".format(display=display, value=value,
+                                                    unit=unit)
                 except ZeroDivisionError:
                     return "%s:div0" % watch.display
             if self.watches:
