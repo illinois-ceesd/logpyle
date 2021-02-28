@@ -619,6 +619,8 @@ class LogManager:
             parsed = self._parse_expr(expr)
             parsed, dep_data = self._get_expr_dep_data(parsed)
 
+            unit = dep_data[0].qdat.unit
+
             from pytools import any
             self.have_nonlocal_watches = self.have_nonlocal_watches or \
                     any(dd.nonlocal_agg for dd in dep_data)
@@ -627,7 +629,7 @@ class LogManager:
             compiled = compile(parsed, [dd.varname for dd in dep_data])
 
             watch_info = WatchInfo(display=display, parsed=parsed, dep_data=dep_data,
-                    compiled=compiled)
+                    compiled=compiled, unit=unit)
 
             self.watches.append(watch_info)
 
@@ -1033,9 +1035,10 @@ class LogManager:
 
             def compute_watch_str(watch):
                 try:
-                    return "{}={:g}".format(watch.display, watch.compiled(
+                    return "{}={:g}{}".format(watch.display, watch.compiled(
                         *[dd.agg_func(values[dd.name])
-                            for dd in watch.dep_data]))
+                            for dd in watch.dep_data]),
+                        watch.unit if watch.unit not in ["1", None] else "")
                 except ZeroDivisionError:
                     return "%s:div0" % watch.display
 
