@@ -609,7 +609,6 @@ class LogManager:
 
         Parameters
         ----------
-
         watches
             List of expressions to watch. Each element can either be a
             string of the expression to watch, or a tuple of the expression
