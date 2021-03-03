@@ -372,7 +372,6 @@ class LogManager:
 
     .. automethod:: capture_warnings
     .. automethod:: add_watches
-    .. automethod:: set_watch_format
     .. automethod:: set_constant
     .. automethod:: add_quantity
 
