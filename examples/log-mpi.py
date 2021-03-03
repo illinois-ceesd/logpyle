@@ -45,10 +45,9 @@ def main():
     logmgr.add_quantity(Fifteen("fifteen"))
 
     # Watches are printed periodically during execution
-    logmgr.add_watches(["step.max", "t_step.min", "t_step.max", "t_sim.max",
-                        "fifteen", "t_vis.max"])
-
-    logmgr.set_watch_format(["step={value} ", "\nt_step({value:g},", "{value:g})\n"])
+    logmgr.add_watches([("step.max", "step={value} "),
+        ("t_step.min", "\nt_step({value:g},"), ("t_step.max", " {value:g})\n"),
+        "t_sim.max", "fifteen", "t_vis.max"])
 
     for istep in range(200):
         logmgr.tick_before()

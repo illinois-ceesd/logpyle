@@ -614,15 +614,18 @@ class LogManager:
 
         for watch in watches:
             if isinstance(watch, tuple):
-                display, expr = watch
+                expr, fmt = watch
             else:
-                display = watch
                 expr = watch
+                fmt = default_format
 
             parsed = self._parse_expr(expr)
             parsed, dep_data = self._get_expr_dep_data(parsed)
 
-            unit = dep_data[0].qdat.unit
+            if len(dep_data) == 1:
+                unit = dep_data[0].qdat.unit
+            else:
+                unit = None
 
             from pytools import any
             self.have_nonlocal_watches = self.have_nonlocal_watches or \
@@ -631,24 +634,10 @@ class LogManager:
             from pymbolic import compile
             compiled = compile(parsed, [dd.varname for dd in dep_data])
 
-            watch_info = WatchInfo(display=display, parsed=parsed, dep_data=dep_data,
-                    compiled=compiled, unit=unit, format=default_format)
+            watch_info = WatchInfo(parsed=parsed, expr=expr, dep_data=dep_data,
+                    compiled=compiled, unit=unit, format=fmt)
 
             self.watches.append(watch_info)
-
-    def set_watch_format(self, format_list: list):
-        """Set custom format strings for watches.
-
-        Each item in `format_list` specifies the format string for a watch added by
-        `add_watches`, in the order watches were added.
-
-        You can use the custom fields `{display}`, `{value}`, and `{unit}` to
-        indicate where the watch name, value, and unit should be printed.
-
-        The default format string for each watch is `"{display}={value:g}{unit} | "`.
-        """
-        for index, elem in enumerate(format_list):
-            self.watches[index].format = elem
 
     def set_constant(self, name, value):
         """Make a named, constant value available in the log."""
@@ -1051,7 +1040,7 @@ class LogManager:
                     values.setdefault(name, []).append(value)
 
             def compute_watch_str(watch):
-                display = watch.display
+                display = watch.expr
                 unit = watch.unit if watch.unit not in ["1", None] else ""
                 value = watch.compiled(
                         *[dd.agg_func(values[dd.name])
