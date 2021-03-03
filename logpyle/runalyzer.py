@@ -44,8 +44,6 @@ class RunDB:
         if (qty, rank_aggregator) in self.rank_agg_tables:
             return tbl_name
 
-        print("INFO: building temporary rank aggregation table %s" % tbl_name)
-
         self.db.execute("create temporary table %s as "
                 "select run_id, step, %s(value) as value "
                 "from %s group by run_id,step" % (
