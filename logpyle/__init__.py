@@ -65,6 +65,9 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+from typing import List, Union, Tuple
+
+
 # {{{ timing function
 
 def time():
@@ -601,8 +604,20 @@ class LogManager:
 
         return result
 
-    def add_watches(self, watches):
-        """Add quantities that are printed after every time step."""
+    def add_watches(self, watches: List[Union[str, Tuple[str, str]]]) -> None:
+        """Add quantities that are printed after every time step.
+
+        Parameters
+        ----------
+
+        watches
+            List of expressions to watch. Each element can either be a
+            string of the expression to watch, or a tuple of the expression
+            and a format string. In the format string, you can use the custom
+            fields `{display}`, `{value}`, and `{unit}` to indicate where the
+            watch name, value, and unit should be printed. The default format
+            string for each watch is `{display}={value:g}{unit}`.
+        """
 
         from pytools import Record
 
