@@ -14,11 +14,13 @@ extensions = [
     "sphinx.ext.doctest",
     "sphinx.ext.intersphinx",
     "sphinx.ext.mathjax",
+    "sphinx.ext.todo",
     "sphinx.ext.viewcode",
+    "sphinx.ext.napoleon",
     "sphinx_copybutton",
 ]
 autoclass_content = "class"
-autodoc_typehints = "description"
+# autodoc_typehints = "description"
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -66,7 +68,9 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 pygments_style = "sphinx"
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
-todo_include_todos = False
+todo_include_todos = True
+
+nitpicky = True
 
 
 # -- Options for HTML output ----------------------------------------------
@@ -76,8 +80,7 @@ todo_include_todos = False
 #
 html_theme = "furo"
 
-html_theme_options = {
-        }
+html_theme_options = {}
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -95,4 +98,5 @@ intersphinx_mapping = {
     "https://docs.python.org/3": None,
     "https://numpy.org/doc/stable": None,
     "https://documen.tician.de/pymbolic/": None,
+    "https://documen.tician.de/pytools/": None,
 }
