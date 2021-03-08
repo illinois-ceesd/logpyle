@@ -11,6 +11,9 @@ except ImportError:
     HAVE_READLINE = False
 
 
+import logging
+logger = logging.getLogger(__name__)
+
 from pytools import cartesian_product, Record
 
 
@@ -43,6 +46,8 @@ class RunDB:
 
         if (qty, rank_aggregator) in self.rank_agg_tables:
             return tbl_name
+
+        logger.info("Building temporary rank aggregation table {tbl_name}.")
 
         self.db.execute("create temporary table %s as "
                 "select run_id, step, %s(value) as value "
