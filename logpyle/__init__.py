@@ -65,6 +65,9 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+from typing import List, Union, Tuple
+
+
 # {{{ timing function
 
 def time():
@@ -601,25 +604,39 @@ class LogManager:
 
         return result
 
-    def add_watches(self, watches):
-        """Add quantities that are printed after every time step."""
+    def add_watches(self, watches: List[Union[str, Tuple[str, str]]]) -> None:
+        """Add quantities that are printed after every time step.
+
+        :param watches:
+            List of expressions to watch. Each element can either be
+            a string of the expression to watch, or a tuple of the expression
+            and a format string. In the format string, you can use the custom
+            fields ``{display}``, ``{value}``, and ``{unit}`` to indicate where the
+            watch expression, value, and unit should be printed. The default format
+            string for each watch is ``{display}={value:g}{unit}``.
+        """
 
         from pytools import Record
+
+        default_format = "{display}={value:g}{unit} | "
 
         class WatchInfo(Record):
             pass
 
         for watch in watches:
             if isinstance(watch, tuple):
-                display, expr = watch
+                expr, fmt = watch
             else:
-                display = watch
                 expr = watch
+                fmt = default_format
 
             parsed = self._parse_expr(expr)
             parsed, dep_data = self._get_expr_dep_data(parsed)
 
-            unit = dep_data[0].qdat.unit
+            if len(dep_data) == 1:
+                unit = dep_data[0].qdat.unit
+            else:
+                unit = None
 
             from pytools import any
             self.have_nonlocal_watches = self.have_nonlocal_watches or \
@@ -628,8 +645,8 @@ class LogManager:
             from pymbolic import compile
             compiled = compile(parsed, [dd.varname for dd in dep_data])
 
-            watch_info = WatchInfo(display=display, parsed=parsed, dep_data=dep_data,
-                    compiled=compiled, unit=unit)
+            watch_info = WatchInfo(parsed=parsed, expr=expr, dep_data=dep_data,
+                    compiled=compiled, unit=unit, format=fmt)
 
             self.watches.append(watch_info)
 
@@ -1034,16 +1051,18 @@ class LogManager:
                     values.setdefault(name, []).append(value)
 
             def compute_watch_str(watch):
-                try:
-                    return "{}={:g}{}".format(watch.display, watch.compiled(
+                display = watch.expr
+                unit = watch.unit if watch.unit not in ["1", None] else ""
+                value = watch.compiled(
                         *[dd.agg_func(values[dd.name])
-                            for dd in watch.dep_data]),
-                        watch.unit if watch.unit not in ["1", None] else "")
+                            for dd in watch.dep_data])
+                try:
+                    return f"{watch.format}".format(display=display, value=value,
+                                                    unit=unit)
                 except ZeroDivisionError:
                     return "%s:div0" % watch.display
-
             if self.watches:
-                print(" | ".join(
+                print("".join(
                         compute_watch_str(watch) for watch in self.watches),
                       flush=True)
 
