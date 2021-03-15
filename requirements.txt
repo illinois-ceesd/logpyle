@@ -1,0 +1,2 @@
+numpy
+git+https://github.com/inducer/pytools.git#egg=pytools
