@@ -145,6 +145,7 @@ class PostLogQuantity(LogQuantity):
     .. automethod:: __init__
     .. automethod:: tick
     .. autoproperty:: default_aggregator
+    .. automethod:: __call__
     .. automethod:: prepare_for_tick
     """
     sort_weight = 0
