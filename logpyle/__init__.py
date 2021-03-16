@@ -89,22 +89,39 @@ def time() -> float:
 # {{{ abstract logging interface
 
 class LogQuantity:
-    """A source of loggable scalars.
+    """A source of a loggable scalar that is gathered at the start of each time step.
+
+    Quantity values are gathered in :meth:`LogManager.tick_before`.
 
     .. automethod:: __init__
     .. automethod:: tick
+    .. autoproperty:: default_aggregator
     .. automethod:: __call__
     """
 
     sort_weight = 0
 
     def __init__(self, name: str, unit: str = None, description: str = None) -> None:
+        """Create a new quantity.
+
+        Parameters
+        ----------
+        name
+          Quantity name.
+
+        unit
+          Quantity unit.
+
+        description
+          Quantity description.
+        """
         self.name = name
         self.unit = unit
         self.description = description
 
     @property
     def default_aggregator(self) -> None:
+        """Default rank aggregation function."""
         return None
 
     def tick(self) -> None:
@@ -121,30 +138,49 @@ class LogQuantity:
 
 
 class PostLogQuantity(LogQuantity):
-    """A source of loggable scalars.
+    """A source of a loggable scalar that is gathered after each time step.
+
+    Quantity values are gathered in :meth:`LogManager.tick_after`.
 
     .. automethod:: __init__
     .. automethod:: tick
+    .. autoproperty:: default_aggregator
     .. automethod:: prepare_for_tick
     """
     sort_weight = 0
 
     def prepare_for_tick(self) -> None:
+        """Perform (optional) update at :meth:`LogManager.tick_before`."""
         pass
 
 
 class MultiLogQuantity:
-    """A source of multiple loggable scalars.
+    """A source of a list of loggable scalars gathered at the start of each time step.
+
+    Quantity values are gathered in :meth:`LogManager.tick_before`.
 
     .. automethod:: __init__
-    .. autoproperty:: default_aggregators
     .. automethod:: tick
+    .. autoproperty:: default_aggregators
     .. automethod:: __call__
     """
     sort_weight = 0
 
     def __init__(self, names: List[str], units: List[str] = None,
                  descriptions: List[str] = None) -> None:
+        """Create a new quantity.
+
+        Parameters
+        ----------
+        names
+          List of quantity names.
+
+        units
+          List of quantity units.
+
+        descriptions
+          List of quantity descriptions.
+        """
         self.names = names
 
         if units is None:
@@ -174,6 +210,16 @@ class MultiLogQuantity:
 
 
 class MultiPostLogQuantity(MultiLogQuantity, PostLogQuantity):
+    """A source of a list of loggable scalars gathered after each time step.
+
+    Quantity values are gathered in :meth:`LogManager.tick_after`.
+
+    .. automethod:: __init__
+    .. automethod:: tick
+    .. autoproperty:: default_aggregators
+    .. automethod:: __call__
+    .. automethod:: prepare_for_tick
+    """
     pass
 
 
