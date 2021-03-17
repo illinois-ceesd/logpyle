@@ -79,5 +79,6 @@ jobs:
         -   name: "Main Script"
             run: |
                 curl -L -O -k https://gitlab.tiker.net/inducer/ci-support/raw/main/prepare-and-run-mypy.sh
+                export EXTRA_INSTALL=pytools numpy
                 . ./prepare-and-run-mypy.sh python3 mypy
 
