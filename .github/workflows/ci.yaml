@@ -2,10 +2,8 @@ name: CI
 on:
     push:
         branches:
-        - master
+        - main
     pull_request:
-        paths-ignore:
-        - 'doc/*.rst'
     schedule:
         - cron:  '5 0 * * *'
 
@@ -14,22 +12,23 @@ jobs:
         runs-on: ubuntu-latest
         steps:
         - uses: actions/checkout@v2
-        - name: Set up Python 
+        - name: Set up Python
           uses: actions/setup-python@v2
           with:
             python-version: '3.x'
         - name: Run flake8
           run: |
-            pip install flake8
-            flake8 && echo "Flake8 found no errors."
-    Example:
+            pip install flake8 pep8-naming flake8-quotes
+            flake8 setup.py doc/conf.py logpyle bin/*
+
+    Examples:
         runs-on: ${{ matrix.os }}
         strategy:
           fail-fast: false
           matrix:
-            python-version: [3.6, 3.7, 3.8, 3.9]
+            python-version: [3.6, 3.7, 3.8, 3.9, 3.x]
             os: [ubuntu-latest, macos-latest]
-            
+
         steps:
         - uses: actions/checkout@v2
         - name: Set up Python ${{ matrix.python-version }} on ${{ matrix.os }}
@@ -38,11 +37,47 @@ jobs:
             python-version: ${{ matrix.python-version }}
         - name: Install prerequisites
           run: |
-            pip install wheel
-            pip install matplotlib
-            pip install -e .      
+            [[ $(uname) == "Darwin" ]] && brew install open-mpi
+            [[ $(uname) == "Linux" ]] && sudo apt-get install -y mpich libmpich-dev
+            pip install wheel matplotlib mpi4py
+            pip install -e .
         - name: Run and test example
           run: |
             python examples/log.py
-            runalyzer-gather summary.dat mylog.dat
-            runalyzer -m summary.dat -c 'dbplot(q("select $t_sim, $t_step"))'
+            runalyzer-gather summary.sqlite log.sqlite
+            runalyzer -m summary.sqlite -c 'dbplot(q("select $t_sim, $t_step"))'
+
+            # Allow oversubscription of ranks to cores with Open MPI
+            export OMPI_MCA_rmaps_base_oversubscribe=1
+            mpirun -n 4 examples/log-mpi.py
+
+    docs:
+        name: Documentation
+        runs-on: ubuntu-latest
+        steps:
+        -   uses: actions/checkout@v2
+        -
+            uses: actions/setup-python@v1
+            with:
+                python-version: '3.x'
+        -   name: "Main Script"
+            run: |
+                curl -L -O https://tiker.net/ci-support-v0
+                . ci-support-v0
+                build_py_project_in_venv
+                build_docs
+
+    mypy:
+        name: Mypy
+        runs-on: ubuntu-latest
+        steps:
+        -   uses: actions/checkout@v2
+        -
+            uses: actions/setup-python@v1
+            with:
+                python-version: '3.x'
+        -   name: "Main Script"
+            run: |
+                curl -L -O -k https://gitlab.tiker.net/inducer/ci-support/raw/main/prepare-and-run-mypy.sh
+                . ./prepare-and-run-mypy.sh python3 mypy
+

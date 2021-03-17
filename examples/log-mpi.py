@@ -7,18 +7,28 @@ from logpyle import (LogManager, add_general_quantities,
         LogQuantity, set_dt)
 
 from warnings import warn
+from mpi4py import MPI
 
 
 class Fifteen(LogQuantity):
+    @property
+    def default_aggregator(self):
+        return min
+
     def __call__(self):
         return 15
 
 
 def main():
-    logmgr = LogManager("log.sqlite", "w")
+    logmgr = LogManager("mpi-log.sqlite", "wu", MPI.COMM_WORLD)
 
-    # set a run property
+    # Set a run property
     logmgr.set_constant("myconst", uniform(0, 1))
+
+    size = MPI.COMM_WORLD.Get_size()
+    rank = MPI.COMM_WORLD.Get_rank()
+
+    print(f"Rank {rank} of {size} ranks.")
 
     # Generic run metadata, such as command line, host, and time
     add_run_info(logmgr)
@@ -35,7 +45,9 @@ def main():
     logmgr.add_quantity(Fifteen("fifteen"))
 
     # Watches are printed periodically during execution
-    logmgr.add_watches(["step.max", "t_sim.max", "t_step.max", "fifteen", "t_vis"])
+    logmgr.add_watches([("step.max", "step={value} "),
+        ("t_step.min", "\nt_step({value:g},"), ("t_step.max", " {value:g})\n"),
+        "t_sim.max", "fifteen", "t_vis.max"])
 
     for istep in range(200):
         logmgr.tick_before()
