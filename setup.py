@@ -50,6 +50,7 @@ setup(name="logpyle",
           "bin/logtool",
           "bin/runalyzer-gather",
           "bin/runalyzer",
+          "bin/pandalyzer",
       ],
 
       author="Andreas Kloeckner",
