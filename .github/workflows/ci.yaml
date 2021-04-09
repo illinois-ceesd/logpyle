@@ -15,7 +15,8 @@ jobs:
         - name: Set up Python
           uses: actions/setup-python@v2
           with:
-            python-version: '3.x'
+            # matches compat target in setup.py
+            python-version: '3.6'
         - name: Run flake8
           run: |
             pip install flake8 pep8-naming flake8-quotes
