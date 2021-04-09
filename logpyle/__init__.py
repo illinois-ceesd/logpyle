@@ -21,6 +21,7 @@ Built-in Log General-Purpose Quantities
 .. autoclass:: TimestepCounter
 .. autoclass:: StepToStepDuration
 .. autoclass:: TimestepDuration
+.. autoclass:: InitTime
 .. autoclass:: CPUTime
 .. autoclass:: ETA
 .. autofunction:: add_general_quantities
@@ -56,13 +57,20 @@ THE SOFTWARE.
 """
 
 
+import logpyle.version
+__version__ = logpyle.version.VERSION_TEXT
+
+
 import logging
 logger = logging.getLogger(__name__)
+
+from typing import List, Callable, Union, Tuple, Optional, Dict
+from pytools.datatable import DataTable
 
 
 # {{{ timing function
 
-def time():
+def time() -> float:
     """Return elapsed CPU time, as a float, in seconds."""
     import os
     time_opt = os.environ.get("PYTOOLS_LOG_TIME") or "wall"
@@ -81,29 +89,46 @@ def time():
 # {{{ abstract logging interface
 
 class LogQuantity:
-    """A source of loggable scalars.
+    """A source of a loggable scalar that is gathered at the start of each time step.
+
+    Quantity values are gathered in :meth:`LogManager.tick_before`.
 
     .. automethod:: __init__
     .. automethod:: tick
+    .. autoproperty:: default_aggregator
     .. automethod:: __call__
     """
 
     sort_weight = 0
 
-    def __init__(self, name, unit=None, description=None):
+    def __init__(self, name: str, unit: str = None, description: str = None) -> None:
+        """Create a new quantity.
+
+        Parameters
+        ----------
+        name
+          Quantity name.
+
+        unit
+          Quantity unit.
+
+        description
+          Quantity description.
+        """
         self.name = name
         self.unit = unit
         self.description = description
 
     @property
-    def default_aggregator(self):
+    def default_aggregator(self) -> None:
+        """Default rank aggregation function."""
         return None
 
-    def tick(self):
+    def tick(self) -> None:
         """Perform updates required at every :class:`LogManager` tick."""
         pass
 
-    def __call__(self):
+    def __call__(self) -> Optional[float]:
         """Return the current value of the diagnostic represented by this
         :class:`LogQuantity` or None if no value is available.
 
@@ -113,43 +138,70 @@ class LogQuantity:
 
 
 class PostLogQuantity(LogQuantity):
-    """A source of loggable scalars.
+    """A source of a loggable scalar that is gathered after each time step.
+
+    Quantity values are gathered in :meth:`LogManager.tick_after`.
 
     .. automethod:: __init__
     .. automethod:: tick
+    .. autoproperty:: default_aggregator
+    .. automethod:: __call__
     .. automethod:: prepare_for_tick
     """
     sort_weight = 0
 
-    def prepare_for_tick(self):
+    def prepare_for_tick(self) -> None:
+        """Perform (optional) update at :meth:`LogManager.tick_before`."""
         pass
 
 
 class MultiLogQuantity:
-    """A source of multiple loggable scalars."""
+    """A source of a list of loggable scalars gathered at the start of each time step.
 
+    Quantity values are gathered in :meth:`LogManager.tick_before`.
+
+    .. automethod:: __init__
+    .. automethod:: tick
+    .. autoproperty:: default_aggregators
+    .. automethod:: __call__
+    """
     sort_weight = 0
 
-    def __init__(self, names, units=None, descriptions=None):
+    def __init__(self, names: List[str], units: List[str] = None,
+                 descriptions: List[str] = None) -> None:
+        """Create a new quantity.
+
+        Parameters
+        ----------
+        names
+          List of quantity names.
+
+        units
+          List of quantity units.
+
+        descriptions
+          List of quantity descriptions.
+        """
         self.names = names
 
         if units is None:
-            units = len(names) * [None]
+            units = len(names) * [None]  # type: ignore
         self.units = units
 
         if descriptions is None:
-            descriptions = len(names) * [None]
+            descriptions = len(names) * [None]  # type: ignore
         self.descriptions = descriptions
 
     @property
-    def default_aggregators(self):
+    def default_aggregators(self) -> List[None]:
+        """List of default aggregators."""
         return [None] * len(self.names)
 
-    def tick(self):
+    def tick(self) -> None:
         """Perform updates required at every :class:`LogManager` tick."""
         pass
 
-    def __call__(self):
+    def __call__(self) -> None:
         """Return an iterable of the current values of the diagnostic represented
         by this :class:`MultiLogQuantity`.
 
@@ -159,45 +211,56 @@ class MultiLogQuantity:
 
 
 class MultiPostLogQuantity(MultiLogQuantity, PostLogQuantity):
+    """A source of a list of loggable scalars gathered after each time step.
+
+    Quantity values are gathered in :meth:`LogManager.tick_after`.
+
+    .. automethod:: __init__
+    .. automethod:: tick
+    .. autoproperty:: default_aggregators
+    .. automethod:: __call__
+    .. automethod:: prepare_for_tick
+    """
     pass
 
 
 class DtConsumer:
-    def __init__(self, dt):
+    def __init__(self, dt) -> None:
         self.dt = dt
 
-    def set_dt(self, dt):
+    def set_dt(self, dt) -> None:
         self.dt = dt
 
 
 class TimeTracker(DtConsumer):
-    def __init__(self, dt):
+    def __init__(self, dt: Optional[float], start: float = 0) -> None:
         DtConsumer.__init__(self, dt)
-        self.t = 0
+        self.t = start
 
-    def tick(self):
+    def tick(self) -> None:
         self.t += self.dt
 
 
 class SimulationLogQuantity(PostLogQuantity, DtConsumer):
     """A source of loggable scalars that needs to know the simulation timestep."""
 
-    def __init__(self, dt, name, unit=None, description=None):
+    def __init__(self, dt: Optional[float], name: str, unit: str = None,
+                 description: str = None) -> None:
         PostLogQuantity.__init__(self, name, unit, description)
         DtConsumer.__init__(self, dt)
 
 
 class PushLogQuantity(LogQuantity):
-    def __init__(self, name, unit=None, description=None):
+    def __init__(self, name: str, unit: str = None, description: str = None) -> None:
         LogQuantity.__init__(self, name, unit, description)
         self.value = None
 
-    def push_value(self, value):
+    def push_value(self, value) -> None:
         if self.value is not None:
             raise RuntimeError("can't push two values per cycle")
         self.value = value
 
-    def __call__(self):
+    def __call__(self) -> Optional[float]:
         v = self.value
         self.value = None
         return v
@@ -205,11 +268,12 @@ class PushLogQuantity(LogQuantity):
 
 class CallableLogQuantityAdapter(LogQuantity):
     """Adapt a 0-ary callable as a :class:`LogQuantity`."""
-    def __init__(self, callable, name, unit=None, description=None):
+    def __init__(self, callable: Callable, name: str, unit: str = None,
+                 description: str = None) -> None:
         self.callable = callable
         LogQuantity.__init__(self, name, unit, description)
 
-    def __call__(self):
+    def __call__(self) -> float:
         return self.callable()
 
 # }}}
@@ -218,13 +282,14 @@ class CallableLogQuantityAdapter(LogQuantity):
 # {{{ manager functionality
 
 class _GatherDescriptor:
-    def __init__(self, quantity, interval):
+    def __init__(self, quantity: LogQuantity, interval: int) -> None:
         self.quantity = quantity
         self.interval = interval
 
 
 class _QuantityData:
-    def __init__(self, unit, description, default_aggregator):
+    def __init__(self, unit: str, description: str,
+                 default_aggregator: Callable) -> None:
         self.unit = unit
         self.description = description
         self.default_aggregator = default_aggregator
@@ -265,7 +330,7 @@ def _join_by_first_of_tuple(list_of_iterables):
             force_advance = True
 
 
-def _get_unique_id():
+def _get_unique_id() -> str:
     try:
         from uuid import uuid1
     except ImportError:
@@ -274,7 +339,7 @@ def _get_unique_id():
             checksum = hashlib.md5()
         except ImportError:
             # for Python << 2.5
-            import md5
+            import md5  # type: ignore
             checksum = md5.new()
 
         from random import Random
@@ -316,6 +381,9 @@ def _set_up_schema(db_conn):
 
     schema_version = 2
     return schema_version
+
+
+from pytools import Record
 
 
 class LogManager:
@@ -376,8 +444,8 @@ class LogManager:
     .. automethod:: tick_after
     """
 
-    def __init__(self, filename=None, mode="r", mpi_comm=None, capture_warnings=True,
-            commit_interval=90):
+    def __init__(self, filename: str = None, mode: str = "r", mpi_comm=None,
+                 capture_warnings: bool = True, commit_interval: float = 90) -> None:
         """Initialize this log manager instance.
 
         :param filename: If given, the filename to which this log is bound.
@@ -398,22 +466,22 @@ class LogManager:
         assert isinstance(mode, str), "mode must be a string"
         assert mode in ["w", "r", "wu", "wo"], "invalid mode"
 
-        self.quantity_data = {}
-        self.last_values = {}
-        self.before_gather_descriptors = []
-        self.after_gather_descriptors = []
+        self.quantity_data: Dict[str, _QuantityData] = {}
+        self.last_values: Dict[str, Optional[float]] = {}
+        self.before_gather_descriptors: List[_GatherDescriptor] = []
+        self.after_gather_descriptors: List[_GatherDescriptor] = []
         self.tick_count = 0
 
         self.commit_interval = commit_interval
         self.commit_countdown = commit_interval
 
-        self.constants = {}
+        self.constants: Dict[str, object] = {}
 
         self.last_save_time = time()
 
         # self-timing
         self.start_time = time()
-        self.t_log = 0
+        self.t_log: float = 0
 
         # parallel support
         self.head_rank = 0
@@ -427,7 +495,7 @@ class LogManager:
             self.head_rank = 0
 
         # watch stuff
-        self.watches = []
+        self.watches: List[Record] = []
         self.next_watch_tick = 1
         self.have_nonlocal_watches = False
 
@@ -506,11 +574,11 @@ class LogManager:
 
             break
 
-        self.old_showwarning = None
+        self.old_showwarning: Optional[Callable] = None
         if capture_warnings:
             self.capture_warnings(True)
 
-    def capture_warnings(self, enable=True):
+    def capture_warnings(self, enable: bool = True) -> None:
         def _showwarning(message, category, filename, lineno, file=None, line=None):
             try:
                 self.old_showwarning(message, category, filename, lineno, file, line)
@@ -544,7 +612,7 @@ class LogManager:
             warnings.showwarning = self.old_showwarning
             self.old_showwarning = None
 
-    def _load(self):
+    def _load(self) -> None:
         if self.mpi_comm and self.mpi_comm.rank != self.head_rank:
             return
 
@@ -554,7 +622,7 @@ class LogManager:
 
         self.schema_version = self.constants.get("schema_version", 0)
 
-        self.is_parallel = self.constants["is_parallel"]
+        self.is_parallel = bool(self.constants["is_parallel"])
 
         for name, unit, description, def_agg in self.db_conn.execute(
                 "select name, unit, description, default_aggregator "
@@ -562,18 +630,17 @@ class LogManager:
             self.quantity_data[name] = _QuantityData(
                     unit, description, loads(def_agg))
 
-    def close(self):
+    def close(self) -> None:
         if self.old_showwarning is not None:
             self.capture_warnings(False)
 
         self.save()
         self.db_conn.close()
 
-    def get_table(self, q_name):
+    def get_table(self, q_name: str) -> DataTable:
         if q_name not in self.quantity_data:
             raise KeyError("invalid quantity name '%s'" % q_name)
 
-        from pytools.datatable import DataTable
         result = DataTable(["step", "rank", "value"])
 
         for row in self.db_conn.execute(
@@ -582,12 +649,11 @@ class LogManager:
 
         return result
 
-    def get_warnings(self):
+    def get_warnings(self) -> DataTable:
         columns = ["step", "message", "category", "filename", "lineno"]
         if self.schema_version >= 2:
             columns.insert(0, "rank")
 
-        from pytools.datatable import DataTable
         result = DataTable(columns)
 
         for row in self.db_conn.execute(
@@ -596,37 +662,52 @@ class LogManager:
 
         return result
 
-    def add_watches(self, watches):
-        """Add quantities that are printed after every time step."""
+    def add_watches(self, watches: List[Union[str, Tuple[str, str]]]) -> None:
+        """Add quantities that are printed after every time step.
 
+        :param watches:
+            List of expressions to watch. Each element can either be
+            a string of the expression to watch, or a tuple of the expression
+            and a format string. In the format string, you can use the custom
+            fields ``{display}``, ``{value}``, and ``{unit}`` to indicate where the
+            watch expression, value, and unit should be printed. The default format
+            string for each watch is ``{display}={value:g}{unit}``.
+        """
         from pytools import Record
 
         class WatchInfo(Record):
             pass
 
+        default_format = "{display}={value:g}{unit} | "
+
         for watch in watches:
             if isinstance(watch, tuple):
-                display, expr = watch
+                expr, fmt = watch
             else:
-                display = watch
                 expr = watch
+                fmt = default_format
 
             parsed = self._parse_expr(expr)
             parsed, dep_data = self._get_expr_dep_data(parsed)
+
+            if len(dep_data) == 1:
+                unit = dep_data[0].qdat.unit
+            else:
+                unit = None
 
             from pytools import any
             self.have_nonlocal_watches = self.have_nonlocal_watches or \
                     any(dd.nonlocal_agg for dd in dep_data)
 
-            from pymbolic import compile
+            from pymbolic import compile  # type: ignore
             compiled = compile(parsed, [dd.varname for dd in dep_data])
 
-            watch_info = WatchInfo(display=display, parsed=parsed, dep_data=dep_data,
-                    compiled=compiled)
+            watch_info = WatchInfo(parsed=parsed, expr=expr, dep_data=dep_data,
+                    compiled=compiled, unit=unit, format=fmt)
 
             self.watches.append(watch_info)
 
-    def set_constant(self, name, value):
+    def set_constant(self, name: str, value: object) -> None:
         """Make a named, constant value available in the log."""
         existed = name in self.constants
         self.constants[name] = value
@@ -643,7 +724,7 @@ class LogManager:
 
         self._commit()
 
-    def _insert_datapoint(self, name, value):
+    def _insert_datapoint(self, name: str, value: Optional[float]) -> None:
         if value is None:
             return
 
@@ -656,7 +737,7 @@ class LogManager:
             print("while adding datapoint for '%s':" % name)
             raise
 
-    def _gather_for_descriptor(self, gd):
+    def _gather_for_descriptor(self, gd) -> None:
         if self.tick_count % gd.interval == 0:
             q_value = gd.quantity()
             if isinstance(gd.quantity, MultiLogQuantity):
@@ -665,7 +746,7 @@ class LogManager:
             else:
                 self._insert_datapoint(gd.quantity.name, q_value)
 
-    def tick(self):
+    def tick(self) -> None:
         """Record data points from each added :class:`LogQuantity`.
 
         May also checkpoint data to disk, and/or synchronize data points
@@ -679,7 +760,7 @@ class LogManager:
         self.tick_before()
         self.tick_after()
 
-    def tick_before(self):
+    def tick_before(self) -> None:
         """Record data points from each added :class:`LogQuantity` that
         is not an instance of :class:`PostLogQuantity`. Also, invoke
         :meth:`PostLogQuantity.prepare_for_tick` on :class:`PostLogQuantity`
@@ -691,11 +772,12 @@ class LogManager:
             self._gather_for_descriptor(gd)
 
         for gd in self.after_gather_descriptors:
-            gd.quantity.prepare_for_tick()
+            from typing import cast
+            cast(PostLogQuantity, gd.quantity).prepare_for_tick()
 
         self.t_log = time() - tick_start_time
 
-    def tick_after(self):
+    def tick_after(self) -> None:
         """Record data points from each added :class:`LogQuantity` that
         is an instance of :class:`PostLogQuantity`.
 
@@ -727,13 +809,13 @@ class LogManager:
 
         self.t_log += time() - tick_start_time
 
-    def _commit(self):
+    def _commit(self) -> None:
         self.commit_countdown -= 1
         if self.commit_countdown <= 0:
             self.commit_countdown = self.commit_interval
             self.db_conn.commit()
 
-    def save(self):
+    def save(self) -> None:
         from sqlite3 import OperationalError
         try:
             self.db_conn.commit()
@@ -743,7 +825,7 @@ class LogManager:
 
         self.last_save_time = time()
 
-    def add_quantity(self, quantity, interval=1):
+    def add_quantity(self, quantity: LogQuantity, interval: int = 1) -> None:
         """Add an object derived from :class:`LogQuantity` to this manager."""
 
         def add_internal(name, unit, description, def_agg):
@@ -788,13 +870,14 @@ class LogManager:
 
         :arg expression: A :mod:`pymbolic` expression that may involve
           the time-series variables and the constants in this :class:`LogManager`.
-          If there is data from multiple ranks for a quantity occuring in
+          If there is data from multiple ranks for a quantity occurring in
           this expression, an aggregator may have to be specified.
         :returns: ``(description, unit, table)``, where *table*
           is a list of tuples ``(tick_nbr, value)``.
 
         Aggregators are specified as follows:
-        - ``qty.min``, ``qty.max``, ``qty.avg``, ``qty.sum``, ``qty.norm2``
+        - ``qty.min``, ``qty.max``, ``qty.avg``, ``qty.sum``, ``qty.norm2``,
+        ``qty.median``
         - ``qty[rank_nbr]``
         - ``qty.loc``
         """
@@ -893,7 +976,7 @@ class LogManager:
         return (data_x, descr_x, unit_x), \
                (data_y, descr_y, unit_y)
 
-    def write_datafile(self, filename, expr_x, expr_y):
+    def write_datafile(self, filename, expr_x, expr_y) -> None:
         (data_x, label_x), (data_y, label_y) = self.get_plot_data(
                 expr_x, expr_y)
 
@@ -903,8 +986,8 @@ class LogManager:
             outf.write("{}\t{}\n".format(repr(dx), repr(dy)))
         outf.close()
 
-    def plot_matplotlib(self, expr_x, expr_y):
-        from matplotlib.pyplot import xlabel, ylabel, plot
+    def plot_matplotlib(self, expr_x, expr_y) -> None:
+        from matplotlib.pyplot import xlabel, ylabel, plot  # type: ignore
 
         (data_x, descr_x, unit_x), (data_y, descr_y, unit_y) = \
                 self.get_plot_data(expr_x, expr_y)
@@ -932,13 +1015,13 @@ class LogManager:
             def __call__(self, lst):
                 return lst[self.n]
 
-        from pymbolic.mapper.dependency import DependencyMapper
+        from pymbolic.mapper.dependency import DependencyMapper  # type: ignore
 
         deps = DependencyMapper(include_calls=False)(parsed)
 
         # gather information on aggregation expressions
         dep_data = []
-        from pymbolic.primitives import Variable, Lookup, Subscript
+        from pymbolic.primitives import Variable, Lookup, Subscript  # type: ignore
         for dep_idx, dep in enumerate(deps):
             nonlocal_agg = True
 
@@ -968,8 +1051,11 @@ class LogManager:
                 elif agg_name == "max":
                     agg_func = max
                 elif agg_name == "avg":
-                    from pytools import average
-                    agg_func = average
+                    from statistics import fmean
+                    agg_func = fmean
+                elif agg_name == "median":
+                    from statistics import median
+                    agg_func = median
                 elif agg_name == "sum":
                     agg_func = sum
                 elif agg_name == "norm2":
@@ -987,8 +1073,6 @@ class LogManager:
 
             qdat = self.quantity_data[name]
 
-            from pytools import Record
-
             class DependencyData(Record):
                 pass
 
@@ -1004,7 +1088,8 @@ class LogManager:
 
         return parsed, dep_data
 
-    def _watch_tick(self):
+    def _watch_tick(self) -> None:
+        """Print the watches after a tick."""
         if not self.have_nonlocal_watches and self.rank != self.head_rank:
             return
 
@@ -1017,22 +1102,26 @@ class LogManager:
             gathered_data = [data_block]
 
         if self.rank == self.head_rank:
-            values = {}
+            values: Dict[str, list] = {}
             for data_block in gathered_data:
                 for name, value in data_block.items():
                     values.setdefault(name, []).append(value)
 
             def compute_watch_str(watch):
-                try:
-                    return "{}={:g}".format(watch.display, watch.compiled(
+                display = watch.expr
+                unit = watch.unit if watch.unit not in ["1", None] else ""
+                value = watch.compiled(
                         *[dd.agg_func(values[dd.name])
-                            for dd in watch.dep_data]))
+                            for dd in watch.dep_data])
+                try:
+                    return f"{watch.format}".format(display=display, value=value,
+                                                    unit=unit)
                 except ZeroDivisionError:
                     return "%s:div0" % watch.display
-
             if self.watches:
-                print(" | ".join(
-                        compute_watch_str(watch) for watch in self.watches))
+                print("".join(
+                        compute_watch_str(watch) for watch in self.watches),
+                      flush=True)
 
         ticks_per_sec = self.tick_count/max(1, time()-self.start_time)
         self.next_watch_tick = self.tick_count + int(max(1, ticks_per_sec))
@@ -1049,7 +1138,7 @@ class LogManager:
 # {{{ actual data loggers
 
 class _SubTimer:
-    def __init__(self, itimer):
+    def __init__(self, itimer) -> None:
         self.itimer = itimer
         self.start_time = time()
         self.elapsed = 0
@@ -1059,14 +1148,14 @@ class _SubTimer:
         del self.start_time
         return self
 
-    def __enter__(self):
+    def __enter__(self) -> None:
         pass
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         self.stop()
         self.submit()
 
-    def submit(self):
+    def submit(self) -> None:
         self.itimer.add_time(self.elapsed)
         del self.elapsed
 
@@ -1080,18 +1169,18 @@ class IntervalTimer(PostLogQuantity):
     .. automethod:: add_time
     """
 
-    def __init__(self, name, description=None):
+    def __init__(self, name: str, description: str = None) -> None:
         LogQuantity.__init__(self, name, "s", description)
-        self.elapsed = 0
+        self.elapsed: float = 0
 
     def start_sub_timer(self):
         return _SubTimer(self)
 
-    def add_time(self, t):
+    def add_time(self, t: float) -> None:
         self.start_time = time()
         self.elapsed += t
 
-    def __call__(self):
+    def __call__(self) -> float:
         result = self.elapsed
         self.elapsed = 0
         return result
@@ -1105,11 +1194,11 @@ class LogUpdateDuration(LogQuantity):
 
     # FIXME this is off by one tick
 
-    def __init__(self, mgr, name="t_log"):
+    def __init__(self, mgr: LogManager, name: str = "t_log") -> None:
         LogQuantity.__init__(self, name, "s", "Time spent updating the log")
         self.log_manager = mgr
 
-    def __call__(self):
+    def __call__(self) -> float:
         return self.log_manager.t_log
 
 
@@ -1121,25 +1210,25 @@ class EventCounter(PostLogQuantity):
     .. automethod:: transfer
     """
 
-    def __init__(self, name="interval", description=None):
+    def __init__(self, name: str = "interval", description: str = None) -> None:
         PostLogQuantity.__init__(self, name, "1", description)
         self.events = 0
 
-    def add(self, n=1):
+    def add(self, n: int = 1) -> None:
         self.events += n
 
-    def transfer(self, counter):
+    def transfer(self, counter) -> None:
         self.events += counter.pop()
 
-    def prepare_for_tick(self):
+    def prepare_for_tick(self) -> None:
         self.events = 0
 
-    def __call__(self):
+    def __call__(self) -> int:
         result = self.events
         return result
 
 
-def time_and_count_function(f, timer, counter=None, increment=1):
+def time_and_count_function(f, timer, counter=None, increment=1) -> Callable:
     def inner_f(*args, **kwargs):
         if counter is not None:
             counter.add(increment)
@@ -1155,11 +1244,11 @@ def time_and_count_function(f, timer, counter=None, increment=1):
 class TimestepCounter(LogQuantity):
     """Counts the number of times :class:`LogManager` ticks."""
 
-    def __init__(self, name="step"):
+    def __init__(self, name: str = "step") -> None:
         LogQuantity.__init__(self, name, "1", "Timesteps")
         self.steps = 0
 
-    def __call__(self):
+    def __call__(self) -> int:
         result = self.steps
         self.steps += 1
         return result
@@ -1173,17 +1262,17 @@ class StepToStepDuration(PostLogQuantity):
     .. automethod:: __init__
     """
 
-    def __init__(self, name="t_2step"):
+    def __init__(self, name: str = "t_2step") -> None:
         PostLogQuantity.__init__(self, name, "s", "Step-to-step duration")
-        self.last_start_time = None
-        self.last2_start_time = None
+        self.last_start_time: Optional[float] = None
+        self.last2_start_time: Optional[float] = None
 
-    def prepare_for_tick(self):
+    def prepare_for_tick(self) -> None:
         self.last2_start_time = self.last_start_time
         self.last_start_time = time()
 
-    def __call__(self):
-        if self.last2_start_time is None:
+    def __call__(self) -> Optional[float]:
+        if self.last2_start_time is None or self.last_start_time is None:
             return None
         else:
             return self.last_start_time - self.last2_start_time
@@ -1202,17 +1291,49 @@ class TimestepDuration(PostLogQuantity):
     # I'm looking at you.)
     sort_weight = 1000
 
-    def __init__(self, name="t_step"):
+    def __init__(self, name: str = "t_step") -> None:
         PostLogQuantity.__init__(self, name, "s", "Time step duration")
 
-    def prepare_for_tick(self):
+    def prepare_for_tick(self) -> None:
         self.last_start = time()
 
-    def __call__(self):
+    def __call__(self) -> float:
         now = time()
         result = now - self.last_start
         del self.last_start
         return result
+
+
+class InitTime(LogQuantity):
+    """Stores the time it took for the application to initialize.
+
+    Measures the time from process start to the start of the first time step.
+
+    .. automethod:: __init__
+    """
+
+    def __init__(self, name: str = "t_init") -> None:
+        LogQuantity.__init__(self, name, "s", "Init time")
+
+        import os
+        try:
+            import psutil  # type: ignore
+        except ModuleNotFoundError:
+            from warnings import warn
+            warn("Measuring the init time requires the 'psutil' module.")
+            self.done = True
+        else:
+            p = psutil.Process(os.getpid())
+            self.start_time = p.create_time()
+            self.done = False
+
+    def __call__(self) -> Optional[float]:
+        if self.done:
+            return None
+
+        self.done = True
+        now = time()
+        return now - self.start_time
 
 
 class CPUTime(LogQuantity):
@@ -1220,12 +1341,12 @@ class CPUTime(LogQuantity):
 
     .. automethod:: __init__
     """
-    def __init__(self, name="t_cpu"):
+    def __init__(self, name: str = "t_cpu") -> None:
         LogQuantity.__init__(self, name, "s", "Wall time")
 
         self.start = time()
 
-    def __call__(self):
+    def __call__(self) -> float:
         return time()-self.start
 
 
@@ -1234,14 +1355,14 @@ class ETA(LogQuantity):
 
     .. automethod:: __init__
     """
-    def __init__(self, total_steps, name="t_eta"):
+    def __init__(self, total_steps: int, name: str = "t_eta") -> None:
         LogQuantity.__init__(self, name, "s", "Estimated remaining duration")
 
         self.steps = 0
         self.total_steps = total_steps
         self.start = time()
 
-    def __call__(self):
+    def __call__(self) -> float:
         fraction_done = self.steps/self.total_steps
         self.steps += 1
         time_spent = time()-self.start
@@ -1251,7 +1372,7 @@ class ETA(LogQuantity):
             return 0
 
 
-def add_general_quantities(mgr):
+def add_general_quantities(mgr: LogManager) -> None:
     """Add generally applicable :class:`LogQuantity` objects to *mgr*."""
 
     mgr.add_quantity(TimestepDuration())
@@ -1259,31 +1380,34 @@ def add_general_quantities(mgr):
     mgr.add_quantity(CPUTime())
     mgr.add_quantity(LogUpdateDuration(mgr))
     mgr.add_quantity(TimestepCounter())
+    mgr.add_quantity(InitTime())
 
 
 class SimulationTime(TimeTracker, LogQuantity):
     """Record (monotonically increasing) simulation time."""
 
-    def __init__(self, dt, name="t_sim", start=0):
+    def __init__(self, dt: Optional[float], name: str = "t_sim",
+                 start: float = 0) -> None:
         LogQuantity.__init__(self, name, "s", "Simulation Time")
-        TimeTracker.__init__(self, dt)
+        TimeTracker.__init__(self, dt, start)
 
-    def __call__(self):
+    def __call__(self) -> float:
         return self.t
 
 
 class Timestep(SimulationLogQuantity):
     """Record the magnitude of the simulated time step."""
 
-    def __init__(self, dt, name="dt", unit="s"):
+    def __init__(self, dt: Optional[float], name: str = "dt",
+                 unit: str = "s") -> None:
         SimulationLogQuantity.__init__(self, dt, name, unit, "Simulation Timestep")
 
-    def __call__(self):
+    def __call__(self) -> float:
         return self.dt
 
 
-def set_dt(mgr, dt):
-    """Set the simulation timestep on :class:`LogManager` *mgr* to *dt*."""
+def set_dt(mgr: LogManager, dt: float) -> None:
+    """Set the simulation timestep on :class:`LogManager` ``mgr`` to ``dt``."""
 
     for gd_lst in [mgr.before_gather_descriptors,
             mgr.after_gather_descriptors]:
@@ -1292,7 +1416,7 @@ def set_dt(mgr, dt):
                 gd.quantity.set_dt(dt)
 
 
-def add_simulation_quantities(mgr, dt=None):
+def add_simulation_quantities(mgr: LogManager, dt: float = None) -> None:
     """Add :class:`LogQuantity` objects relating to simulation time."""
     if dt is not None:
         from warnings import warn
@@ -1303,11 +1427,17 @@ def add_simulation_quantities(mgr, dt=None):
     mgr.add_quantity(Timestep(dt))
 
 
-def add_run_info(mgr):
+def add_run_info(mgr: LogManager) -> None:
     """Add generic run metadata, such as command line, host, and time."""
 
-    import sys
-    mgr.set_constant("cmdline", " ".join(sys.argv))
+    try:
+        import psutil
+    except ModuleNotFoundError:
+        import sys
+        mgr.set_constant("cmdline", " ".join(sys.argv))
+    else:
+        mgr.set_constant("cmdline", " ".join(psutil.Process().cmdline()))
+
     from socket import gethostname
     mgr.set_constant("machine", gethostname())
     from time import localtime, strftime, time
