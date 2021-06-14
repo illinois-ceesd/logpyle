@@ -435,6 +435,7 @@ class LogManager:
 
     .. automethod:: capture_warnings
     .. automethod:: add_watches
+    .. automethod:: set_watch_interval
     .. automethod:: set_constant
     .. automethod:: add_quantity
 
@@ -498,6 +499,9 @@ class LogManager:
         self.watches: List[Record] = []
         self.next_watch_tick = 1
         self.have_nonlocal_watches = False
+
+        # Interval between printing watches, in seconds
+        self.watch_interval = 1.0
 
         # database binding
         import sqlite3 as sqlite
@@ -706,6 +710,10 @@ class LogManager:
                     compiled=compiled, unit=unit, format=fmt)
 
             self.watches.append(watch_info)
+
+    def set_watch_interval(self, interval: float) -> None:
+        """Set the interval (in seconds) between the time watches are printed."""
+        self.watch_interval = interval
 
     def set_constant(self, name: str, value: object) -> None:
         """Make a named, constant value available in the log."""
@@ -1123,8 +1131,9 @@ class LogManager:
                         compute_watch_str(watch) for watch in self.watches),
                       flush=True)
 
-        ticks_per_sec = self.tick_count/max(1, time()-self.start_time)
-        self.next_watch_tick = self.tick_count + int(max(1, ticks_per_sec))
+        ticks_per_interval = (self.tick_count/max(1, time()-self.start_time)
+                         * self.watch_interval)
+        self.next_watch_tick = self.tick_count + int(max(1, ticks_per_interval))
 
         if self.mpi_comm is not None and self.have_nonlocal_watches:
             self.next_watch_tick = self.mpi_comm.bcast(
