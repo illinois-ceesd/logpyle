@@ -39,7 +39,7 @@ jobs:
         - name: Install prerequisites
           run: |
             [[ $(uname) == "Darwin" ]] && brew install open-mpi
-            [[ $(uname) == "Linux" ]] && sudo apt-get install -y mpich libmpich-dev
+            [[ $(uname) == "Linux" ]] && sudo apt-get update && sudo apt-get install -y mpich libmpich-dev
             pip install wheel matplotlib mpi4py
             pip install -e .
         - name: Run and test example
