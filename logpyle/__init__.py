@@ -64,7 +64,7 @@ __version__ = logpyle.version.VERSION_TEXT
 import logging
 logger = logging.getLogger(__name__)
 
-from typing import List, Callable, Union, Tuple, Optional, Dict
+from typing import List, Callable, Union, Tuple, Optional, Dict, Any
 from pytools.datatable import DataTable
 
 
@@ -725,8 +725,12 @@ class LogManager:
         self.watch_interval = interval
         self._calculate_next_watch_step()
 
-    def set_constant(self, name: str, value: object) -> None:
-        """Make a named, constant value available in the log."""
+    def set_constant(self, name: str, value: Any) -> None:
+        """Make a named, constant value available in the log.
+
+        :param name: the name of the constant.
+        :param value: the value of the constant.
+        """
         existed = name in self.constants
         self.constants[name] = value
 
@@ -844,7 +848,11 @@ class LogManager:
         self.last_save_time = time()
 
     def add_quantity(self, quantity: LogQuantity, interval: int = 1) -> None:
-        """Add an object derived from :class:`LogQuantity` to this manager."""
+        """Add a :class:`LogQuantity` to this manager.
+
+        :param quantity: add the specified :class:`LogQuantity`.
+        :param interval: interval (in time steps) when to gather this quantity.
+        """
 
         def add_internal(name, unit, description, def_agg):
             logger.debug("add log quantity '%s'" % name)
@@ -1110,7 +1118,6 @@ class LogManager:
         ticks_per_sec = (self.tick_count/max(1, time()-self.start_time)
                             * self.watch_interval)
         self.next_watch_tick = self.previous_watch_tick + int(max(1, ticks_per_sec))
-        print("===", self.next_watch_tick)
 
     def _watch_tick(self) -> None:
         """Print the watches after a tick."""
@@ -1442,7 +1449,11 @@ def set_dt(mgr: LogManager, dt: float) -> None:
 
 
 def add_simulation_quantities(mgr: LogManager, dt: float = None) -> None:
-    """Add :class:`LogQuantity` objects relating to simulation time."""
+    """Add :class:`LogQuantity` objects relating to simulation time.
+
+    :param mgr: the :class:`LogManager` instance.
+    :param dt: (deprecated, use :meth:`set_dt` instead)
+    """
     if dt is not None:
         from warnings import warn
         warn("Specifying dt ahead of time is a deprecated practice. "
