@@ -446,7 +446,7 @@ class LogManager:
     """
 
     def __init__(self, filename: str = None, mode: str = "r", mpi_comm=None,
-                 capture_warnings: bool = True, commit_interval: float = 90) -> None:
+                 capture_warnings: bool = True, commit_interval: float = 90, watch_interval: float = 1.0) -> None:
         """Initialize this log manager instance.
 
         :param filename: If given, the filename to which this log is bound.
@@ -462,6 +462,7 @@ class LogManager:
           to the log file.
         :param commit_interval: actually perform a commit only every N times a commit
           is requested.
+        :param watch_interval: print watches every N seconds.
         """
 
         assert isinstance(mode, str), "mode must be a string"
@@ -501,7 +502,7 @@ class LogManager:
         self.have_nonlocal_watches = False
 
         # Interval between printing watches, in seconds
-        self.watch_interval = 1.0
+        self.watch_interval = watch_interval
 
         # database binding
         import sqlite3 as sqlite
