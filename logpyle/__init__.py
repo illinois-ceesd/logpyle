@@ -499,6 +499,7 @@ class LogManager:
 
         # watch stuff
         self.watches: List[Record] = []
+        self.previous_watch_tick = 0
         self.next_watch_tick = 1
         self.have_nonlocal_watches = False
 
@@ -722,6 +723,7 @@ class LogManager:
                   watches have been printed.
         """
         self.watch_interval = interval
+        self._calculate_next_watch_step()
 
     def set_constant(self, name: str, value: object) -> None:
         """Make a named, constant value available in the log."""
@@ -820,7 +822,7 @@ class LogManager:
             self.save()
 
         # print watches
-        if self.tick_count == self.next_watch_tick:
+        if self.tick_count >= self.next_watch_tick:
             self._watch_tick()
 
         self.t_log += time() - tick_start_time
@@ -1104,10 +1106,18 @@ class LogManager:
 
         return parsed, dep_data
 
+    def _calculate_next_watch_step(self) -> None:
+        ticks_per_sec = (self.tick_count/max(1, time()-self.start_time)
+                            * self.watch_interval)
+        self.next_watch_tick = self.previous_watch_tick + int(max(1, ticks_per_sec))
+        print("===", self.next_watch_tick)
+
     def _watch_tick(self) -> None:
         """Print the watches after a tick."""
         if not self.have_nonlocal_watches and self.rank != self.head_rank:
             return
+
+        self.previous_watch_tick = self.tick_count
 
         data_block = {qname: self.last_values.get(qname, 0)
                 for qname in self.quantity_data.keys()}
@@ -1139,9 +1149,7 @@ class LogManager:
                         compute_watch_str(watch) for watch in self.watches),
                       flush=True)
 
-        ticks_per_interval = (self.tick_count/max(1, time()-self.start_time)
-                         * self.watch_interval)
-        self.next_watch_tick = self.tick_count + int(max(1, ticks_per_interval))
+        self._calculate_next_watch_step()
 
         if self.mpi_comm is not None and self.have_nonlocal_watches:
             self.next_watch_tick = self.mpi_comm.bcast(
