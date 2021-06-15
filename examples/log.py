@@ -40,7 +40,7 @@ def main():
     # Print watches every 2 seconds (default: every 1 second)
     logmgr.set_watch_interval(2)
 
-    for istep in range(200):
+    for istep in range(2000):
         logmgr.tick_before()
 
         dt = uniform(0.01, 0.1)
@@ -55,6 +55,12 @@ def main():
         # Illustrate warnings capture
         if uniform(0, 1) < 0.05:
             warn("Oof. Something went awry.")
+
+        if istep == 50:
+            logmgr.set_watch_interval(50)
+
+        if istep == 1000:
+            logmgr.set_watch_interval(5)
 
         logmgr.tick_after()
 
