@@ -708,7 +708,11 @@ class LogManager:
             self.watches.append(watch_info)
 
     def set_constant(self, name: str, value: object) -> None:
-        """Make a named, constant value available in the log."""
+        """Make a named, constant value available in the log.
+
+        :param name: the name of the constant.
+        :param value: the value of the constant.
+        """
         existed = name in self.constants
         self.constants[name] = value
 
@@ -826,7 +830,11 @@ class LogManager:
         self.last_save_time = time()
 
     def add_quantity(self, quantity: LogQuantity, interval: int = 1) -> None:
-        """Add an object derived from :class:`LogQuantity` to this manager."""
+        """Add an object derived from :class:`LogQuantity` to this manager.
+
+        :param quantity: add the specified :class:`LogQuantity`.
+        :param interval: interval (in time steps) when to gather this quantity.
+        """
 
         def add_internal(name, unit, description, def_agg):
             logger.debug("add log quantity '%s'" % name)
@@ -1417,7 +1425,12 @@ def set_dt(mgr: LogManager, dt: float) -> None:
 
 
 def add_simulation_quantities(mgr: LogManager, dt: float = None) -> None:
-    """Add :class:`LogQuantity` objects relating to simulation time."""
+    """Add :class:`LogQuantity` objects relating to simulation time.
+
+    :param mgr: the :class:`LogManager` instance.
+    :param dt: the initial value of simulation timestep (deprecated, use
+        :meth:`set_dt` instead).
+    """
     if dt is not None:
         from warnings import warn
         warn("Specifying dt ahead of time is a deprecated practice. "
