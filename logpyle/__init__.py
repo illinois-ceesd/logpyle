@@ -345,7 +345,7 @@ def _get_unique_id() -> str:
         from random import Random
         rng = Random()
         rng.seed()
-        for i in range(20):
+        for _ in range(20):
             checksum.update(str(rng.randrange(1 << 30)).encode("utf-32"))
         return checksum.hexdigest()
     else:
@@ -446,7 +446,8 @@ class LogManager:
     """
 
     def __init__(self, filename: str = None, mode: str = "r", mpi_comm=None,
-                 capture_warnings: bool = True, commit_interval: float = 90, watch_interval: float = 1.0) -> None:
+                 capture_warnings: bool = True, commit_interval: float = 90,
+                 watch_interval: float = 1.0) -> None:
         """Initialize this log manager instance.
 
         :param filename: If given, the filename to which this log is bound.
