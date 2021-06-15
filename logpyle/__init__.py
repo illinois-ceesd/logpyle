@@ -714,7 +714,13 @@ class LogManager:
             self.watches.append(watch_info)
 
     def set_watch_interval(self, interval: float) -> None:
-        """Set the interval (in seconds) between the time watches are printed."""
+        """Set the interval (in seconds) between the time watches are printed.
+
+        :param interval: watch printing interval in seconds.
+
+        .. note:: The new interval will only take effect *after* the next time
+                  watches have been printed.
+        """
         self.watch_interval = interval
 
     def set_constant(self, name: str, value: object) -> None:
