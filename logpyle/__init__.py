@@ -718,9 +718,6 @@ class LogManager:
         """Set the interval (in seconds) between the time watches are printed.
 
         :param interval: watch printing interval in seconds.
-
-        .. note:: The new interval will only take effect *after* the next time
-                  watches have been printed.
         """
         self.watch_interval = interval
         self._calculate_next_watch_step()
