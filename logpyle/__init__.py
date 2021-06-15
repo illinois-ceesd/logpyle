@@ -64,7 +64,7 @@ __version__ = logpyle.version.VERSION_TEXT
 import logging
 logger = logging.getLogger(__name__)
 
-from typing import List, Callable, Union, Tuple, Optional, Dict
+from typing import List, Callable, Union, Tuple, Optional, Dict, Any
 from pytools.datatable import DataTable
 
 
@@ -345,7 +345,7 @@ def _get_unique_id() -> str:
         from random import Random
         rng = Random()
         rng.seed()
-        for i in range(20):
+        for _ in range(20):
             checksum.update(str(rng.randrange(1 << 30)).encode("utf-32"))
         return checksum.hexdigest()
     else:
