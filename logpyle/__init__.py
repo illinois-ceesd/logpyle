@@ -500,6 +500,9 @@ class LogManager:
         # watch stuff
         self.watches: List[Record] = []
         self.previous_watch_tick = 0
+        self.previous_watch_time = 0
+        self.last_interval_change_tick = 0
+        self.last_interval_change_time = 0
         self.next_watch_tick = 1
         self.have_nonlocal_watches = False
 
@@ -721,6 +724,8 @@ class LogManager:
         """
         self.watch_interval = interval
         self._calculate_next_watch_step()
+        self.last_interval_change_tick = self.tick_count
+        self.last_interval_change_time = time()
 
     def set_constant(self, name: str, value: Any) -> None:
         """Make a named, constant value available in the log.
@@ -1112,16 +1117,17 @@ class LogManager:
         return parsed, dep_data
 
     def _calculate_next_watch_step(self) -> None:
-        ticks_per_sec = (self.tick_count/max(1, time()-self.start_time)
-                            * self.watch_interval)
-        self.next_watch_tick = self.previous_watch_tick + int(max(1, ticks_per_sec))
+        t = time()
+        ticks_per_interval = ((self.tick_count-self.last_interval_change_tick)/(time()-self.last_interval_change_time) * self.watch_interval
+                            )
+        self.next_watch_tick = self.previous_watch_tick + int(max(1, ticks_per_interval))
+        print("    xxx", int(ticks_per_interval), self.tick_count, self.last_interval_change_tick, self.previous_watch_tick,self.next_watch_tick,
+               t-self.last_interval_change_time, self.watch_interval, "ttt")
 
     def _watch_tick(self) -> None:
         """Print the watches after a tick."""
         if not self.have_nonlocal_watches and self.rank != self.head_rank:
             return
-
-        self.previous_watch_tick = self.tick_count
 
         data_block = {qname: self.last_values.get(qname, 0)
                 for qname in self.quantity_data.keys()}
@@ -1154,6 +1160,7 @@ class LogManager:
                       flush=True)
 
         self._calculate_next_watch_step()
+        self.previous_watch_tick = self.tick_count
 
         if self.mpi_comm is not None and self.have_nonlocal_watches:
             self.next_watch_tick = self.mpi_comm.bcast(
