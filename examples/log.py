@@ -5,8 +5,30 @@ from random import uniform
 from logpyle import (LogManager, add_general_quantities,
         add_simulation_quantities, add_run_info, IntervalTimer,
         LogQuantity, set_dt)
+from typing import Any
 
 from warnings import warn
+
+
+class UserLogQuantity(LogQuantity):
+    """Logging support for arbitrary user quantities."""
+
+    def __init__(self, name, value=None, unit=None,
+          description=None, user_function=None) -> None:
+        LogQuantity.__init__(self, name=name, unit=unit,
+                             description=description)
+        self._quantity_value = value
+        self._uf = user_function
+
+    def __call__(self) -> float:
+        """Return the actual logged quantity."""
+        if self._uf:
+            return self._uf(self._quantity_value)
+        return self._quantity_value
+
+    def set_quantity_value(self, value: Any) -> None:
+        """Set the value of the logged quantity."""
+        self._quantity_value = value
 
 
 class Fifteen(LogQuantity):
@@ -33,12 +55,15 @@ def main():
     vis_timer = IntervalTimer("t_vis", "Time spent visualizing")
     logmgr.add_quantity(vis_timer)
     logmgr.add_quantity(Fifteen("fifteen"))
+    logmgr.add_quantity(UserLogQuantity("q1", value=0))
 
     # Watches are printed periodically during execution
-    logmgr.add_watches(["step.max", "t_sim.max", "t_step.max", "fifteen", "t_vis"])
+    logmgr.add_watches(["step.max", "t_sim.max", "t_step.max", "fifteen", "t_vis",
+                        "q1"])
 
     for istep in range(200):
         logmgr.tick_before()
+        logmgr.set_quantity_value("q1", 2*istep + 1)
 
         dt = uniform(0.01, 0.1)
         set_dt(logmgr, dt)
