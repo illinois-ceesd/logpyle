@@ -747,7 +747,7 @@ class LogManager:
                 value_setter(value)
             else:
                 from warnings import warn
-                warn(f"No value_setter defined for log quantity {name=}.")
+                warn(f"No value_setter defined for log quantity (name={name}).")
 
     def _insert_datapoint(self, name: str, value: Optional[float]) -> None:
         if value is None:
