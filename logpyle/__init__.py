@@ -97,6 +97,7 @@ class LogQuantity:
     .. automethod:: tick
     .. autoproperty:: default_aggregator
     .. automethod:: __call__
+    .. automethod:: set_quantity_value
     """
 
     sort_weight = 0
@@ -134,6 +135,10 @@ class LogQuantity:
 
         This is only called if the invocation interval calls for it.
         """
+        raise NotImplementedError
+
+    def set_quantity_value(self, value: Any) -> None:
+        """Set the logged quantity value."""
         raise NotImplementedError
 
 
@@ -289,10 +294,12 @@ class _GatherDescriptor:
 
 class _QuantityData:
     def __init__(self, unit: str, description: str,
-                 default_aggregator: Callable) -> None:
+                 default_aggregator: Callable,
+                 value_setter: Callable = None) -> None:
         self.unit = unit
         self.description = description
         self.default_aggregator = default_aggregator
+        self.value_setter = value_setter
 
 
 def _join_by_first_of_tuple(list_of_iterables):
@@ -728,6 +735,20 @@ class LogManager:
 
         self._commit()
 
+    def set_quantity_value(self, name: str, value: Any) -> None:
+        """Set a the value of a named LogQuantity.
+
+        :param name: the name of the logged quantity.
+        :param value: the value of the logged quantity.
+        """
+        if name in self.quantity_data:
+            value_setter = self.quantity_data[name].value_setter
+            if value_setter:
+                value_setter(value)
+            else:
+                from warnings import warn
+                warn(f"No value_setter defined for log quantity {name=}.")
+
     def _insert_datapoint(self, name: str, value: Optional[float]) -> None:
         if value is None:
             return
@@ -836,12 +857,13 @@ class LogManager:
         :param interval: interval (in time steps) when to gather this quantity.
         """
 
-        def add_internal(name, unit, description, def_agg):
+        def add_internal(name, unit, description, def_agg, val_set=None):
             logger.debug("add log quantity '%s'" % name)
 
             if name in self.quantity_data:
                 raise RuntimeError("cannot add the same quantity '%s' twice" % name)
-            self.quantity_data[name] = _QuantityData(unit, description, def_agg)
+            self.quantity_data[name] = _QuantityData(unit, description, def_agg,
+                                                     val_set)
 
             from pickle import dumps
             self.db_conn.execute("""insert into quantities values (?,?,?,?)""", (
@@ -870,8 +892,9 @@ class LogManager:
                 add_internal(name, unit, description, def_agg)
         else:
             add_internal(quantity.name,
-                    quantity.unit, quantity.description,
-                    quantity.default_aggregator)
+                         quantity.unit, quantity.description,
+                         quantity.default_aggregator,
+                         quantity.set_quantity_value)
 
     def get_expr_dataset(self, expression, description=None, unit=None):
         """Prepare a time-series dataset for a given expression.
