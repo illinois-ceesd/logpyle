@@ -37,9 +37,6 @@ def main():
     # Watches are printed periodically during execution
     logmgr.add_watches(["step.max", "t_sim.max", "t_step.max", "fifteen", "t_vis"])
 
-    # Print watches every 2 seconds (default: every 1 second)
-    logmgr.set_watch_interval(2)
-
     for istep in range(2000):
         logmgr.tick_before()
 
@@ -56,11 +53,13 @@ def main():
         if uniform(0, 1) < 0.05:
             warn("Oof. Something went awry.")
 
-        if istep == 50:
-            logmgr.set_watch_interval(50)
+        if istep == 100:
+            print("FYI: Setting watch interval to 10 seconds.")
+            logmgr.set_watch_interval(10)
 
         if istep == 1000:
-            logmgr.set_watch_interval(5)
+            print("FYI: Setting watch interval back to 1 seconds.")
+            logmgr.set_watch_interval(1)
 
         logmgr.tick_after()
 
