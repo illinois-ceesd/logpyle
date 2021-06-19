@@ -442,6 +442,7 @@ class LogManager:
 
     .. automethod:: capture_warnings
     .. automethod:: add_watches
+    .. automethod:: set_watch_interval
     .. automethod:: set_constant
     .. automethod:: add_quantity
 
@@ -452,7 +453,8 @@ class LogManager:
     """
 
     def __init__(self, filename: str = None, mode: str = "r", mpi_comm=None,
-                 capture_warnings: bool = True, commit_interval: float = 90) -> None:
+                 capture_warnings: bool = True, commit_interval: float = 90,
+                 watch_interval: float = 1.0) -> None:
         """Initialize this log manager instance.
 
         :param filename: If given, the filename to which this log is bound.
@@ -468,6 +470,7 @@ class LogManager:
           to the log file.
         :param commit_interval: actually perform a commit only every N times a commit
           is requested.
+        :param watch_interval: print watches every N seconds.
         """
 
         assert isinstance(mode, str), "mode must be a string"
@@ -503,8 +506,10 @@ class LogManager:
 
         # watch stuff
         self.watches: List[Record] = []
-        self.next_watch_tick = 1
         self.have_nonlocal_watches = False
+
+        # Interval between printing watches, in seconds
+        self.set_watch_interval(watch_interval)
 
         # database binding
         import sqlite3 as sqlite
@@ -714,6 +719,14 @@ class LogManager:
 
             self.watches.append(watch_info)
 
+    def set_watch_interval(self, interval: float) -> None:
+        """Set the interval (in seconds) between the time watches are printed.
+
+        :param interval: watch printing interval in seconds.
+        """
+        self.watch_interval = interval
+        self.next_watch_tick = self.tick_count + 1
+
     def set_constant(self, name: str, value: Any) -> None:
         """Make a named, constant value available in the log.
 
@@ -829,7 +842,7 @@ class LogManager:
             self.save()
 
         # print watches
-        if self.tick_count == self.next_watch_tick:
+        if self.tick_count >= self.next_watch_tick:
             self._watch_tick()
 
         self.t_log += time() - tick_start_time
@@ -1119,6 +1132,11 @@ class LogManager:
 
         return parsed, dep_data
 
+    def _calculate_next_watch_tick(self) -> None:
+        ticks_per_interval = (self.tick_count/max(1, time()-self.start_time)
+                         * self.watch_interval)
+        self.next_watch_tick = self.tick_count + int(max(1, ticks_per_interval))
+
     def _watch_tick(self) -> None:
         """Print the watches after a tick."""
         if not self.have_nonlocal_watches and self.rank != self.head_rank:
@@ -1154,8 +1172,7 @@ class LogManager:
                         compute_watch_str(watch) for watch in self.watches),
                       flush=True)
 
-        ticks_per_sec = self.tick_count/max(1, time()-self.start_time)
-        self.next_watch_tick = self.tick_count + int(max(1, ticks_per_sec))
+        self._calculate_next_watch_tick()
 
         if self.mpi_comm is not None and self.have_nonlocal_watches:
             self.next_watch_tick = self.mpi_comm.bcast(
