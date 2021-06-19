@@ -53,6 +53,14 @@ def main():
         if uniform(0, 1) < 0.05:
             warn("Oof. Something went awry.")
 
+        if istep == 50:
+            print("FYI: Setting watch interval to 5 seconds.")
+            logmgr.set_watch_interval(5)
+
+        if istep == 150:
+            print("FYI: Setting watch interval back to 1 second.")
+            logmgr.set_watch_interval(1)
+
         logmgr.tick_after()
 
     logmgr.close()
