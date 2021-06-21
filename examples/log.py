@@ -14,16 +14,13 @@ class UserLogQuantity(LogQuantity):
     """Logging support for arbitrary user quantities."""
 
     def __init__(self, name, value=None, unit=None,
-          description=None, user_function=None) -> None:
+          description=None) -> None:
         LogQuantity.__init__(self, name=name, unit=unit,
                              description=description)
         self._quantity_value = value
-        self._uf = user_function
 
     def __call__(self) -> float:
         """Return the actual logged quantity."""
-        if self._uf:
-            return self._uf(self._quantity_value)
         return self._quantity_value
 
     def set_quantity_value(self, value: Any) -> None:
