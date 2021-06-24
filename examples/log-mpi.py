@@ -11,7 +11,7 @@ from warnings import warn
 from mpi4py import MPI
 
 
-class UserLogQuantity(LogQuantity):
+class PushLogQuantity(LogQuantity):
     """Logging support for arbitrary user quantities."""
 
     def __init__(self, name, value=None, unit=None,
@@ -22,7 +22,9 @@ class UserLogQuantity(LogQuantity):
 
     def __call__(self) -> float:
         """Return the actual logged quantity."""
-        return self._quantity_value
+        val = self._quantity_value
+        self._quantity_value = None
+        return val
 
     def set_quantity_value(self, value: Any) -> None:
         """Set the value of the logged quantity."""
