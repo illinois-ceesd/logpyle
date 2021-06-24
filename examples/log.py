@@ -10,7 +10,7 @@ from typing import Any
 from warnings import warn
 
 
-class UserLogQuantity(LogQuantity):
+class PushLogQuantity(LogQuantity):
     """Logging support for arbitrary user quantities."""
 
     def __init__(self, name, value=None, unit=None,
@@ -52,7 +52,7 @@ def main():
     vis_timer = IntervalTimer("t_vis", "Time spent visualizing")
     logmgr.add_quantity(vis_timer)
     logmgr.add_quantity(Fifteen("fifteen"))
-    logmgr.add_quantity(UserLogQuantity("q1", value=0))
+    logmgr.add_quantity(PushLogQuantity("q1", value=0))
 
     # Watches are printed periodically during execution
     logmgr.add_watches(["step.max", "t_sim.max", "t_step.max", "fifteen", "t_vis",
