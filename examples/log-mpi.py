@@ -64,7 +64,7 @@ def main():
     vis_timer = IntervalTimer("t_vis", "Time spent visualizing")
     logmgr.add_quantity(vis_timer)
     logmgr.add_quantity(Fifteen("fifteen"))
-    logmgr.add_quantity(UserLogQuantity("q1"))
+    logmgr.add_quantity(PushLogQuantity("q1"))
 
     # Watches are printed periodically during execution
     logmgr.add_watches([("step.max", "step={value} "),
