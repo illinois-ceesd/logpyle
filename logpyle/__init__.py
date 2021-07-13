@@ -761,7 +761,8 @@ class LogManager:
         self.last_values[name] = value
 
         try:
-            self.db_conn.execute(f"update {name} set value = {float(value)} where rank = {self.rank} and step = {self.tick_count}")
+            self.db_conn.execute(f"update {name} set value = {float(value)} \
+                where rank = {self.rank} and step = {self.tick_count}")
         except Exception:
             print("while adding datapoint for '%s':" % name)
             raise
