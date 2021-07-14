@@ -102,4 +102,29 @@ your time series data, for example:
   step 2000 and 3000
 - Make a scatterplot correlating memory transfer amounts and simulation time
 
+In some cases (for example, when logging is optional), it may be convenient to
+retrieve sub-timers once and reuse them. Adapting the example above, sub-timer
+initialization becomes::
+
+    # Add a timer quantity and retrieve a sub-timer for later use
+    if logmgr:
+        vis_timer = IntervalTimer("t_vis", "Time spent visualizing")
+        logmgr.add_quantity(vis_timer)
+        time_vis = vis_timer.get_sub_timer()
+    else:
+        from contextlib import nullcontext
+        time_vis = nullcontext()
+
+and usage becomes::
+
+    if istep % 10 == 0:
+        # Use the sub-timer
+        with time_vis:
+            sleep(0.05)
+
+(Full example code can be found in
+:download:`examples/optional-log.py <../examples/optional-log.py>` in the logpyle
+source distribution.)
+
+
 .. no-doctest
