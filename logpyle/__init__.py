@@ -1193,6 +1193,7 @@ class IntervalTimer(PostLogQuantity):
     sub-timers, or by explicitly calling :meth:`add_time`.
 
     .. automethod:: __init__
+    .. automethod:: get_sub_timer
     .. automethod:: start_sub_timer
     .. automethod:: add_time
     """
