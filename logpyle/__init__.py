@@ -1183,8 +1183,11 @@ class LogManager:
 class _SubTimer:
     def __init__(self, itimer) -> None:
         self.itimer = itimer
-        self.start_time = time()
         self.elapsed = 0
+
+    def start(self):
+        self.start_time = time()
+        return self
 
     def stop(self):
         self.elapsed += time() - self.start_time
@@ -1192,7 +1195,7 @@ class _SubTimer:
         return self
 
     def __enter__(self) -> None:
-        pass
+        self.start()
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         self.stop()
@@ -1200,7 +1203,7 @@ class _SubTimer:
 
     def submit(self) -> None:
         self.itimer.add_time(self.elapsed)
-        del self.elapsed
+        self.elapsed = 0
 
 
 class IntervalTimer(PostLogQuantity):
@@ -1208,7 +1211,7 @@ class IntervalTimer(PostLogQuantity):
     sub-timers, or by explicitly calling :meth:`add_time`.
 
     .. automethod:: __init__
-    .. automethod:: start_sub_timer
+    .. automethod:: get_sub_timer
     .. automethod:: add_time
     """
 
@@ -1216,8 +1219,13 @@ class IntervalTimer(PostLogQuantity):
         LogQuantity.__init__(self, name, "s", description)
         self.elapsed: float = 0
 
-    def start_sub_timer(self):
+    def get_sub_timer(self):
         return _SubTimer(self)
+
+    def start_sub_timer(self):
+        sub_timer = _SubTimer(self)
+        sub_timer.start()
+        return sub_timer
 
     def add_time(self, t: float) -> None:
         self.start_time = time()
