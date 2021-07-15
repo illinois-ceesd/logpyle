@@ -64,7 +64,7 @@ __version__ = logpyle.version.VERSION_TEXT
 import logging
 logger = logging.getLogger(__name__)
 
-from typing import List, Callable, Union, Tuple, Optional, Dict
+from typing import List, Callable, Union, Tuple, Optional, Dict, Any
 from pytools.datatable import DataTable
 
 
@@ -345,7 +345,7 @@ def _get_unique_id() -> str:
         from random import Random
         rng = Random()
         rng.seed()
-        for i in range(20):
+        for _ in range(20):
             checksum.update(str(rng.randrange(1 << 30)).encode("utf-32"))
         return checksum.hexdigest()
     else:
@@ -435,6 +435,7 @@ class LogManager:
 
     .. automethod:: capture_warnings
     .. automethod:: add_watches
+    .. automethod:: set_watch_interval
     .. automethod:: set_constant
     .. automethod:: add_quantity
 
@@ -445,7 +446,8 @@ class LogManager:
     """
 
     def __init__(self, filename: str = None, mode: str = "r", mpi_comm=None,
-                 capture_warnings: bool = True, commit_interval: float = 90) -> None:
+                 capture_warnings: bool = True, commit_interval: float = 90,
+                 watch_interval: float = 1.0) -> None:
         """Initialize this log manager instance.
 
         :param filename: If given, the filename to which this log is bound.
@@ -461,6 +463,7 @@ class LogManager:
           to the log file.
         :param commit_interval: actually perform a commit only every N times a commit
           is requested.
+        :param watch_interval: print watches every N seconds.
         """
 
         assert isinstance(mode, str), "mode must be a string"
@@ -496,8 +499,10 @@ class LogManager:
 
         # watch stuff
         self.watches: List[Record] = []
-        self.next_watch_tick = 1
         self.have_nonlocal_watches = False
+
+        # Interval between printing watches, in seconds
+        self.set_watch_interval(watch_interval)
 
         # database binding
         import sqlite3 as sqlite
@@ -707,8 +712,20 @@ class LogManager:
 
             self.watches.append(watch_info)
 
-    def set_constant(self, name: str, value: object) -> None:
-        """Make a named, constant value available in the log."""
+    def set_watch_interval(self, interval: float) -> None:
+        """Set the interval (in seconds) between the time watches are printed.
+
+        :param interval: watch printing interval in seconds.
+        """
+        self.watch_interval = interval
+        self.next_watch_tick = self.tick_count + 1
+
+    def set_constant(self, name: str, value: Any) -> None:
+        """Make a named, constant value available in the log.
+
+        :param name: the name of the constant.
+        :param value: the value of the constant.
+        """
         existed = name in self.constants
         self.constants[name] = value
 
@@ -804,7 +821,7 @@ class LogManager:
             self.save()
 
         # print watches
-        if self.tick_count == self.next_watch_tick:
+        if self.tick_count >= self.next_watch_tick:
             self._watch_tick()
 
         self.t_log += time() - tick_start_time
@@ -826,7 +843,11 @@ class LogManager:
         self.last_save_time = time()
 
     def add_quantity(self, quantity: LogQuantity, interval: int = 1) -> None:
-        """Add an object derived from :class:`LogQuantity` to this manager."""
+        """Add a :class:`LogQuantity` to this manager.
+
+        :param quantity: add the specified :class:`LogQuantity`.
+        :param interval: interval (in time steps) when to gather this quantity.
+        """
 
         def add_internal(name, unit, description, def_agg):
             logger.debug("add log quantity '%s'" % name)
@@ -1088,6 +1109,11 @@ class LogManager:
 
         return parsed, dep_data
 
+    def _calculate_next_watch_tick(self) -> None:
+        ticks_per_interval = (self.tick_count/max(1, time()-self.start_time)
+                         * self.watch_interval)
+        self.next_watch_tick = self.tick_count + int(max(1, ticks_per_interval))
+
     def _watch_tick(self) -> None:
         """Print the watches after a tick."""
         if not self.have_nonlocal_watches and self.rank != self.head_rank:
@@ -1123,8 +1149,7 @@ class LogManager:
                         compute_watch_str(watch) for watch in self.watches),
                       flush=True)
 
-        ticks_per_sec = self.tick_count/max(1, time()-self.start_time)
-        self.next_watch_tick = self.tick_count + int(max(1, ticks_per_sec))
+        self._calculate_next_watch_tick()
 
         if self.mpi_comm is not None and self.have_nonlocal_watches:
             self.next_watch_tick = self.mpi_comm.bcast(
@@ -1140,8 +1165,11 @@ class LogManager:
 class _SubTimer:
     def __init__(self, itimer) -> None:
         self.itimer = itimer
-        self.start_time = time()
         self.elapsed = 0
+
+    def start(self):
+        self.start_time = time()
+        return self
 
     def stop(self):
         self.elapsed += time() - self.start_time
@@ -1149,7 +1177,7 @@ class _SubTimer:
         return self
 
     def __enter__(self) -> None:
-        pass
+        self.start()
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         self.stop()
@@ -1157,7 +1185,7 @@ class _SubTimer:
 
     def submit(self) -> None:
         self.itimer.add_time(self.elapsed)
-        del self.elapsed
+        self.elapsed = 0
 
 
 class IntervalTimer(PostLogQuantity):
@@ -1165,7 +1193,7 @@ class IntervalTimer(PostLogQuantity):
     sub-timers, or by explicitly calling :meth:`add_time`.
 
     .. automethod:: __init__
-    .. automethod:: start_sub_timer
+    .. automethod:: get_sub_timer
     .. automethod:: add_time
     """
 
@@ -1173,8 +1201,13 @@ class IntervalTimer(PostLogQuantity):
         LogQuantity.__init__(self, name, "s", description)
         self.elapsed: float = 0
 
-    def start_sub_timer(self):
+    def get_sub_timer(self):
         return _SubTimer(self)
+
+    def start_sub_timer(self):
+        sub_timer = _SubTimer(self)
+        sub_timer.start()
+        return sub_timer
 
     def add_time(self, t: float) -> None:
         self.start_time = time()
@@ -1417,7 +1450,11 @@ def set_dt(mgr: LogManager, dt: float) -> None:
 
 
 def add_simulation_quantities(mgr: LogManager, dt: float = None) -> None:
-    """Add :class:`LogQuantity` objects relating to simulation time."""
+    """Add :class:`LogQuantity` objects relating to simulation time.
+
+    :param mgr: the :class:`LogManager` instance.
+    :param dt: (deprecated, use :meth:`set_dt` instead)
+    """
     if dt is not None:
         from warnings import warn
         warn("Specifying dt ahead of time is a deprecated practice. "
