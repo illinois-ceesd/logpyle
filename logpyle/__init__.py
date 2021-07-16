@@ -1212,6 +1212,7 @@ class IntervalTimer(PostLogQuantity):
 
     .. automethod:: __init__
     .. automethod:: get_sub_timer
+    .. automethod:: start_sub_timer
     .. automethod:: add_time
     """
 
