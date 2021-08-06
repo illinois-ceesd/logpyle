@@ -55,8 +55,8 @@ def main():
     logmgr.add_quantity(PushLogQuantity("q1", value=0))
 
     # Watches are printed periodically during execution
-    logmgr.add_watches(["step.max", "t_sim.max", "t_step.max", "fifteen", "t_vis",
-                        "q1"])
+    logmgr.add_watches(["step.max", "t_sim.max", "t_step.max", "fifteen",
+                        "t_vis", "t_log", "q1"])
 
     for istep in range(200):
         logmgr.tick_before()
