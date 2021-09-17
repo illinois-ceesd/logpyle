@@ -137,11 +137,15 @@ class LogQuantity:
 
         This is only called if the invocation interval calls for it.
         """
-        raise NotImplementedError
+        raise NotImplementedError(
+            f"__call__ not implemented for log quantity {self.name}."
+        )
 
     def set_value(self, value: Any) -> None:
         """Set the logged quantity value."""
-        raise NotImplementedError
+        raise NotImplementedError(
+            f"set_value not implemented for log quantity {self.name}."
+        )
 
 
 class PostLogQuantity(LogQuantity):
@@ -1524,13 +1528,7 @@ def set_quantity_value(mgr: LogManager, name: str, value: Any) -> None:
     :param name: the name of the logged quantity.
     :param value: the value of the logged quantity.
     """
-    if name in mgr.quantity_data:
-        value_setter = mgr.quantity_data[name].value_setter
-        if value_setter:
-            value_setter(value)
-        else:
-            from warnings import warn
-            warn(f"No value_setter defined for log quantity (name={name}).")
+    mgr.quantity_data[name].value_setter(value)
 
 # }}}
 
