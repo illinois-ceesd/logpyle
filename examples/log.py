@@ -4,7 +4,7 @@ from time import sleep
 from random import uniform
 from logpyle import (LogManager, add_general_quantities,
         add_simulation_quantities, add_run_info, IntervalTimer,
-        LogQuantity, set_dt)
+        LogQuantity, set_dt, PushLogQuantity, set_quantity_value)
 
 from warnings import warn
 
@@ -33,13 +33,16 @@ def main():
     vis_timer = IntervalTimer("t_vis", "Time spent visualizing")
     logmgr.add_quantity(vis_timer)
     logmgr.add_quantity(Fifteen("fifteen"))
+    logmgr.add_quantity(PushLogQuantity("q1"))
+    set_quantity_value(logmgr, "q1", -99)
 
     # Watches are printed periodically during execution
     logmgr.add_watches(["step.max", "t_sim.max", "t_step.max", "fifteen",
-                        "t_vis", "t_log"])
+                        "t_vis", "t_log", "q1"])
 
     for istep in range(200):
         logmgr.tick_before()
+        set_quantity_value(logmgr, "q1", 2*istep + 1)
 
         dt = uniform(0.01, 0.1)
         set_dt(logmgr, dt)
