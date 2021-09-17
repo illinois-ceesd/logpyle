@@ -5,7 +5,6 @@ from random import uniform
 from logpyle import (LogManager, add_general_quantities,
         add_simulation_quantities, add_run_info, IntervalTimer,
         LogQuantity, set_dt, PushLogQuantity, set_quantity_value)
-from typing import Any
 
 from warnings import warn
 

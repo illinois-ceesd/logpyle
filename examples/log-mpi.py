@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 from time import sleep
-from typing import Any
 from random import uniform
 from logpyle import (LogManager, add_general_quantities,
         add_simulation_quantities, add_run_info, IntervalTimer,
