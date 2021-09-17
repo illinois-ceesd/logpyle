@@ -5,30 +5,10 @@ from typing import Any
 from random import uniform
 from logpyle import (LogManager, add_general_quantities,
         add_simulation_quantities, add_run_info, IntervalTimer,
-        LogQuantity, set_dt)
+        LogQuantity, set_dt, PushLogQuantity, set_quantity_value)
 
 from warnings import warn
 from mpi4py import MPI
-
-
-class PushLogQuantity(LogQuantity):
-    """Logging support for arbitrary user quantities."""
-
-    def __init__(self, name, value=None, unit=None,
-          description=None) -> None:
-        LogQuantity.__init__(self, name=name, unit=unit,
-                             description=description)
-        self._quantity_value = value
-
-    def __call__(self) -> float:
-        """Return the actual logged quantity."""
-        val = self._quantity_value
-        self._quantity_value = None
-        return val
-
-    def set_quantity_value(self, value: Any) -> None:
-        """Set the value of the logged quantity."""
-        self._quantity_value = value
 
 
 class Fifteen(LogQuantity):
@@ -75,7 +55,7 @@ def main():
 
     for istep in range(200):
         logmgr.tick_before()
-        logmgr.set_quantity_value("q1", 2*istep)
+        set_quantity_value(logmgr, "q1", 2*istep)
 
         dt = uniform(0.01, 0.1)
         set_dt(logmgr, dt)
