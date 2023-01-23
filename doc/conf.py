@@ -99,4 +99,5 @@ intersphinx_mapping = {
     "https://numpy.org/doc/stable": None,
     "https://documen.tician.de/pymbolic/": None,
     "https://documen.tician.de/pytools/": None,
+    "https://mpi4py.readthedocs.io/en/stable/": None,
 }

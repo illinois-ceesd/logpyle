@@ -452,7 +452,7 @@ class LogManager:
     """
 
     def __init__(self, filename: Optional[str] = None, mode: str = "r",
-                 mpi_comm: Optional[mpi4py.MPI.Comm] = None,
+                 mpi_comm: Optional["mpi4py.MPI.Comm"] = None,
                  capture_warnings: bool = True, commit_interval: float = 90,
                  watch_interval: float = 1.0) -> None:
         """Initialize this log manager instance.
@@ -463,9 +463,8 @@ class LogManager:
           database is initially empty. May also be "wu" to indicate that
           a unique filename should be chosen automatically. May also be "wo"
           to indicate that the file should be overwritten.
-        :arg mpi_comm: A `mpi4py.MPI.Comm`. If given, logs are
-            periodically synchronized to the head node, which then writes them
-            out to disk.
+        :arg mpi_comm: An optional :class:`mpi4py.MPI.Comm` object.
+          If given, logs are periodically synchronized to the head node, which then writes them out to disk.
         :param capture_warnings: Tap the Python warnings facility and save warnings
           to the log file.
         :param commit_interval: actually perform a commit only every N times a commit
