@@ -104,7 +104,8 @@ class LogQuantity:
 
     sort_weight = 0
 
-    def __init__(self, name: str, unit: Optional[str] = None, description: Optional[str] = None) -> None:
+    def __init__(self, name: str, unit: Optional[str] = None,
+                 description: Optional[str] = None) -> None:
         """Create a new quantity.
 
         Parameters
@@ -159,7 +160,8 @@ class PostLogQuantity(LogQuantity):
 
 
 class MultiLogQuantity:
-    """A source of a list of loggable scalars gathered at the start of each time step.
+    """A source of a list of loggable scalars gathered at the start of each time
+    step.
 
     Quantity values are gathered in :meth:`LogManager.tick_before`.
 
@@ -449,7 +451,8 @@ class LogManager:
     .. automethod:: tick_after
     """
 
-    def __init__(self, filename: Optional[str] = None, mode: str = "r", mpi_comm: Optional[mpi4py.MPI.Comm] = None,
+    def __init__(self, filename: Optional[str] = None, mode: str = "r",
+                 mpi_comm: Optional[mpi4py.MPI.Comm] = None,
                  capture_warnings: bool = True, commit_interval: float = 90,
                  watch_interval: float = 1.0) -> None:
         """Initialize this log manager instance.
@@ -1269,7 +1272,8 @@ class EventCounter(PostLogQuantity):
     .. automethod:: transfer
     """
 
-    def __init__(self, name: str = "interval", description: Optional[str] = None) -> None:
+    def __init__(self, name: str = "interval",
+                 description: Optional[str] = None) -> None:
         PostLogQuantity.__init__(self, name, "1", description)
         self.events = 0
 

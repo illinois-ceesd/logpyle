@@ -115,7 +115,7 @@ class RunDB:
                             (col[0] for col in cursor.description[2:]),
                             row_rest))))
 
-                plot(x, y, hold=True, *args, **my_kwargs)
+                plot(x, y, *args, hold=True, **my_kwargs)
                 style_idx[0] += 1
 
             style_idx = [0]
