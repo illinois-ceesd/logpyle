@@ -16,10 +16,10 @@ jobs:
           uses: actions/setup-python@v2
           with:
             # matches compat target in setup.py
-            python-version: '3.6'
+            python-version: '3.7'
         - name: Run flake8
           run: |
-            pip install flake8 pep8-naming flake8-quotes
+            pip install flake8 pep8-naming flake8-quotes flake8-comprehensions types-psutil numpy
             flake8 setup.py doc/conf.py logpyle bin/*
 
     Examples:
@@ -27,7 +27,7 @@ jobs:
         strategy:
           fail-fast: false
           matrix:
-            python-version: [3.6, 3.7, 3.8, 3.9, 3.x]
+            python-version: [3.7, 3.8, 3.9, 3.x]
             os: [ubuntu-latest, macos-latest]
 
         steps:
@@ -40,7 +40,7 @@ jobs:
           run: |
             [[ $(uname) == "Darwin" ]] && brew install open-mpi
             [[ $(uname) == "Linux" ]] && sudo apt-get update && sudo apt-get install -y mpich libmpich-dev
-            pip install wheel matplotlib mpi4py
+            pip install wheel matplotlib mpi4py psutil
             pip install -e .
         - name: Run and test example
           run: |
@@ -50,7 +50,8 @@ jobs:
 
             # Allow oversubscription of ranks to cores with Open MPI
             export OMPI_MCA_rmaps_base_oversubscribe=1
-            mpirun -n 4 examples/log-mpi.py
+            export RDMAV_FORK_SAFE=1
+            mpirun -n 4 python -m mpi4py examples/log-mpi.py
 
     docs:
         name: Documentation
@@ -80,6 +81,6 @@ jobs:
         -   name: "Main Script"
             run: |
                 curl -L -O -k https://gitlab.tiker.net/inducer/ci-support/raw/main/prepare-and-run-mypy.sh
-                export EXTRA_INSTALL=pytools numpy
-                . ./prepare-and-run-mypy.sh python3 mypy
+                export EXTRA_INSTALL="pytools numpy types-psutil"
+                . ./prepare-and-run-mypy.sh python3
 
