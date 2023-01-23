@@ -64,7 +64,8 @@ __version__ = logpyle.version.VERSION_TEXT
 import logging
 logger = logging.getLogger(__name__)
 
-from typing import List, Callable, Union, Tuple, Optional, Dict, Any, TYPE_CHECKING
+from typing import (List, Callable, Union, Tuple, Optional, Dict, Any,
+                    TYPE_CHECKING, Iterable)
 from pytools.datatable import DataTable
 
 if TYPE_CHECKING:
@@ -132,7 +133,7 @@ class LogQuantity:
         """Perform updates required at every :class:`LogManager` tick."""
         pass
 
-    def __call__(self) -> Optional[float]:
+    def __call__(self) -> Any:
         """Return the current value of the diagnostic represented by this
         :class:`LogQuantity` or None if no value is available.
 
@@ -206,7 +207,7 @@ class MultiLogQuantity:
         """Perform updates required at every :class:`LogManager` tick."""
         pass
 
-    def __call__(self) -> None:
+    def __call__(self) -> Iterable[Optional[float]]:
         """Return an iterable of the current values of the diagnostic represented
         by this :class:`MultiLogQuantity`.
 
