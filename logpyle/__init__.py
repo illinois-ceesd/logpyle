@@ -464,7 +464,8 @@ class LogManager:
           a unique filename should be chosen automatically. May also be "wo"
           to indicate that the file should be overwritten.
         :arg mpi_comm: An optional :class:`mpi4py.MPI.Comm` object.
-          If given, logs are periodically synchronized to the head node, which then writes them out to disk.
+          If given, logs are periodically synchronized to the head node,
+          which then writes them out to disk.
         :param capture_warnings: Tap the Python warnings facility and save warnings
           to the log file.
         :param commit_interval: actually perform a commit only every N times a commit
