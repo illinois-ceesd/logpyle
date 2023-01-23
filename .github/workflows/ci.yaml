@@ -40,7 +40,7 @@ jobs:
           run: |
             [[ $(uname) == "Darwin" ]] && brew install open-mpi
             [[ $(uname) == "Linux" ]] && sudo apt-get update && sudo apt-get install -y mpich libmpich-dev
-            pip install wheel matplotlib mpi4py
+            pip install wheel matplotlib mpi4py psutil
             pip install -e .
         - name: Run and test example
           run: |
@@ -50,7 +50,7 @@ jobs:
 
             # Allow oversubscription of ranks to cores with Open MPI
             export OMPI_MCA_rmaps_base_oversubscribe=1
-            mpirun -n 4 examples/log-mpi.py
+            mpirun -n 4 python -m mpi4py examples/log-mpi.py
 
     docs:
         name: Documentation
