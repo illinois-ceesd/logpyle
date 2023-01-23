@@ -64,8 +64,11 @@ __version__ = logpyle.version.VERSION_TEXT
 import logging
 logger = logging.getLogger(__name__)
 
-from typing import List, Callable, Union, Tuple, Optional, Dict, Any
+from typing import List, Callable, Union, Tuple, Optional, Dict, Any, TYPE_CHECKING
 from pytools.datatable import DataTable
+
+if TYPE_CHECKING:
+    import mpi4py
 
 
 # {{{ timing function
@@ -101,7 +104,7 @@ class LogQuantity:
 
     sort_weight = 0
 
-    def __init__(self, name: str, unit: str = None, description: str = None) -> None:
+    def __init__(self, name: str, unit: Optional[str] = None, description: Optional[str] = None) -> None:
         """Create a new quantity.
 
         Parameters
@@ -167,8 +170,8 @@ class MultiLogQuantity:
     """
     sort_weight = 0
 
-    def __init__(self, names: List[str], units: List[str] = None,
-                 descriptions: List[str] = None) -> None:
+    def __init__(self, names: List[str], units: Optional[List[str]] = None,
+                 descriptions: Optional[List[str]] = None) -> None:
         """Create a new quantity.
 
         Parameters
@@ -185,11 +188,11 @@ class MultiLogQuantity:
         self.names = names
 
         if units is None:
-            units = len(names) * [None]  # type: ignore
+            units = len(names) * [""]
         self.units = units
 
         if descriptions is None:
-            descriptions = len(names) * [None]  # type: ignore
+            descriptions = len(names) * [""]
         self.descriptions = descriptions
 
     @property
@@ -244,14 +247,15 @@ class TimeTracker(DtConsumer):
 class SimulationLogQuantity(PostLogQuantity, DtConsumer):
     """A source of loggable scalars that needs to know the simulation timestep."""
 
-    def __init__(self, dt: Optional[float], name: str, unit: str = None,
-                 description: str = None) -> None:
+    def __init__(self, dt: Optional[float], name: str, unit: Optional[str] = None,
+                 description: Optional[str] = None) -> None:
         PostLogQuantity.__init__(self, name, unit, description)
         DtConsumer.__init__(self, dt)
 
 
 class PushLogQuantity(LogQuantity):
-    def __init__(self, name: str, unit: str = None, description: str = None) -> None:
+    def __init__(self, name: str, unit: Optional[str] = None,
+                 description: Optional[str] = None) -> None:
         LogQuantity.__init__(self, name, unit, description)
         self.value = None
 
@@ -268,8 +272,8 @@ class PushLogQuantity(LogQuantity):
 
 class CallableLogQuantityAdapter(LogQuantity):
     """Adapt a 0-ary callable as a :class:`LogQuantity`."""
-    def __init__(self, callable: Callable, name: str, unit: str = None,
-                 description: str = None) -> None:
+    def __init__(self, callable: Callable, name: str, unit: Optional[str] = None,
+                 description: Optional[str] = None) -> None:
         self.callable = callable
         LogQuantity.__init__(self, name, unit, description)
 
@@ -445,7 +449,7 @@ class LogManager:
     .. automethod:: tick_after
     """
 
-    def __init__(self, filename: str = None, mode: str = "r", mpi_comm=None,
+    def __init__(self, filename: Optional[str] = None, mode: str = "r", mpi_comm: Optional[mpi4py.MPI.Comm] = None,
                  capture_warnings: bool = True, commit_interval: float = 90,
                  watch_interval: float = 1.0) -> None:
         """Initialize this log manager instance.
@@ -521,6 +525,7 @@ class LogManager:
 
             if mode == "wu" and not file_base == ":memory:":
                 if self.is_parallel:
+                    assert self.mpi_comm
                     suffix = self.mpi_comm.bcast(_get_unique_suffix(),
                                                  root=self.head_rank)
                 else:
@@ -551,6 +556,7 @@ class LogManager:
 
                 # set globally unique run_id
                 if self.is_parallel:
+                    assert self.mpi_comm
                     self.set_constant("unique_run_id",
                             self.mpi_comm.bcast(_get_unique_id(),
                                 root=self.head_rank))
@@ -558,6 +564,7 @@ class LogManager:
                     self.set_constant("unique_run_id", _get_unique_id())
 
                 if self.is_parallel:
+                    assert self.mpi_comm
                     self.set_constant("rank_count", self.mpi_comm.Get_size())
                 else:
                     self.set_constant("rank_count", 1)
@@ -1026,7 +1033,7 @@ class LogManager:
         outf.close()
 
     def plot_matplotlib(self, expr_x, expr_y) -> None:
-        from matplotlib.pyplot import xlabel, ylabel, plot  # type: ignore
+        from matplotlib.pyplot import xlabel, ylabel, plot
 
         (data_x, descr_x, unit_x), (data_y, descr_y, unit_y) = \
                 self.get_plot_data(expr_x, expr_y)
@@ -1146,6 +1153,8 @@ class LogManager:
             gathered_data = [data_block]
 
         if self.rank == self.head_rank:
+            assert gathered_data
+
             values: Dict[str, list] = {}
             for data_block in gathered_data:
                 for name, value in data_block.items():
@@ -1216,7 +1225,7 @@ class IntervalTimer(PostLogQuantity):
     .. automethod:: add_time
     """
 
-    def __init__(self, name: str, description: str = None) -> None:
+    def __init__(self, name: str, description: Optional[str] = None) -> None:
         LogQuantity.__init__(self, name, "s", description)
         self.elapsed: float = 0
 
@@ -1260,7 +1269,7 @@ class EventCounter(PostLogQuantity):
     .. automethod:: transfer
     """
 
-    def __init__(self, name: str = "interval", description: str = None) -> None:
+    def __init__(self, name: str = "interval", description: Optional[str] = None) -> None:
         PostLogQuantity.__init__(self, name, "1", description)
         self.events = 0
 
@@ -1367,7 +1376,7 @@ class InitTime(LogQuantity):
 
         import os
         try:
-            import psutil  # type: ignore
+            import psutil
         except ModuleNotFoundError:
             from warnings import warn
             warn("Measuring the init time requires the 'psutil' module.")
@@ -1466,7 +1475,7 @@ def set_dt(mgr: LogManager, dt: float) -> None:
                 gd.quantity.set_dt(dt)
 
 
-def add_simulation_quantities(mgr: LogManager, dt: float = None) -> None:
+def add_simulation_quantities(mgr: LogManager, dt: Optional[float] = None) -> None:
     """Add :class:`LogQuantity` objects relating to simulation time.
 
     :param mgr: the :class:`LogManager` instance.
