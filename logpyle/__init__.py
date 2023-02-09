@@ -414,7 +414,7 @@ class LogManager:
     :meth:`tick_after` calls captures data for a single time state,
     namely that in which the data may have been *before* the "compute"
     step. However, some data (such as the length of the timestep taken
-    in a time-adpative method) may only be available *after* the completion
+    in a time-adaptive method) may only be available *after* the completion
     of the "compute..." stage, which is why :meth:`tick_after` exists.
 
     A :class:`LogManager` logs any number of named time series of floats to
@@ -1262,6 +1262,7 @@ class LogUpdateDuration(PostLogQuantity):
         self.log_manager = mgr
 
     def __call__(self) -> float:
+        add_hwm(self.log_manager)
         return self.log_manager.t_log
 
 
@@ -1511,6 +1512,19 @@ def add_run_info(mgr: LogManager) -> None:
     from time import localtime, strftime, time
     mgr.set_constant("date", strftime("%a, %d %b %Y %H:%M:%S %Z", localtime()))
     mgr.set_constant("unixtime", time())
+
+
+def add_hwm(mgr: LogManager) -> None:
+    """Adds memory high water mark (HWM) in MBytes."""
+    from resource import RUSAGE_SELF, getrusage
+    import os
+
+    res = getrusage(RUSAGE_SELF)
+
+    if os.uname().sysname == "Linux":
+        mgr.set_constant("memory_hwm_mbyte", res.ru_maxrss / 1024)
+    elif os.uname().sysname == "Darwin":
+        mgr.set_constant("memory_hwm_mbyte", res.ru_maxrss / 1024 / 1024)
 
 # }}}
 
