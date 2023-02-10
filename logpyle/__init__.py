@@ -24,6 +24,7 @@ Built-in Log General-Purpose Quantities
 .. autoclass:: InitTime
 .. autoclass:: CPUTime
 .. autoclass:: ETA
+.. autoclass:: MemoryHwm
 .. autofunction:: add_general_quantities
 
 Built-in Log Simulation-Related Quantities
@@ -1530,6 +1531,7 @@ def _get_memory_hwm() -> float:
 
 
 class MemoryHwm(PostLogQuantity):
+    """Record (monotonically increasing) memory high water mark (HWM) in MBytes."""
     def __init__(self, name: str = "memory_hwm_mbyte") -> None:
         PostLogQuantity.__init__(self, name, "MByte", "Memory High Water Mark")
 
