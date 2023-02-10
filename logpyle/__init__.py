@@ -1262,7 +1262,6 @@ class LogUpdateDuration(PostLogQuantity):
         self.log_manager = mgr
 
     def __call__(self) -> float:
-        add_hwm(self.log_manager)
         return self.log_manager.t_log
 
 
@@ -1446,6 +1445,7 @@ def add_general_quantities(mgr: LogManager) -> None:
     mgr.add_quantity(LogUpdateDuration(mgr))
     mgr.add_quantity(TimestepCounter())
     mgr.add_quantity(InitTime())
+    mgr.add_quantity(MemoryHwm())
 
 
 class SimulationTime(TimeTracker, LogQuantity):
@@ -1514,17 +1514,27 @@ def add_run_info(mgr: LogManager) -> None:
     mgr.set_constant("unixtime", time())
 
 
-def add_hwm(mgr: LogManager) -> None:
-    """Adds memory high water mark (HWM) in MBytes."""
+def _get_memory_hwm() -> float:
+    """Returns memory high water mark (HWM) in MBytes."""
     from resource import RUSAGE_SELF, getrusage
     import os
 
     res = getrusage(RUSAGE_SELF)
 
     if os.uname().sysname == "Linux":
-        mgr.set_constant("memory_hwm_mbyte", res.ru_maxrss / 1024)
+        return res.ru_maxrss / 1024
     elif os.uname().sysname == "Darwin":
-        mgr.set_constant("memory_hwm_mbyte", res.ru_maxrss / 1024 / 1024)
+        return res.ru_maxrss / 1024 / 1024
+    else:
+        raise ValueError("_get_memory_hwm is only supported on Linux/Mac.")
+
+
+class MemoryHwm(PostLogQuantity):
+    def __init__(self, name: str = "memory_hwm_mbyte") -> None:
+        PostLogQuantity.__init__(self, name, "MByte", "Memory High Water Mark")
+
+    def __call__(self) -> float:
+        return _get_memory_hwm()
 
 # }}}
 
