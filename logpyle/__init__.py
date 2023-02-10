@@ -1530,7 +1530,7 @@ def _get_memory_hwm() -> float:
 
 class MemoryHwm(PostLogQuantity):
     """Record (monotonically increasing) memory high water mark (HWM) in MBytes."""
-    def __init__(self, name: str = "memory_hwm_mbyte") -> None:
+    def __init__(self, name: str = "memory_usage_hwm") -> None:
         PostLogQuantity.__init__(self, name, "MByte", "Memory High Water Mark")
 
     def __call__(self) -> float:
