@@ -36,7 +36,7 @@ def main():
 
     # Watches are printed periodically during execution
     logmgr.add_watches(["step.max", "t_sim.max", "t_step.max", "fifteen",
-                        "t_vis", "t_log"])
+                        "t_vis", "t_log", "memory_hwm_mbyte"])
 
     for istep in range(200):
         logmgr.tick_before()
