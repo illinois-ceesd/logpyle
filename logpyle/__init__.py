@@ -1534,9 +1534,18 @@ class MemoryHwm(PostLogQuantity):
     """Record (monotonically increasing) memory high water mark (HWM) in MBytes."""
     def __init__(self, name: str = "memory_usage_hwm") -> None:
         PostLogQuantity.__init__(self, name, "MByte", "Memory High Water Mark")
+        import os
+        if os.uname().sysname == "Linux":
+            self.fac = 1024
+        elif os.uname().sysname == "Darwin":
+            self.fac = 1024*1024
+        else:
+            raise ValueError("MemoryHwm is only supported on Linux/Mac.")
 
     def __call__(self) -> float:
-        return _get_memory_hwm()
+        from resource import RUSAGE_SELF, getrusage
+        res = getrusage(RUSAGE_SELF)
+        return res.ru_maxrss / self.fac
 
 # }}}
 
