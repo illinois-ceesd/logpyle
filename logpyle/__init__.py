@@ -24,6 +24,7 @@ Built-in Log General-Purpose Quantities
 .. autoclass:: InitTime
 .. autoclass:: CPUTime
 .. autoclass:: ETA
+.. autoclass:: MemoryHwm
 .. autofunction:: add_general_quantities
 
 Built-in Log Simulation-Related Quantities
@@ -414,7 +415,7 @@ class LogManager:
     :meth:`tick_after` calls captures data for a single time state,
     namely that in which the data may have been *before* the "compute"
     step. However, some data (such as the length of the timestep taken
-    in a time-adpative method) may only be available *after* the completion
+    in a time-adaptive method) may only be available *after* the completion
     of the "compute..." stage, which is why :meth:`tick_after` exists.
 
     A :class:`LogManager` logs any number of named time series of floats to
@@ -1445,6 +1446,7 @@ def add_general_quantities(mgr: LogManager) -> None:
     mgr.add_quantity(LogUpdateDuration(mgr))
     mgr.add_quantity(TimestepCounter())
     mgr.add_quantity(InitTime())
+    mgr.add_quantity(MemoryHwm())
 
 
 class SimulationTime(TimeTracker, LogQuantity):
@@ -1511,6 +1513,24 @@ def add_run_info(mgr: LogManager) -> None:
     from time import localtime, strftime, time
     mgr.set_constant("date", strftime("%a, %d %b %Y %H:%M:%S %Z", localtime()))
     mgr.set_constant("unixtime", time())
+
+
+class MemoryHwm(PostLogQuantity):
+    """Record (monotonically increasing) memory high water mark (HWM) in MBytes."""
+    def __init__(self, name: str = "memory_usage_hwm") -> None:
+        PostLogQuantity.__init__(self, name, "MByte", "Memory High Water Mark")
+        import os
+        if os.uname().sysname == "Linux":
+            self.fac = 1024
+        elif os.uname().sysname == "Darwin":
+            self.fac = 1024*1024
+        else:
+            raise ValueError("MemoryHwm is only supported on Linux/Mac.")
+
+    def __call__(self) -> float:
+        from resource import RUSAGE_SELF, getrusage
+        res = getrusage(RUSAGE_SELF)
+        return res.ru_maxrss / self.fac
 
 # }}}
 
