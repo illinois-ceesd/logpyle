@@ -1515,21 +1515,6 @@ def add_run_info(mgr: LogManager) -> None:
     mgr.set_constant("unixtime", time())
 
 
-def _get_memory_hwm() -> float:
-    """Returns memory high water mark (HWM) in MBytes."""
-    from resource import RUSAGE_SELF, getrusage
-    import os
-
-    res = getrusage(RUSAGE_SELF)
-
-    if os.uname().sysname == "Linux":
-        return res.ru_maxrss / 1024
-    elif os.uname().sysname == "Darwin":
-        return res.ru_maxrss / 1024 / 1024
-    else:
-        raise ValueError("_get_memory_hwm is only supported on Linux/Mac.")
-
-
 class MemoryHwm(PostLogQuantity):
     """Record (monotonically increasing) memory high water mark (HWM) in MBytes."""
     def __init__(self, name: str = "memory_usage_hwm") -> None:
