@@ -65,9 +65,6 @@ __version__ = logpyle.version.VERSION_TEXT
 import logging
 logger = logging.getLogger(__name__)
 
-import os
-_uname = os.uname().sysname
-
 from typing import (List, Callable, Union, Tuple, Optional, Dict, Any,
                     TYPE_CHECKING, Iterable)
 from pytools.datatable import DataTable
@@ -80,6 +77,7 @@ if TYPE_CHECKING:
 
 def time() -> float:
     """Return elapsed CPU time, as a float, in seconds."""
+    import os
     time_opt = os.environ.get("PYTOOLS_LOG_TIME") or "wall"
     if time_opt == "wall":
         from time import time
@@ -522,6 +520,7 @@ class LogManager:
             file_base = ":memory:"
             file_extension = ""
         else:
+            import os
             file_base, file_extension = os.path.splitext(filename)
             if self.is_parallel:
                 file_base += "-rank%d" % self.rank
@@ -540,6 +539,7 @@ class LogManager:
             filename = file_base + suffix + file_extension
 
             if mode == "wo":
+                import os
                 try:
                     os.remove(filename)
                 except OSError:
@@ -1380,6 +1380,7 @@ class InitTime(LogQuantity):
     def __init__(self, name: str = "t_init") -> None:
         LogQuantity.__init__(self, name, "s", "Init time")
 
+        import os
         try:
             import psutil
         except ModuleNotFoundError:
@@ -1517,12 +1518,13 @@ def add_run_info(mgr: LogManager) -> None:
 def _get_memory_hwm() -> float:
     """Returns memory high water mark (HWM) in MBytes."""
     from resource import RUSAGE_SELF, getrusage
+    import os
 
     res = getrusage(RUSAGE_SELF)
 
-    if _uname == "Linux":
+    if os.uname().sysname == "Linux":
         return res.ru_maxrss / 1024
-    elif _uname == "Darwin":
+    elif os.uname().sysname == "Darwin":
         return res.ru_maxrss / 1024 / 1024
     else:
         raise ValueError("_get_memory_hwm is only supported on Linux/Mac.")
