@@ -4,6 +4,8 @@ from sqlalchemy import create_engine
 from warnings import warn
 from pytools import Table
 
+from typing import Optional
+
 # Commands:
 #  .help        show this help message
 #  .q SQL       execute a (potentially mangled) query
@@ -59,17 +61,18 @@ def table_from_df(df, header=None, skip_index=True) -> Table:
 def pandalyzer_help():
     print("""
 Commands:
- help()       show this help message
- runprops()   show a list of run properties
- quantities() show a list of time-dependent quantities
- warnings()   show a list of warnings
- dump()       show an SQL table
+ help()                show this help message.
+ runprops(prop=None)   show a list of run properties (constants);
+                       with the optional argument, show only that property.
+ quantities()          show a list of time-dependent quantities.
+ warnings()            show a list of warnings.
+ dump()                show an SQL table.
 
 Plotting:
- dbplot()     plot list of quantities.
+ dbplot()              plot list of quantities.
 
 Available Python symbols:
-    db        the database
+ db                    the database.
 """)
 
 
@@ -115,8 +118,15 @@ class RunDB:
                     warn(f"No such table '{table_name}'.")
                 return None
 
-    def runprops(self):
-        print(table_from_df(self._get_table("runs").transpose(),
+    def runprops(self, prop: Optional[str] = None):
+        if prop:
+            tbl = Table()
+            tbl.add_row(["Property", "Value"])
+            tbl.add_row([prop, self._get_table("runs")[prop].values[0]])
+
+            print(tbl)
+        else:
+            print(table_from_df(self._get_table("runs").transpose(),
               header=["Property", "Value"], skip_index=False))
 
     def quantities(self, where = None) -> None:
