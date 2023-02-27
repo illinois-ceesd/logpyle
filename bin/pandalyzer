@@ -12,7 +12,8 @@ def main():
     parser.add_argument("scriptfile", nargs="?", help="script file to read")
     args = parser.parse_args()
 
-    from logpyle.pandalyzer import make_db, make_pandalyzer_symbols, PandalyzerConsole
+    from logpyle.pandalyzer import (make_db, make_pandalyzer_symbols,
+                                    PandalyzerConsole)
 
     if args.scriptfile:
         db = make_db(args.dbfile, interactive=False)
@@ -20,13 +21,14 @@ def main():
                 make_pandalyzer_symbols(db))
     elif args.commands:
         db = make_db(args.dbfile, interactive=False)
-        exec(compile(args.commands, "--commands", "exec"), make_pandalyzer_symbols(db))
+        exec(compile(
+            args.commands, "--commands", "exec"), make_pandalyzer_symbols(db))
     else:
         db = make_db(args.dbfile, interactive=True)
-        from logpyle.runalyzer import RunalyzerConsole
         cons = PandalyzerConsole(db)
-        cons.interact("Pandalyzer running on Python" + sys.version.split('\n')[0] +
-                    "\nRun help() to see help for 'magic' commands.")
+        cons.interact("Pandalyzer running on Python "
+                      + sys.version.split("\n")[0]
+                      + "\nRun help() to see help for 'magic' commands.")
 
 
 if __name__ == "__main__":

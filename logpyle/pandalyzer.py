@@ -38,7 +38,7 @@ from typing import Optional
 #     table_from_cursor(cursor)
 
 
-def table_from_df(df, header=None, skip_index=True) -> Table:
+def table_from_df(df, header=None, skip_index=True) -> Optional[Table]:
     if df is None:
         return None
 
@@ -121,15 +121,15 @@ class RunDB:
     def runprops(self, prop: Optional[str] = None):
         if prop:
             tbl = Table()
-            tbl.add_row(["Property", "Value"])
-            tbl.add_row([prop, self._get_table("runs")[prop].values[0]])
+            tbl.add_row(("Property", "Value"))
+            tbl.add_row((prop, self._get_table("runs")[prop].values[0]))
 
             print(tbl)
         else:
             print(table_from_df(self._get_table("runs").transpose(),
               header=["Property", "Value"], skip_index=False))
 
-    def quantities(self, where = None) -> None:
+    def quantities(self, where=None) -> None:
         res = self._get_table("quantities")
         print(len(res), "quantities.")
         print(table_from_df(res))

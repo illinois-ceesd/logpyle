@@ -156,7 +156,7 @@ def scan(fg, dbnames, progress=True):
         if progress:
             pb.progress()
 
-        for fname, ftype, fvalue in fg.get_db_features(dbname, logmgr):
+        for fname, ftype, _fvalue in fg.get_db_features(dbname, logmgr):
             if fname in features:
                 features[fname] = larger_sql_type(ftype, features[fname])
             else:
