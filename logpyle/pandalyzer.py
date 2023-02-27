@@ -164,7 +164,7 @@ class RunDB:
 
         legend(legend_entries[1:])
         p.axes.set_xlabel(legend_entries[0])
-        p.axes.set_ylabel(", ".join(legend_entries[1:]))
+        p.axes.set_ylabel("\n".join(legend_entries[1:]))
         show(block=False)
         return p
 
