@@ -69,27 +69,10 @@ logger = logging.getLogger(__name__)
 from typing import (List, Callable, Union, Tuple, Optional, Dict, Any,
                     TYPE_CHECKING, Iterable)
 from pytools.datatable import DataTable
+from time import time
 
 if TYPE_CHECKING:
     import mpi4py
-
-
-# {{{ timing function
-
-def time() -> float:
-    """Return elapsed CPU time, as a float, in seconds."""
-    import os
-    time_opt = os.environ.get("PYTOOLS_LOG_TIME") or "wall"
-    if time_opt == "wall":
-        from time import time
-        return time()
-    elif time_opt == "rusage":
-        from resource import getrusage, RUSAGE_SELF
-        return getrusage(RUSAGE_SELF).ru_utime
-    else:
-        raise RuntimeError("invalid timing method '%s'" % time_opt)
-
-# }}}
 
 
 # {{{ abstract logging interface
