@@ -233,29 +233,30 @@ class MultiPostLogQuantity(MultiLogQuantity, PostLogQuantity):
 
 
 class DtConsumer:
-    def __init__(self, dt) -> None:
-        self.dt = dt
+    def __init__(self) -> None:
+        self.dt: Optional[float] = None
 
-    def set_dt(self, dt) -> None:
+    def set_dt(self, dt: float) -> None:
         self.dt = dt
 
 
 class TimeTracker(DtConsumer):
     def __init__(self, dt: Optional[float], start: float = 0) -> None:
-        DtConsumer.__init__(self, dt)
+        DtConsumer.__init__(self)
         self.t = start
 
     def tick(self) -> None:
-        self.t += self.dt
+        from typing import cast
+        self.t += cast(float, self.dt)
 
 
 class SimulationLogQuantity(PostLogQuantity, DtConsumer):
     """A source of loggable scalars that needs to know the simulation timestep."""
 
-    def __init__(self, dt: Optional[float], name: str, unit: Optional[str] = None,
+    def __init__(self, name: str, unit: Optional[str] = None,
                  description: Optional[str] = None) -> None:
         PostLogQuantity.__init__(self, name, unit, description)
-        DtConsumer.__init__(self, dt)
+        DtConsumer.__init__(self)
 
 
 class PushLogQuantity(LogQuantity):
@@ -1438,10 +1439,9 @@ def add_general_quantities(mgr: LogManager) -> None:
 class SimulationTime(TimeTracker, LogQuantity):
     """Record (monotonically increasing) simulation time."""
 
-    def __init__(self, dt: Optional[float], name: str = "t_sim",
-                 start: float = 0) -> None:
+    def __init__(self, name: str = "t_sim", start: float = 0) -> None:
         LogQuantity.__init__(self, name, "s", "Simulation Time")
-        TimeTracker.__init__(self, dt, start)
+        TimeTracker.__init__(self, start)
 
     def __call__(self) -> float:
         return self.t
@@ -1450,12 +1450,12 @@ class SimulationTime(TimeTracker, LogQuantity):
 class Timestep(SimulationLogQuantity):
     """Record the magnitude of the simulated time step."""
 
-    def __init__(self, dt: Optional[float], name: str = "dt",
-                 unit: str = "s") -> None:
-        SimulationLogQuantity.__init__(self, dt, name, unit, "Simulation Timestep")
+    def __init__(self, name: str = "dt", unit: str = "s") -> None:
+        SimulationLogQuantity.__init__(self, name, unit, "Simulation Timestep")
 
     def __call__(self) -> float:
-        return self.dt
+        from typing import cast
+        return cast(float, self.dt)
 
 
 def set_dt(mgr: LogManager, dt: float) -> None:
@@ -1468,19 +1468,13 @@ def set_dt(mgr: LogManager, dt: float) -> None:
                 gd.quantity.set_dt(dt)
 
 
-def add_simulation_quantities(mgr: LogManager, dt: Optional[float] = None) -> None:
+def add_simulation_quantities(mgr: LogManager) -> None:
     """Add :class:`LogQuantity` objects relating to simulation time.
 
     :arg mgr: the :class:`LogManager` instance.
-    :arg dt: (deprecated, use :meth:`set_dt` instead)
     """
-    if dt is not None:
-        from warnings import warn
-        warn("Specifying dt ahead of time is a deprecated practice. "
-                "Use logpyle.set_dt() instead.")
-
-    mgr.add_quantity(SimulationTime(dt))
-    mgr.add_quantity(Timestep(dt))
+    mgr.add_quantity(SimulationTime())
+    mgr.add_quantity(Timestep())
 
 
 def add_run_info(mgr: LogManager) -> None:
