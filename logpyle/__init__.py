@@ -1559,7 +1559,7 @@ class GCStats(MultiPostLogQuantity):
                  "1", "1", "1",
                  "1", "1", "1", "1", "1", "1", "1", "1", "1"]
 
-        descriptions = ["is GC enabled?",
+        descriptions = ["Is automatic GC enabled?",
                         "GC count gen0", "GC count gen1", "GC count gen2",
                         "GC collections gen0", "GC objects collected gen0",
                         "GC objects uncollectable gen0",
