@@ -25,6 +25,7 @@ Built-in Log General-Purpose Quantities
 .. autoclass:: CPUTime
 .. autoclass:: ETA
 .. autoclass:: MemoryHwm
+.. autoclass:: GCStats
 .. autofunction:: add_general_quantities
 
 Built-in Log Simulation-Related Quantities
@@ -927,10 +928,10 @@ class LogManager:
           is a list of tuples ``(tick_nbr, value)``.
 
         Aggregators are specified as follows:
-        - ``qty.min``, ``qty.max``, ``qty.avg``, ``qty.sum``, ``qty.norm2``,
-        ``qty.median``
-        - ``qty[rank_nbr]``
-        - ``qty.loc``
+            - ``qty.min``, ``qty.max``, ``qty.avg``, ``qty.sum``, ``qty.norm2``,
+              ``qty.median``
+            - ``qty[rank_nbr]``
+            - ``qty.loc``
         """
 
         parsed = self._parse_expr(expression)
@@ -1537,9 +1538,11 @@ class GCStats(MultiPostLogQuantity):
     """Record Garbage Collection statistics.
 
     Information regarding the meaning of these values can be found at:
-    - https://docs.python.org/3/library/gc.html
-    - https://stackoverflow.com/questions/64561488/pythons-gc-get-objects-from-get-count  # noqa: E501
-    - https://github.com/python/cpython/blob/main/Modules/gcmodule.c
+        - https://docs.python.org/3/library/gc.html
+
+          ..  # noqa: E501
+        - https://stackoverflow.com/questions/64561488/pythons-gc-get-objects-from-get-count
+        - https://github.com/python/cpython/blob/main/Modules/gcmodule.c
     """
     def __init__(self) -> None:
         names = [  # gc.isenabled():
