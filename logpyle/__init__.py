@@ -60,16 +60,19 @@ THE SOFTWARE.
 
 
 import logpyle.version
+
 __version__ = logpyle.version.VERSION_TEXT
 
 
 import logging
+
 logger = logging.getLogger(__name__)
 
-from typing import (List, Callable, Union, Tuple, Optional, Dict, Any,
-                    TYPE_CHECKING, Iterable)
-from pytools.datatable import DataTable
 from time import monotonic as time_monotonic
+from typing import (TYPE_CHECKING, Any, Callable, Dict, Iterable, List,
+                    Optional, Tuple, Union)
+
+from pytools.datatable import DataTable
 
 if TYPE_CHECKING:
     import mpi4py
@@ -928,7 +931,7 @@ class LogManager:
 
         # evaluate unit and description, if necessary
         if unit is None:
-            from pymbolic import substitute, parse
+            from pymbolic import parse, substitute
 
             unit_dict = {dd.varname: dd.qdat.unit for dd in dep_data}
             from pytools import all
@@ -1022,7 +1025,7 @@ class LogManager:
         outf.close()
 
     def plot_matplotlib(self, expr_x, expr_y) -> None:
-        from matplotlib.pyplot import xlabel, ylabel, plot
+        from matplotlib.pyplot import plot, xlabel, ylabel
 
         (data_x, descr_x, unit_x), (data_y, descr_y, unit_y) = \
                 self.get_plot_data(expr_x, expr_y)
@@ -1056,7 +1059,8 @@ class LogManager:
 
         # gather information on aggregation expressions
         dep_data = []
-        from pymbolic.primitives import Variable, Lookup, Subscript  # type: ignore
+        from pymbolic.primitives import (Lookup, Subscript,  # type: ignore
+                                         Variable)
         for dep_idx, dep in enumerate(deps):
             nonlocal_agg = True
 
@@ -1117,7 +1121,7 @@ class LogManager:
             dep_data.append(this_dep_data)
 
         # substitute in the "logvar" variable names
-        from pymbolic import var, substitute
+        from pymbolic import substitute, var
         parsed = substitute(parsed,
                 {dd.expr: var(dd.varname) for dd in dep_data})
 
