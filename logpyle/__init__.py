@@ -69,7 +69,7 @@ logger = logging.getLogger(__name__)
 from typing import (List, Callable, Union, Tuple, Optional, Dict, Any,
                     TYPE_CHECKING, Iterable)
 from pytools.datatable import DataTable
-from time import time
+from time import monotonic as time
 
 if TYPE_CHECKING:
     import mpi4py
