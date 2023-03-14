@@ -69,27 +69,10 @@ logger = logging.getLogger(__name__)
 from typing import (List, Callable, Union, Tuple, Optional, Dict, Any,
                     TYPE_CHECKING, Iterable)
 from pytools.datatable import DataTable
+from time import monotonic as time_monotonic
 
 if TYPE_CHECKING:
     import mpi4py
-
-
-# {{{ timing function
-
-def time() -> float:
-    """Return elapsed CPU time, as a float, in seconds."""
-    import os
-    time_opt = os.environ.get("PYTOOLS_LOG_TIME") or "wall"
-    if time_opt == "wall":
-        from time import time
-        return time()
-    elif time_opt == "rusage":
-        from resource import getrusage, RUSAGE_SELF
-        return getrusage(RUSAGE_SELF).ru_utime
-    else:
-        raise RuntimeError("invalid timing method '%s'" % time_opt)
-
-# }}}
 
 
 # {{{ abstract logging interface
@@ -490,10 +473,10 @@ class LogManager:
 
         self.constants: Dict[str, object] = {}
 
-        self.last_save_time = time()
+        self.last_save_time = time_monotonic()
 
         # self-timing
-        self.start_time = time()
+        self.start_time = time_monotonic()
         self.t_log: float = 0
 
         # parallel support
@@ -809,7 +792,7 @@ class LogManager:
         :meth:`PostLogQuantity.prepare_for_tick` on :class:`PostLogQuantity`
         instances.
         """
-        tick_start_time = time()
+        tick_start_time = time_monotonic()
 
         for gd in self.before_gather_descriptors:
             self._gather_for_descriptor(gd)
@@ -818,7 +801,7 @@ class LogManager:
             from typing import cast
             cast(PostLogQuantity, gd.quantity).prepare_for_tick()
 
-        self.t_log = time() - tick_start_time
+        self.t_log = time_monotonic() - tick_start_time
 
     def tick_after(self) -> None:
         """Record data points from each added :class:`LogQuantity` that
@@ -826,7 +809,7 @@ class LogManager:
 
         May also checkpoint data to disk.
         """
-        tick_start_time = time()
+        tick_start_time = time_monotonic()
 
         for gd_lst in [self.before_gather_descriptors,
                 self.after_gather_descriptors]:
@@ -848,7 +831,7 @@ class LogManager:
         if self.tick_count+1 >= self.next_watch_tick:
             self._watch_tick()
 
-        self.t_log += time() - tick_start_time
+        self.t_log += time_monotonic() - tick_start_time
 
         # Adjust log update time(s), t_log
         for gd in self.after_gather_descriptors:
@@ -871,7 +854,7 @@ class LogManager:
             from warnings import warn
             warn("encountered sqlite error during commit: %s" % e)
 
-        self.last_save_time = time()
+        self.last_save_time = time_monotonic()
 
     def add_quantity(self, quantity: LogQuantity, interval: int = 1) -> None:
         """Add a :class:`LogQuantity` to this manager.
@@ -1141,8 +1124,9 @@ class LogManager:
         return parsed, dep_data
 
     def _calculate_next_watch_tick(self) -> None:
-        ticks_per_interval = (self.tick_count/max(1, time()-self.start_time)
-                         * self.watch_interval)
+        ticks_per_interval = (self.tick_count
+                              / max(1, time_monotonic()-self.start_time)
+                              * self.watch_interval)
         self.next_watch_tick = self.tick_count + int(max(1, ticks_per_interval))
 
     def _watch_tick(self) -> None:
@@ -1201,11 +1185,11 @@ class _SubTimer:
         self.elapsed = 0
 
     def start(self):
-        self.start_time = time()
+        self.start_time = time_monotonic()
         return self
 
     def stop(self):
-        self.elapsed += time() - self.start_time
+        self.elapsed += time_monotonic() - self.start_time
         del self.start_time
         return self
 
@@ -1244,7 +1228,7 @@ class IntervalTimer(PostLogQuantity):
         return sub_timer
 
     def add_time(self, t: float) -> None:
-        self.start_time = time()
+        self.start_time = time_monotonic()
         self.elapsed += t
 
     def __call__(self) -> float:
@@ -1335,7 +1319,7 @@ class StepToStepDuration(PostLogQuantity):
 
     def prepare_for_tick(self) -> None:
         self.last2_start_time = self.last_start_time
-        self.last_start_time = time()
+        self.last_start_time = time_monotonic()
 
     def __call__(self) -> Optional[float]:
         if self.last2_start_time is None or self.last_start_time is None:
@@ -1361,10 +1345,10 @@ class TimestepDuration(PostLogQuantity):
         PostLogQuantity.__init__(self, name, "s", "Time step duration")
 
     def prepare_for_tick(self) -> None:
-        self.last_start = time()
+        self.last_start = time_monotonic()
 
     def __call__(self) -> float:
-        now = time()
+        now = time_monotonic()
         result = now - self.last_start
         del self.last_start
         return result
@@ -1398,7 +1382,7 @@ class InitTime(LogQuantity):
             return None
 
         self.done = True
-        now = time()
+        now = time_monotonic()
         return now - self.start_time
 
 
@@ -1410,10 +1394,10 @@ class CPUTime(LogQuantity):
     def __init__(self, name: str = "t_cpu") -> None:
         LogQuantity.__init__(self, name, "s", "Wall time")
 
-        self.start = time()
+        self.start = time_monotonic()
 
     def __call__(self) -> float:
-        return time()-self.start
+        return time_monotonic()-self.start
 
 
 class ETA(LogQuantity):
@@ -1426,12 +1410,12 @@ class ETA(LogQuantity):
 
         self.steps = 0
         self.total_steps = total_steps
-        self.start = time()
+        self.start = time_monotonic()
 
     def __call__(self) -> float:
         fraction_done = self.steps/self.total_steps
         self.steps += 1
-        time_spent = time()-self.start
+        time_spent = time_monotonic()-self.start
         if fraction_done > 1e-9:
             return time_spent/fraction_done-time_spent
         else:
