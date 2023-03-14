@@ -1124,8 +1124,9 @@ class LogManager:
         return parsed, dep_data
 
     def _calculate_next_watch_tick(self) -> None:
-        ticks_per_interval = (self.tick_count/max(1, time_monotonic()-self.start_time)
-                         * self.watch_interval)
+        ticks_per_interval = (self.tick_count
+                              / max(1, time_monotonic()-self.start_time)
+                              * self.watch_interval)
         self.next_watch_tick = self.tick_count + int(max(1, ticks_per_interval))
 
     def _watch_tick(self) -> None:
