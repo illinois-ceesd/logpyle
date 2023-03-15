@@ -302,7 +302,7 @@ class _GatherDescriptor:
 
 class _QuantityData:
     def __init__(self, unit: str, description: str,
-                 default_aggregator: Callable[[Iterable[float]], float]) -> None:
+                 default_aggregator: Optional[Callable[[Iterable[float]], float]]) -> None:
         self.unit = unit
         self.description = description
         self.default_aggregator = default_aggregator
@@ -782,7 +782,7 @@ class LogManager:
             print("while adding datapoint for '%s':" % name)
             raise
 
-    def _gather_for_descriptor(self, gd) -> None:
+    def _gather_for_descriptor(self, gd: _GatherDescriptor) -> None:
         if self.tick_count % gd.interval == 0:
             q_value = gd.quantity()
             if isinstance(gd.quantity, MultiLogQuantity):
@@ -868,7 +868,7 @@ class LogManager:
         :arg interval: interval (in time steps) when to gather this quantity.
         """
 
-        def add_internal(name, unit, description, def_agg):
+        def add_internal(name: str, unit: str, description: str, def_agg: Optional[Callable[[Any], Any]]) -> None:
             logger.debug("add log quantity '%s'" % name)
 
             if name in self.quantity_data:
