@@ -1294,9 +1294,10 @@ class TimestepCounter(LogQuantity):
 
 
 class StepToStepDuration(PostLogQuantity):
-    """Records the CPU time between invocations of
-    :meth:`LogManager.tick_before` and
-    :meth:`LogManager.tick_after`.
+    """Records the wall time between the starts of consecutive time steps, i.e.,
+    the wall time between :meth:`LogManager.tick_before` of step x and
+    :meth:`LogManager.tick_before` of step x+1. The value stored is the value for
+    step x+1.
 
     .. automethod:: __init__
     """
@@ -1318,9 +1319,8 @@ class StepToStepDuration(PostLogQuantity):
 
 
 class TimestepDuration(PostLogQuantity):
-    """Records the CPU time between the starts of time steps.
-    :meth:`LogManager.tick_before` and
-    :meth:`LogManager.tick_after`.
+    """Records the wall time between invocations of :meth:`LogManager.tick_before`
+    and :meth:`LogManager.tick_after`, i.e., the duration of the time step.
 
     .. automethod:: __init__
     """
@@ -1379,7 +1379,7 @@ class InitTime(LogQuantity):
 
 
 class CPUTime(LogQuantity):
-    """Records (monotonically increasing) CPU time.
+    """Records (monotonically increasing) wall time.
 
     .. automethod:: __init__
     """
