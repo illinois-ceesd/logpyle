@@ -1379,7 +1379,8 @@ class InitTime(LogQuantity):
 
 
 class CPUTime(LogQuantity):
-    """Records (monotonically increasing) wall time.
+    """Records (monotonically increasing) wall time since the quantity was
+    initialized.
 
     .. automethod:: __init__
     """
