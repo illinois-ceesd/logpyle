@@ -389,7 +389,6 @@ class LogManager:
 
         tick_before()
         compute...
-        tick()
         tick_after()
 
         tick_before()
@@ -774,20 +773,6 @@ class LogManager:
                     self._insert_datapoint(name, value)
             else:
                 self._insert_datapoint(gd.quantity.name, q_value)
-
-    def tick(self) -> None:
-        """Record data points from each added :class:`LogQuantity`.
-
-        May also checkpoint data to disk, and/or synchronize data points
-        to the head rank.
-        """
-        from warnings import warn
-        warn("LogManager.tick() is deprecated. "
-                "Use LogManager.tick_{before,after}().",
-                DeprecationWarning)
-
-        self.tick_before()
-        self.tick_after()
 
     def tick_before(self) -> None:
         """Record data points from each added :class:`LogQuantity` that
