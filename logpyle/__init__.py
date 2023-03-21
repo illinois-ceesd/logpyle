@@ -68,10 +68,13 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+from sqlite3 import Connection
 from time import monotonic as time_monotonic
-from typing import (TYPE_CHECKING, Any, Callable, Dict, Iterable, List,
-                    Optional, Tuple, Union)
+from typing import (TYPE_CHECKING, Any, Callable, Dict, Generator, Iterable,
+                    List, Optional, Sequence, TextIO, Tuple, Type, Union, cast)
 
+from pymbolic.mapper.dependency import DependencyMapper  # type: ignore[import]
+from pymbolic.primitives import Expression  # type: ignore[import]
 from pytools.datatable import DataTable
 
 if TYPE_CHECKING:
@@ -219,10 +222,10 @@ class MultiPostLogQuantity(MultiLogQuantity, PostLogQuantity):
 
 
 class DtConsumer:
-    def __init__(self, dt) -> None:
+    def __init__(self, dt: Optional[float]) -> None:
         self.dt = dt
 
-    def set_dt(self, dt) -> None:
+    def set_dt(self, dt: Optional[float]) -> None:
         self.dt = dt
 
 
@@ -232,7 +235,7 @@ class TimeTracker(DtConsumer):
         self.t = start
 
     def tick(self) -> None:
-        self.t += self.dt
+        self.t += cast(float, self.dt)
 
 
 class SimulationLogQuantity(PostLogQuantity, DtConsumer):
@@ -248,9 +251,9 @@ class PushLogQuantity(LogQuantity):
     def __init__(self, name: str, unit: Optional[str] = None,
                  description: Optional[str] = None) -> None:
         LogQuantity.__init__(self, name, unit, description)
-        self.value = None
+        self.value: Optional[float] = None
 
-    def push_value(self, value) -> None:
+    def push_value(self, value: float) -> None:
         if self.value is not None:
             raise RuntimeError("can't push two values per cycle")
         self.value = value
@@ -263,8 +266,9 @@ class PushLogQuantity(LogQuantity):
 
 class CallableLogQuantityAdapter(LogQuantity):
     """Adapt a 0-ary callable as a :class:`LogQuantity`."""
-    def __init__(self, callable: Callable, name: str, unit: Optional[str] = None,
-                 description: Optional[str] = None) -> None:
+    def __init__(self, callable: Callable[[], float], name: str,
+                 unit: Optional[str] = None, description: Optional[str] = None) \
+                    -> None:
         self.callable = callable
         LogQuantity.__init__(self, name, unit, description)
 
@@ -283,14 +287,15 @@ class _GatherDescriptor:
 
 
 class _QuantityData:
-    def __init__(self, unit: str, description: str,
-                 default_aggregator: Callable) -> None:
+    def __init__(self, unit: Optional[str], description: Optional[str],
+                 default_aggregator: Optional[Callable[..., Any]]) -> None:
         self.unit = unit
         self.description = description
         self.default_aggregator = default_aggregator
 
 
-def _join_by_first_of_tuple(list_of_iterables):
+def _join_by_first_of_tuple(list_of_iterables: List[Iterable[Tuple[int, Any]]]) \
+        -> Generator[Tuple[int, List[Any]], None, None]:
     loi = [i.__iter__() for i in list_of_iterables]
     if not loi:
         return
@@ -347,12 +352,12 @@ def _get_unique_id() -> str:
         return uuid1().hex
 
 
-def _get_unique_suffix():
+def _get_unique_suffix() -> str:
     from datetime import datetime
     return "-" + datetime.utcnow().strftime("%Y%m%d-%H%M%S")
 
 
-def _set_up_schema(db_conn):
+def _set_up_schema(db_conn: Connection) -> int:
     # initialize new database
     db_conn.execute("""
       create table quantities (
@@ -379,6 +384,14 @@ def _set_up_schema(db_conn):
 
 
 from pytools import Record
+
+
+class _WatchInfo(Record):
+    pass
+
+
+class _DependencyData(Record):
+    pass
 
 
 class LogManager:
@@ -493,7 +506,7 @@ class LogManager:
             self.head_rank = 0
 
         # watch stuff
-        self.watches: List[Record] = []
+        self.watches: List[_WatchInfo] = []
         self.have_nonlocal_watches = False
 
         # Interval between printing watches, in seconds
@@ -577,17 +590,16 @@ class LogManager:
 
             break
 
-        self.old_showwarning: Optional[Callable] = None
+        self.old_showwarning: Optional[Callable[..., Any]] = None
         if capture_warnings:
             self.capture_warnings(True)
 
     def capture_warnings(self, enable: bool = True) -> None:
-        def _showwarning(message, category, filename, lineno, file=None, line=None):
-            try:
-                self.old_showwarning(message, category, filename, lineno, file, line)
-            except TypeError:
-                # cater to Python 2.5 and earlier
-                self.old_showwarning(message, category, filename, lineno)
+        def _showwarning(message: Union[Warning, str], category: Type[Warning],
+                         filename: str, lineno: int, file: Optional[TextIO] = None,
+                         line: Optional[str] = None) -> None:
+            assert self.old_showwarning
+            self.old_showwarning(message, category, filename, lineno, file, line)
 
             if self.schema_version >= 1 and self.mode[0] == "w":
                 if self.schema_version >= 2:
@@ -602,7 +614,6 @@ class LogManager:
         import warnings
         if enable:
             if self.old_showwarning is None:
-                pass
                 self.old_showwarning = warnings.showwarning
                 warnings.showwarning = _showwarning
             else:
@@ -623,7 +634,7 @@ class LogManager:
         for name, value in self.db_conn.execute("select name, value from constants"):
             self.constants[name] = loads(value)
 
-        self.schema_version = self.constants.get("schema_version", 0)
+        self.schema_version = cast(int, self.constants.get("schema_version", 0))
 
         self.is_parallel = bool(self.constants["is_parallel"])
 
@@ -676,10 +687,6 @@ class LogManager:
             watch expression, value, and unit should be printed. The default format
             string for each watch is ``{display}={value:g}{unit}``.
         """
-        from pytools import Record
-
-        class WatchInfo(Record):
-            pass
 
         default_format = "{display}={value:g}{unit} | "
 
@@ -705,8 +712,9 @@ class LogManager:
             from pymbolic import compile  # type: ignore
             compiled = compile(parsed, [dd.varname for dd in dep_data])
 
-            watch_info = WatchInfo(parsed=parsed, expr=expr, dep_data=dep_data,
-                    compiled=compiled, unit=unit, format=fmt)
+            watch_info = _WatchInfo(parsed=parsed, expr=expr, dep_data=dep_data,
+                    compiled=compiled, unit=unit,
+                    format=fmt)  # type: ignore[no-untyped-call]
 
             self.watches.append(watch_info)
 
@@ -765,7 +773,7 @@ class LogManager:
             print("while adding datapoint for '%s':" % name)
             raise
 
-    def _gather_for_descriptor(self, gd) -> None:
+    def _gather_for_descriptor(self, gd: _GatherDescriptor) -> None:
         if self.tick_count % gd.interval == 0:
             q_value = gd.quantity()
             if isinstance(gd.quantity, MultiLogQuantity):
@@ -786,7 +794,6 @@ class LogManager:
             self._gather_for_descriptor(gd)
 
         for gd in self.after_gather_descriptors:
-            from typing import cast
             cast(PostLogQuantity, gd.quantity).prepare_for_tick()
 
         self.t_log = time_monotonic() - tick_start_time
@@ -851,7 +858,8 @@ class LogManager:
         :param interval: interval (in time steps) when to gather this quantity.
         """
 
-        def add_internal(name, unit, description, def_agg):
+        def add_internal(name: str, unit: Optional[str], description: Optional[str],
+                         def_agg: Optional[Callable[..., Any]]) -> None:
             logger.debug("add log quantity '%s'" % name)
 
             if name in self.quantity_data:
@@ -888,7 +896,11 @@ class LogManager:
                     quantity.unit, quantity.description,
                     quantity.default_aggregator)
 
-    def get_expr_dataset(self, expression, description=None, unit=None):
+    def get_expr_dataset(self, expression: Expression,
+                         description: Optional[str] = None,
+                         unit: Optional[str] = None) \
+                            -> Tuple[Union[str, Any], Union[str, Any, None],
+                                     List[Tuple[int, Any]]]:
         """Prepare a time-series dataset for a given expression.
 
         :arg expression: A :mod:`pymbolic` expression that may involve
@@ -912,7 +924,8 @@ class LogManager:
         for dd in dep_data:
             table = self.get_table(dd.name)
             table.sort(["step"])
-            dd.table = table.aggregated(["step"], "value", dd.agg_func).data
+            dd.table = table.aggregated(["step"],  # type: ignore[attr-defined]
+                                        "value", dd.agg_func).data
 
         # evaluate unit and description, if necessary
         if unit is None:
@@ -935,7 +948,7 @@ class LogManager:
 
         data = []
 
-        for key, values in _join_by_first_of_tuple(dd.table for dd in dep_data):
+        for key, values in _join_by_first_of_tuple([dd.table for dd in dep_data]):
             try:
                 data.append((key, compiled(*values)))
             except ZeroDivisionError:
@@ -943,7 +956,7 @@ class LogManager:
 
         return (description, unit, data)
 
-    def get_joint_dataset(self, expressions):
+    def get_joint_dataset(self, expressions: Sequence[Expression]) -> List[Any]:
         """Return a joint data set for a list of expressions.
 
         :arg expressions: a list of either strings representing
@@ -976,10 +989,13 @@ class LogManager:
 
         return zipped_dubs
 
-    def get_plot_data(self, expr_x, expr_y, min_step=None, max_step=None):
+    def get_plot_data(self, expr_x: Expression, expr_y: Expression,
+                      min_step: Optional[int] = None,
+                      max_step: Optional[int] = None) \
+                            -> Tuple[Tuple[Any, str, str], Tuple[Any, str, str]]:
         """Generate plot-ready data.
 
-        :return: ``(data_x, descr_x, unit_x), (data_y, descr_y, unit_y)``
+        :returns: ``(data_x, descr_x, unit_x), (data_y, descr_y, unit_y)``
         """
         (descr_x, descr_y), (unit_x, unit_y), data = \
                 self.get_joint_dataset([expr_x, expr_y])
@@ -999,8 +1015,9 @@ class LogManager:
         return (data_x, descr_x, unit_x), \
                (data_y, descr_y, unit_y)
 
-    def write_datafile(self, filename, expr_x, expr_y) -> None:
-        (data_x, label_x), (data_y, label_y) = self.get_plot_data(
+    def write_datafile(self, filename: str, expr_x: Expression,
+                       expr_y: Expression) -> None:
+        (data_x, label_x, _), (data_y, label_y, _) = self.get_plot_data(
                 expr_x, expr_y)
 
         outf = open(filename, "w")
@@ -1009,7 +1026,7 @@ class LogManager:
             outf.write("{}\t{}\n".format(repr(dx), repr(dy)))
         outf.close()
 
-    def plot_matplotlib(self, expr_x, expr_y) -> None:
+    def plot_matplotlib(self, expr_x: Expression, expr_y: Expression) -> None:
         from matplotlib.pyplot import plot, xlabel, ylabel
 
         (data_x, descr_x, unit_x), (data_y, descr_y, unit_y) = \
@@ -1021,7 +1038,7 @@ class LogManager:
 
     # {{{ private functionality
 
-    def _parse_expr(self, expr):
+    def _parse_expr(self, expr: Expression) -> Any:
         from pymbolic import parse, substitute
         parsed = parse(expr)
 
@@ -1030,22 +1047,20 @@ class LogManager:
 
         return parsed
 
-    def _get_expr_dep_data(self, parsed):
+    def _get_expr_dep_data(self, parsed: Expression) \
+            -> Tuple[Expression, List[_DependencyData]]:
         class Nth:
-            def __init__(self, n):
+            def __init__(self, n: int) -> None:
                 self.n = n
 
-            def __call__(self, lst):
+            def __call__(self, lst: List[Any]) -> Any:
                 return lst[self.n]
-
-        from pymbolic.mapper.dependency import DependencyMapper  # type: ignore
 
         deps = DependencyMapper(include_calls=False)(parsed)
 
         # gather information on aggregation expressions
         dep_data = []
-        from pymbolic.primitives import (Lookup, Subscript,  # type: ignore
-                                         Variable)
+        from pymbolic.primitives import Lookup, Subscript, Variable
         for dep_idx, dep in enumerate(deps):
             nonlocal_agg = True
 
@@ -1097,10 +1112,8 @@ class LogManager:
 
             qdat = self.quantity_data[name]
 
-            class DependencyData(Record):
-                pass
-
-            this_dep_data = DependencyData(name=name, qdat=qdat, agg_func=agg_func,
+            this_dep_data = _DependencyData(name=name, qdat=qdat,
+                    agg_func=agg_func,  # type: ignore[no-untyped-call]
                     varname="logvar%d" % dep_idx, expr=dep,
                     nonlocal_agg=nonlocal_agg)
             dep_data.append(this_dep_data)
@@ -1134,12 +1147,12 @@ class LogManager:
         if self.rank == self.head_rank:
             assert gathered_data
 
-            values: Dict[str, list] = {}
+            values: Dict[str, List[Optional[float]]] = {}
             for data_block in gathered_data:
                 for name, value in data_block.items():
                     values.setdefault(name, []).append(value)
 
-            def compute_watch_str(watch):
+            def compute_watch_str(watch: _WatchInfo) -> str:
                 display = watch.expr
                 unit = watch.unit if watch.unit not in ["1", None] else ""
                 value = watch.compiled(
@@ -1169,15 +1182,15 @@ class LogManager:
 # {{{ actual data loggers
 
 class _SubTimer:
-    def __init__(self, itimer) -> None:
+    def __init__(self, itimer: "IntervalTimer") -> None:
         self.itimer = itimer
-        self.elapsed = 0
+        self.elapsed = 0.0
 
-    def start(self):
+    def start(self) -> "_SubTimer":
         self.start_time = time_monotonic()
         return self
 
-    def stop(self):
+    def stop(self) -> "_SubTimer":
         self.elapsed += time_monotonic() - self.start_time
         del self.start_time
         return self
@@ -1185,7 +1198,7 @@ class _SubTimer:
     def __enter__(self) -> None:
         self.start()
 
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.stop()
         self.submit()
 
@@ -1208,10 +1221,10 @@ class IntervalTimer(PostLogQuantity):
         LogQuantity.__init__(self, name, "s", description)
         self.elapsed: float = 0
 
-    def get_sub_timer(self):
+    def get_sub_timer(self) -> _SubTimer:
         return _SubTimer(self)
 
-    def start_sub_timer(self):
+    def start_sub_timer(self) -> _SubTimer:
         sub_timer = _SubTimer(self)
         sub_timer.start()
         return sub_timer
@@ -1256,7 +1269,7 @@ class EventCounter(PostLogQuantity):
     def add(self, n: int = 1) -> None:
         self.events += n
 
-    def transfer(self, counter) -> None:
+    def transfer(self, counter: Any) -> None:
         self.events += counter.pop()
 
     def prepare_for_tick(self) -> None:
@@ -1267,8 +1280,10 @@ class EventCounter(PostLogQuantity):
         return result
 
 
-def time_and_count_function(f, timer, counter=None, increment=1) -> Callable:
-    def inner_f(*args, **kwargs):
+def time_and_count_function(f: Callable[..., Any], timer: IntervalTimer,
+                            counter: Optional[EventCounter] = None,
+                            increment: int = 1) -> Callable[..., Any]:
+    def inner_f(*args: Any, **kwargs: Any) -> Any:
         if counter is not None:
             counter.add(increment)
         sub_timer = timer.start_sub_timer()
@@ -1445,7 +1460,7 @@ class Timestep(SimulationLogQuantity):
                  unit: str = "s") -> None:
         SimulationLogQuantity.__init__(self, dt, name, unit, "Simulation Timestep")
 
-    def __call__(self) -> float:
+    def __call__(self) -> Optional[float]:
         return self.dt
 
 

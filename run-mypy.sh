@@ -1,3 +1,7 @@
 #! /bin/bash
 
-mypy logpyle examples
+set -ex
+
+mypy --strict logpyle
+
+mypy examples
