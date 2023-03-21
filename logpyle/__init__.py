@@ -655,11 +655,12 @@ class LogManager:
         if q_name not in self.quantity_data:
             raise KeyError("invalid quantity name '%s'" % q_name)
 
-        result = DataTable(["step", "rank", "value"])
+        result = DataTable(
+            ["step", "rank", "value"])  # type: ignore[no-untyped-call]
 
         for row in self.db_conn.execute(
                 "select step, rank, value from %s" % q_name):
-            result.insert_row(row)
+            result.insert_row(row)  # type: ignore[no-untyped-call]
 
         return result
 
@@ -668,11 +669,11 @@ class LogManager:
         if self.schema_version >= 2:
             columns.insert(0, "rank")
 
-        result = DataTable(columns)
+        result = DataTable(columns)  # type: ignore[no-untyped-call]
 
         for row in self.db_conn.execute(
                 "select %s from warnings" % (", ".join(columns))):
-            result.insert_row(row)
+            result.insert_row(row)  # type: ignore[no-untyped-call]
 
         return result
 
@@ -923,8 +924,8 @@ class LogManager:
         # aggregate table data
         for dd in dep_data:
             table = self.get_table(dd.name)
-            table.sort(["step"])
-            dd.table = table.aggregated(["step"],  # type: ignore[attr-defined]
+            table.sort(["step"])  # type: ignore[no-untyped-call]
+            dd.table = table.aggregated(["step"],  # type: ignore
                                         "value", dd.agg_func).data
 
         # evaluate unit and description, if necessary
