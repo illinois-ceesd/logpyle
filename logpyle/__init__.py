@@ -34,6 +34,11 @@ Built-in Log Simulation-Related Quantities
 .. autoclass:: Timestep
 .. autofunction:: set_dt
 .. autofunction:: add_simulation_quantities
+
+
+Internal stuff that is only here because the documentation tool wants it
+------------------------------------------------------------------------
+.. autoclass:: _SubTimer
 """
 
 __copyright__ = "Copyright (C) 2009-2013 Andreas Kloeckner"
