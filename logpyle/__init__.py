@@ -1369,7 +1369,6 @@ class InitTime(LogQuantity):
     def __init__(self, name: str = "t_init") -> None:
         LogQuantity.__init__(self, name, "s", "Init time")
 
-        import os
         try:
             import psutil
         except ModuleNotFoundError:
@@ -1377,8 +1376,7 @@ class InitTime(LogQuantity):
             warn("Measuring the init time requires the 'psutil' module.")
             self.done = True
         else:
-            p = psutil.Process(os.getpid())
-            self.start_time = p.create_time()
+            self.create_time = psutil.Process().create_time()
             self.done = False
 
     def __call__(self) -> Optional[float]:
@@ -1386,8 +1384,13 @@ class InitTime(LogQuantity):
             return None
 
         self.done = True
-        now = time_monotonic()
-        return now - self.start_time
+        from time import time
+
+        # Can't use time_monotonic() here since that does *not* return
+        # the time since the UNIX epoch (like time() and
+        # psutil.Process.create_time() do), but from another (undefined)
+        # reference point.
+        return time() - self.create_time
 
 
 class CPUTime(LogQuantity):
