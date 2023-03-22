@@ -8,4 +8,4 @@ mypy examples
 
 mypy --strict bin/logtool
 mypy --strict bin/runalyzer
-mypy bin/runalyzer-gather
+mypy --strict bin/runalyzer-gather
