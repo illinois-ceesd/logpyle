@@ -1530,6 +1530,7 @@ class GCStats(MultiPostLogQuantity):
 
     Information regarding the meaning of these values can be found at:
         - https://docs.python.org/3/library/gc.html
+        - https://alex.dzyoba.com/blog/arc-vs-gc
 
           ..  # noqa: E501
         - https://stackoverflow.com/questions/64561488/pythons-gc-get-objects-from-get-count
