@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 
-from time import sleep
 from random import uniform
-from logpyle import (LogManager, add_general_quantities,
-        add_simulation_quantities, add_run_info, IntervalTimer,
-        LogQuantity, set_dt)
-
+from time import sleep
 from warnings import warn
+
+from logpyle import (GCStats, IntervalTimer, LogManager, LogQuantity,
+                     add_general_quantities, add_run_info,
+                     add_simulation_quantities, set_dt)
 
 
 class Fifteen(LogQuantity):
@@ -15,7 +15,7 @@ class Fifteen(LogQuantity):
 
 
 def main():
-    logmgr = LogManager("log.sqlite", "w")
+    logmgr = LogManager("log.sqlite", "wo")
 
     # set a run property
     logmgr.set_constant("myconst", uniform(0, 1))
@@ -33,6 +33,7 @@ def main():
     vis_timer = IntervalTimer("t_vis", "Time spent visualizing")
     logmgr.add_quantity(vis_timer)
     logmgr.add_quantity(Fifteen("fifteen"))
+    logmgr.add_quantity(GCStats())
 
     # Watches are printed periodically during execution
     logmgr.add_watches(["step.max", "t_sim.max", "t_step.max", "fifteen",

@@ -25,6 +25,7 @@ Built-in Log General-Purpose Quantities
 .. autoclass:: CPUTime
 .. autoclass:: ETA
 .. autoclass:: MemoryHwm
+.. autoclass:: GCStats
 .. autofunction:: add_general_quantities
 
 Built-in Log Simulation-Related Quantities
@@ -59,36 +60,22 @@ THE SOFTWARE.
 
 
 import logpyle.version
+
 __version__ = logpyle.version.VERSION_TEXT
 
 
 import logging
+
 logger = logging.getLogger(__name__)
 
-from typing import (List, Callable, Union, Tuple, Optional, Dict, Any,
-                    TYPE_CHECKING, Iterable)
+from time import monotonic as time_monotonic
+from typing import (TYPE_CHECKING, Any, Callable, Dict, Iterable, List,
+                    Optional, Tuple, Union)
+
 from pytools.datatable import DataTable
 
 if TYPE_CHECKING:
     import mpi4py
-
-
-# {{{ timing function
-
-def time() -> float:
-    """Return elapsed CPU time, as a float, in seconds."""
-    import os
-    time_opt = os.environ.get("PYTOOLS_LOG_TIME") or "wall"
-    if time_opt == "wall":
-        from time import time
-        return time()
-    elif time_opt == "rusage":
-        from resource import getrusage, RUSAGE_SELF
-        return getrusage(RUSAGE_SELF).ru_utime
-    else:
-        raise RuntimeError("invalid timing method '%s'" % time_opt)
-
-# }}}
 
 
 # {{{ abstract logging interface
@@ -402,7 +389,6 @@ class LogManager:
 
         tick_before()
         compute...
-        tick()
         tick_after()
 
         tick_before()
@@ -489,10 +475,10 @@ class LogManager:
 
         self.constants: Dict[str, object] = {}
 
-        self.last_save_time = time()
+        self.last_save_time = time_monotonic()
 
         # self-timing
-        self.start_time = time()
+        self.start_time = time_monotonic()
         self.t_log: float = 0
 
         # parallel support
@@ -788,27 +774,13 @@ class LogManager:
             else:
                 self._insert_datapoint(gd.quantity.name, q_value)
 
-    def tick(self) -> None:
-        """Record data points from each added :class:`LogQuantity`.
-
-        May also checkpoint data to disk, and/or synchronize data points
-        to the head rank.
-        """
-        from warnings import warn
-        warn("LogManager.tick() is deprecated. "
-                "Use LogManager.tick_{before,after}().",
-                DeprecationWarning)
-
-        self.tick_before()
-        self.tick_after()
-
     def tick_before(self) -> None:
         """Record data points from each added :class:`LogQuantity` that
         is not an instance of :class:`PostLogQuantity`. Also, invoke
         :meth:`PostLogQuantity.prepare_for_tick` on :class:`PostLogQuantity`
         instances.
         """
-        tick_start_time = time()
+        tick_start_time = time_monotonic()
 
         for gd in self.before_gather_descriptors:
             self._gather_for_descriptor(gd)
@@ -817,7 +789,7 @@ class LogManager:
             from typing import cast
             cast(PostLogQuantity, gd.quantity).prepare_for_tick()
 
-        self.t_log = time() - tick_start_time
+        self.t_log = time_monotonic() - tick_start_time
 
     def tick_after(self) -> None:
         """Record data points from each added :class:`LogQuantity` that
@@ -825,7 +797,7 @@ class LogManager:
 
         May also checkpoint data to disk.
         """
-        tick_start_time = time()
+        tick_start_time = time_monotonic()
 
         for gd_lst in [self.before_gather_descriptors,
                 self.after_gather_descriptors]:
@@ -847,7 +819,7 @@ class LogManager:
         if self.tick_count+1 >= self.next_watch_tick:
             self._watch_tick()
 
-        self.t_log += time() - tick_start_time
+        self.t_log += time_monotonic() - tick_start_time
 
         # Adjust log update time(s), t_log
         for gd in self.after_gather_descriptors:
@@ -870,7 +842,7 @@ class LogManager:
             from warnings import warn
             warn("encountered sqlite error during commit: %s" % e)
 
-        self.last_save_time = time()
+        self.last_save_time = time_monotonic()
 
     def add_quantity(self, quantity: LogQuantity, interval: int = 1) -> None:
         """Add a :class:`LogQuantity` to this manager.
@@ -927,10 +899,10 @@ class LogManager:
           is a list of tuples ``(tick_nbr, value)``.
 
         Aggregators are specified as follows:
-        - ``qty.min``, ``qty.max``, ``qty.avg``, ``qty.sum``, ``qty.norm2``,
-        ``qty.median``
-        - ``qty[rank_nbr]``
-        - ``qty.loc``
+            - ``qty.min``, ``qty.max``, ``qty.avg``, ``qty.sum``, ``qty.norm2``,
+              ``qty.median``
+            - ``qty[rank_nbr]``
+            - ``qty.loc``
         """
 
         parsed = self._parse_expr(expression)
@@ -944,7 +916,7 @@ class LogManager:
 
         # evaluate unit and description, if necessary
         if unit is None:
-            from pymbolic import substitute, parse
+            from pymbolic import parse, substitute
 
             unit_dict = {dd.varname: dd.qdat.unit for dd in dep_data}
             from pytools import all
@@ -1038,7 +1010,7 @@ class LogManager:
         outf.close()
 
     def plot_matplotlib(self, expr_x, expr_y) -> None:
-        from matplotlib.pyplot import xlabel, ylabel, plot
+        from matplotlib.pyplot import plot, xlabel, ylabel
 
         (data_x, descr_x, unit_x), (data_y, descr_y, unit_y) = \
                 self.get_plot_data(expr_x, expr_y)
@@ -1072,7 +1044,8 @@ class LogManager:
 
         # gather information on aggregation expressions
         dep_data = []
-        from pymbolic.primitives import Variable, Lookup, Subscript  # type: ignore
+        from pymbolic.primitives import (Lookup, Subscript,  # type: ignore
+                                         Variable)
         for dep_idx, dep in enumerate(deps):
             nonlocal_agg = True
 
@@ -1133,15 +1106,16 @@ class LogManager:
             dep_data.append(this_dep_data)
 
         # substitute in the "logvar" variable names
-        from pymbolic import var, substitute
+        from pymbolic import substitute, var
         parsed = substitute(parsed,
                 {dd.expr: var(dd.varname) for dd in dep_data})
 
         return parsed, dep_data
 
     def _calculate_next_watch_tick(self) -> None:
-        ticks_per_interval = (self.tick_count/max(1, time()-self.start_time)
-                         * self.watch_interval)
+        ticks_per_interval = (self.tick_count
+                              / max(1, time_monotonic()-self.start_time)
+                              * self.watch_interval)
         self.next_watch_tick = self.tick_count + int(max(1, ticks_per_interval))
 
     def _watch_tick(self) -> None:
@@ -1200,11 +1174,11 @@ class _SubTimer:
         self.elapsed = 0
 
     def start(self):
-        self.start_time = time()
+        self.start_time = time_monotonic()
         return self
 
     def stop(self):
-        self.elapsed += time() - self.start_time
+        self.elapsed += time_monotonic() - self.start_time
         del self.start_time
         return self
 
@@ -1243,7 +1217,7 @@ class IntervalTimer(PostLogQuantity):
         return sub_timer
 
     def add_time(self, t: float) -> None:
-        self.start_time = time()
+        self.start_time = time_monotonic()
         self.elapsed += t
 
     def __call__(self) -> float:
@@ -1334,7 +1308,7 @@ class StepToStepDuration(PostLogQuantity):
 
     def prepare_for_tick(self) -> None:
         self.last2_start_time = self.last_start_time
-        self.last_start_time = time()
+        self.last_start_time = time_monotonic()
 
     def __call__(self) -> Optional[float]:
         if self.last2_start_time is None or self.last_start_time is None:
@@ -1360,10 +1334,10 @@ class TimestepDuration(PostLogQuantity):
         PostLogQuantity.__init__(self, name, "s", "Time step duration")
 
     def prepare_for_tick(self) -> None:
-        self.last_start = time()
+        self.last_start = time_monotonic()
 
     def __call__(self) -> float:
-        now = time()
+        now = time_monotonic()
         result = now - self.last_start
         del self.last_start
         return result
@@ -1380,7 +1354,6 @@ class InitTime(LogQuantity):
     def __init__(self, name: str = "t_init") -> None:
         LogQuantity.__init__(self, name, "s", "Init time")
 
-        import os
         try:
             import psutil
         except ModuleNotFoundError:
@@ -1388,8 +1361,7 @@ class InitTime(LogQuantity):
             warn("Measuring the init time requires the 'psutil' module.")
             self.done = True
         else:
-            p = psutil.Process(os.getpid())
-            self.start_time = p.create_time()
+            self.create_time = psutil.Process().create_time()
             self.done = False
 
     def __call__(self) -> Optional[float]:
@@ -1397,8 +1369,13 @@ class InitTime(LogQuantity):
             return None
 
         self.done = True
-        now = time()
-        return now - self.start_time
+        from time import time
+
+        # Can't use time_monotonic() here since that does *not* return
+        # the time since the UNIX epoch (like time() and
+        # psutil.Process.create_time() do), but from another (undefined)
+        # reference point.
+        return time() - self.create_time
 
 
 class CPUTime(LogQuantity):
@@ -1409,10 +1386,10 @@ class CPUTime(LogQuantity):
     def __init__(self, name: str = "t_cpu") -> None:
         LogQuantity.__init__(self, name, "s", "Wall time")
 
-        self.start = time()
+        self.start = time_monotonic()
 
     def __call__(self) -> float:
-        return time()-self.start
+        return time_monotonic()-self.start
 
 
 class ETA(LogQuantity):
@@ -1425,12 +1402,12 @@ class ETA(LogQuantity):
 
         self.steps = 0
         self.total_steps = total_steps
-        self.start = time()
+        self.start = time_monotonic()
 
     def __call__(self) -> float:
         fraction_done = self.steps/self.total_steps
         self.steps += 1
-        time_spent = time()-self.start
+        time_spent = time_monotonic()-self.start
         if fraction_done > 1e-9:
             return time_spent/fraction_done-time_spent
         else:
@@ -1531,6 +1508,67 @@ class MemoryHwm(PostLogQuantity):
         from resource import RUSAGE_SELF, getrusage
         res = getrusage(RUSAGE_SELF)
         return res.ru_maxrss / self.fac
+
+
+class GCStats(MultiPostLogQuantity):
+    """Record Garbage Collection statistics.
+
+    Information regarding the meaning of these values can be found at:
+        - https://docs.python.org/3/library/gc.html
+        - https://alex.dzyoba.com/blog/arc-vs-gc
+
+          ..  # noqa: E501
+        - https://stackoverflow.com/questions/64561488/pythons-gc-get-objects-from-get-count
+        - https://github.com/python/cpython/blob/main/Modules/gcmodule.c
+    """
+    def __init__(self) -> None:
+        names = [  # gc.isenabled():
+                  "gc_isenabled",
+                   # gc.get_count():
+                  "gc_count_gen0", "gc_count_gen1", "gc_count_gen2",
+                   # gc.get_stats():
+                  "gc_collections_gen0", "gc_collected_gen0",
+                  "gc_uncollectable_gen0",
+                  "gc_collections_gen1", "gc_collected_gen1",
+                  "gc_uncollectable_gen1",
+                  "gc_collections_gen2", "gc_collected_gen2",
+                  "gc_uncollectable_gen2",
+                 ]
+
+        units = ["bool",
+                 "1", "1", "1",
+                 "1", "1", "1", "1", "1", "1", "1", "1", "1"]
+
+        descriptions = ["Is automatic GC enabled?",
+                        "GC count gen0", "GC count gen1", "GC count gen2",
+                        "GC collections gen0", "GC objects collected gen0",
+                        "GC objects uncollectable gen0",
+                        "GC collections gen1", "GC objects collected gen1",
+                        "GC objects uncollectable gen1",
+                        "GC collections gen2", "GC objects collected gen2",
+                        "GC objects uncollectable gen2",
+                        ]
+
+        assert len(names) == len(units) == len(descriptions) == 13
+
+        super().__init__(names, units, descriptions)
+
+    def __call__(self) -> Iterable[Optional[float]]:
+        import gc
+
+        enabled = gc.isenabled()
+        counts = gc.get_count()
+        stats = gc.get_stats()
+
+        return [enabled,
+                counts[0], counts[1], counts[2],
+                stats[0]["collections"], stats[0]["collected"],
+                stats[0]["uncollectable"],
+                stats[1]["collections"], stats[1]["collected"],
+                stats[1]["uncollectable"],
+                stats[2]["collections"], stats[2]["collected"],
+                stats[2]["uncollectable"]
+                ]
 
 # }}}
 

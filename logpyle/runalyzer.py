@@ -2,7 +2,6 @@
 
 import code
 
-
 try:
     import readline
     import rlcompleter  # noqa: F401
@@ -12,9 +11,10 @@ except ImportError:
 
 
 import logging
+
 logger = logging.getLogger(__name__)
 
-from pytools import cartesian_product, Record
+from pytools import Record, cartesian_product
 
 
 class PlotStyle(Record):
@@ -75,7 +75,7 @@ class RunDB:
             plt.show()
 
     def plot_cursor(self, cursor, labels=None, *args, **kwargs):
-        from matplotlib.pyplot import plot, show, legend
+        from matplotlib.pyplot import legend, plot, show
 
         auto_style = kwargs.pop("auto_style", True)
 
@@ -293,8 +293,8 @@ class RunalyzerConsole(code.InteractiveConsole):
             pass
 
         if HAVE_READLINE:
-            import os
             import atexit
+            import os
 
             histfile = os.path.join(os.environ["HOME"], ".runalyzerhist")
             if os.access(histfile, os.R_OK):
@@ -445,7 +445,7 @@ def make_wrapped_db(filename, interactive, mangle):
     db.create_aggregate("norm2", 1, Norm2)
 
     db.create_function("sprintf", 2, my_sprintf)
-    from math import sqrt, pow
+    from math import pow, sqrt
     db.create_function("sqrt", 1, sqrt)
     db.create_function("pow", 2, pow)
 

@@ -2,7 +2,6 @@
 
 import re
 
-
 bool_feat_re = re.compile(r"^([a-z]+)(True|False)$")
 int_feat_re = re.compile(r"^([a-z]+)([0-9]+)$")
 real_feat_re = re.compile(r"^([a-z]+)([0-9]+\.?[0-9]*)$")
@@ -298,7 +297,7 @@ def gather_multi_file(outfile, infiles, fmap, qmap, fg, features,
 
     created_tables = set()
 
-    from os.path import dirname, basename
+    from os.path import basename, dirname
 
     written_run_ids = set()
 

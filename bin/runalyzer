@@ -2,8 +2,8 @@
 
 
 def main():
-    import sys
     import argparse
+    import sys
 
     parser = argparse.ArgumentParser(description="Analyze a logpyle database.")
     parser.add_argument("-m", "--mangle", action="store_true",
@@ -14,7 +14,7 @@ def main():
     parser.add_argument("scriptfile", nargs="?", help="script file to read")
     args = parser.parse_args()
 
-    from logpyle.runalyzer import make_wrapped_db, make_runalyzer_symbols
+    from logpyle.runalyzer import make_runalyzer_symbols, make_wrapped_db
 
     if args.scriptfile:
         db = make_wrapped_db(args.dbfile, mangle=args.mangle, interactive=False)

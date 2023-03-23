@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 
-from time import sleep
 from random import uniform
-from logpyle import (LogManager, add_general_quantities,
-        add_simulation_quantities, add_run_info, IntervalTimer,
-        LogQuantity, set_dt)
-
+from time import sleep
 from warnings import warn
+
 from mpi4py import MPI
+
+from logpyle import (IntervalTimer, LogManager, LogQuantity,
+                     add_general_quantities, add_run_info,
+                     add_simulation_quantities, set_dt)
 
 
 class Fifteen(LogQuantity):

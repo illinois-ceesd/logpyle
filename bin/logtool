@@ -1,9 +1,10 @@
 #! /usr/bin/env python
 
 def main():
-    from logpyle import LogManager
     import sys
     from optparse import OptionParser
+
+    from logpyle import LogManager
 
     description = """Operate on data gathered during code runs.
 FILE is a log saved from a code run. COMMANDS may be one of the
@@ -66,7 +67,7 @@ following:
 
     legend_prefix = ""
 
-    from pytools import cartesian_product, Record
+    from pytools import Record, cartesian_product
 
     class PlotStyle(Record):
         pass
@@ -121,7 +122,7 @@ following:
 
             expr_x, expr_y = args.pop(0).split(",")
 
-            from matplotlib.pyplot import xlabel, ylabel, plot
+            from matplotlib.pyplot import plot, xlabel, ylabel
             (data_x, descr_x, unit_x), (data_y, descr_y, unit_y) = \
                     logmgr.get_plot_data(expr_x, expr_y,
                             options.start_step, options.end_step)
@@ -199,14 +200,15 @@ following:
             print_plot = True
         else:
             # not a known command, interpret as file name
-            from os import access, R_OK
+            from os import R_OK, access
             if access(cmd, R_OK):
                 logmgr = LogManager(cmd, "r")
             else:
                 raise OSError("file '%s' not found" % cmd)
 
     if did_plot:
-        from matplotlib.pyplot import show, title, legend, axis, grid, rc, savefig
+        from matplotlib.pyplot import (axis, grid, legend, rc, savefig, show,
+                                       title)
         if options.legend_expr or options.legend_descr:
             if options.small_legend:
                 from matplotlib.font_manager import FontProperties
@@ -245,8 +247,8 @@ following:
         title(options.title)
 
         if print_plot:
-            from tempfile import gettempprefix, gettempdir
             import os.path
+            from tempfile import gettempdir, gettempprefix
             tmpname = os.path.join(gettempdir(), gettempprefix()+"logtoolprint.ps")
             savefig(tmpname, orientation="landscape", papertype="letter")
 
