@@ -50,24 +50,13 @@ jobs:
             runalyzer -m summary.sqlite -c 'dbplot(q("select $t_sim, $t_step"))'
 
             # Perform some simple tests on the output file
-            res=$(runalyzer -m summary.sqlite -c 'print(max([r[0] for r in q("select $t_log.max")]))')
 
-            awk "BEGIN {exit !($res > 0)}"
-            awk "BEGIN {exit !($res < 1)}"
+            ## Check that t_log is within [0, 1]
+            runalyzer -m summary.sqlite -c 'assert all([0 < r[0] < 1 for r in q("select $t_log.max")])'
 
-            res=$(runalyzer -m summary.sqlite -c 'print(min([r[0] for r in q("select $t_log.max")]))')
-
-            awk "BEGIN {exit !($res > 0)}"
-            awk "BEGIN {exit !($res < 1)}"
-
-            res=$(runalyzer -m summary.sqlite -c 'print(max([r[0] for r in q("select $t_init.max")]))')
-
-            awk "BEGIN {exit !($res > 0)}"
-            awk "BEGIN {exit !($res < 20)}"
-
-            res=$(runalyzer -m summary.sqlite -c 'print(len([r[0] for r in q("select $t_init.max")]))')
-
-            awk "BEGIN {exit !($res == 1)}"
+            ## Check that t_init is within [0, 20], and that there is only one value
+            runalyzer -m summary.sqlite -c 'assert all([0 < r[0] < 20 for r in q("select $t_init.max")])'
+            runalyzer -m summary.sqlite -c 'assert len([r[0] for r in q("select $t_init.max")]) == 1'
 
             # Allow oversubscription of ranks to cores with Open MPI
             export OMPI_MCA_rmaps_base_oversubscribe=1
