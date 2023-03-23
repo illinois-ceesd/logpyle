@@ -65,10 +65,9 @@ jobs:
             awk "BEGIN {exit !($res > 0)}"
             awk "BEGIN {exit !($res < 20)}"
 
-            res=$(runalyzer -m summary.sqlite -c 'print(min([r[0] for r in q("select $t_init.max")]))')
+            res=$(runalyzer -m summary.sqlite -c 'print(len([r[0] for r in q("select $t_init.max")]))')
 
-            awk "BEGIN {exit !($res > 0)}"
-            awk "BEGIN {exit !($res < 1)}"
+            awk "BEGIN {exit !($res == 1)}"
 
             # Allow oversubscription of ranks to cores with Open MPI
             export OMPI_MCA_rmaps_base_oversubscribe=1
