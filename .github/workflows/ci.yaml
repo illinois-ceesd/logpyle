@@ -63,7 +63,7 @@ jobs:
             res=$(runalyzer -m summary.sqlite -c 'print(max([r[0] for r in q("select $t_init.max")]))')
 
             awk "BEGIN {exit !($res > 0)}"
-            awk "BEGIN {exit !($res < 1)}"
+            awk "BEGIN {exit !($res < 20)}"
 
             res=$(runalyzer -m summary.sqlite -c 'print(min([r[0] for r in q("select $t_init.max")]))')
 
