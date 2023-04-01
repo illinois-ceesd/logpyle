@@ -68,10 +68,13 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+from dataclasses import dataclass
 from time import monotonic as time_monotonic
 from typing import (TYPE_CHECKING, Any, Callable, Dict, Iterable, List,
                     Optional, Tuple, Union)
 
+from pymbolic.compiler import CompiledExpression  # type: ignore[import]
+from pymbolic.primitives import Expression  # type: ignore[import]
 from pytools.datatable import DataTable
 
 if TYPE_CHECKING:
@@ -276,18 +279,17 @@ class CallableLogQuantityAdapter(LogQuantity):
 
 # {{{ manager functionality
 
+@dataclass(frozen=True)
 class _GatherDescriptor:
-    def __init__(self, quantity: LogQuantity, interval: int) -> None:
-        self.quantity = quantity
-        self.interval = interval
+    quantity: LogQuantity
+    interval: int
 
 
+@dataclass(frozen=True)
 class _QuantityData:
-    def __init__(self, unit: str, description: str,
-                 default_aggregator: Callable) -> None:
-        self.unit = unit
-        self.description = description
-        self.default_aggregator = default_aggregator
+    unit: str
+    description: str
+    default_aggregator: Callable[..., Any]
 
 
 def _join_by_first_of_tuple(list_of_iterables):
@@ -378,7 +380,24 @@ def _set_up_schema(db_conn):
     return schema_version
 
 
-from pytools import Record
+@dataclass(frozen=True)
+class _DependencyData:
+    name: str
+    qdat: _QuantityData
+    agg_func: Callable[..., Any]
+    varname: str
+    expr: Expression
+    nonlocal_agg: Callable[..., Any]
+
+
+@dataclass
+class _WatchInfo:
+    parsed: Expression
+    expr: Expression
+    dep_data: List[_DependencyData]
+    compiled: CompiledExpression
+    unit: str
+    format: str
 
 
 class LogManager:
@@ -493,7 +512,7 @@ class LogManager:
             self.head_rank = 0
 
         # watch stuff
-        self.watches: List[Record] = []
+        self.watches: List[_WatchInfo] = []
         self.have_nonlocal_watches = False
 
         # Interval between printing watches, in seconds
@@ -676,11 +695,6 @@ class LogManager:
             watch expression, value, and unit should be printed. The default format
             string for each watch is ``{display}={value:g}{unit}``.
         """
-        from pytools import Record
-
-        class WatchInfo(Record):
-            pass
-
         default_format = "{display}={value:g}{unit} | "
 
         for watch in watches:
@@ -702,11 +716,11 @@ class LogManager:
             self.have_nonlocal_watches = self.have_nonlocal_watches or \
                     any(dd.nonlocal_agg for dd in dep_data)
 
-            from pymbolic import compile  # type: ignore
+            from pymbolic import compile  # type: ignore[import]
             compiled = compile(parsed, [dd.varname for dd in dep_data])
 
-            watch_info = WatchInfo(parsed=parsed, expr=expr, dep_data=dep_data,
-                    compiled=compiled, unit=unit, format=fmt)
+            watch_info = _WatchInfo(parsed=parsed, expr=expr, dep_data=dep_data,
+                                    compiled=compiled, unit=unit, format=fmt)
 
             self.watches.append(watch_info)
 
@@ -1044,8 +1058,7 @@ class LogManager:
 
         # gather information on aggregation expressions
         dep_data = []
-        from pymbolic.primitives import (Lookup, Subscript,  # type: ignore
-                                         Variable)
+        from pymbolic.primitives import Lookup, Subscript, Variable
         for dep_idx, dep in enumerate(deps):
             nonlocal_agg = True
 
@@ -1097,10 +1110,7 @@ class LogManager:
 
             qdat = self.quantity_data[name]
 
-            class DependencyData(Record):
-                pass
-
-            this_dep_data = DependencyData(name=name, qdat=qdat, agg_func=agg_func,
+            this_dep_data = _DependencyData(name=name, qdat=qdat, agg_func=agg_func,
                     varname="logvar%d" % dep_idx, expr=dep,
                     nonlocal_agg=nonlocal_agg)
             dep_data.append(this_dep_data)

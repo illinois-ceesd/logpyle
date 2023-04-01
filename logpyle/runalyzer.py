@@ -11,19 +11,23 @@ except ImportError:
 
 
 import logging
+from typing import Tuple
 
 logger = logging.getLogger(__name__)
 
-from pytools import Record, cartesian_product
+from dataclasses import dataclass
+from itertools import product
 
 
-class PlotStyle(Record):
-    pass
+@dataclass(frozen=True)
+class PlotStyle:
+    dashes: Tuple[int, ...]
+    color: str
 
 
 PLOT_STYLES = [
         PlotStyle(dashes=dashes, color=color)
-        for dashes, color in cartesian_product(
+        for dashes, color in product(
             [(), (12, 2), (4, 2),  (2, 2), (2, 8)],
             ["blue", "green", "red", "magenta", "cyan"],
             )]
