@@ -74,11 +74,13 @@ import logging
 logger = logging.getLogger(__name__)
 
 from sqlite3 import Connection
+from dataclasses import dataclass
 from time import monotonic as time_monotonic
 from typing import (TYPE_CHECKING, Any, Callable, Dict, Generator, Iterable,
                     List, Optional, Sequence, TextIO, Tuple, Type, Union, cast)
 
 from pymbolic.mapper.dependency import DependencyMapper  # type: ignore[import]
+from pymbolic.compiler import CompiledExpression  # type: ignore[import]
 from pymbolic.primitives import Expression  # type: ignore[import]
 from pytools.datatable import DataTable
 
@@ -285,18 +287,17 @@ class CallableLogQuantityAdapter(LogQuantity):
 
 # {{{ manager functionality
 
+@dataclass(frozen=True)
 class _GatherDescriptor:
-    def __init__(self, quantity: LogQuantity, interval: int) -> None:
-        self.quantity = quantity
-        self.interval = interval
+    quantity: LogQuantity
+    interval: int
 
 
+@dataclass(frozen=True)
 class _QuantityData:
-    def __init__(self, unit: Optional[str], description: Optional[str],
-                 default_aggregator: Optional[Callable[..., Any]]) -> None:
-        self.unit = unit
-        self.description = description
-        self.default_aggregator = default_aggregator
+    unit: str
+    description: str
+    default_aggregator: Callable[..., Any]
 
 
 def _join_by_first_of_tuple(list_of_iterables: List[Iterable[Tuple[int, Any]]]) \
@@ -388,7 +389,24 @@ def _set_up_schema(db_conn: Connection) -> int:
     return schema_version
 
 
-from pytools import Record
+@dataclass(frozen=True)
+class _DependencyData:
+    name: str
+    qdat: _QuantityData
+    agg_func: Callable[..., Any]
+    varname: str
+    expr: Expression
+    nonlocal_agg: Callable[..., Any]
+
+
+@dataclass
+class _WatchInfo:
+    parsed: Expression
+    expr: Expression
+    dep_data: List[_DependencyData]
+    compiled: CompiledExpression
+    unit: str
+    format: str
 
 
 class _WatchInfo(Record):
@@ -715,12 +733,11 @@ class LogManager:
             self.have_nonlocal_watches = self.have_nonlocal_watches or \
                     any(dd.nonlocal_agg for dd in dep_data)
 
-            from pymbolic import compile  # type: ignore
+            from pymbolic import compile  # type: ignore[import]
             compiled = compile(parsed, [dd.varname for dd in dep_data])
 
             watch_info = _WatchInfo(parsed=parsed, expr=expr, dep_data=dep_data,
-                    compiled=compiled, unit=unit,
-                    format=fmt)  # type: ignore[no-untyped-call]
+                                    compiled=compiled, unit=unit, format=fmt)
 
             self.watches.append(watch_info)
 
@@ -1118,8 +1135,7 @@ class LogManager:
 
             qdat = self.quantity_data[name]
 
-            this_dep_data = _DependencyData(name=name, qdat=qdat,
-                    agg_func=agg_func,  # type: ignore[no-untyped-call]
+            this_dep_data = _DependencyData(name=name, qdat=qdat, agg_func=agg_func,
                     varname="logvar%d" % dep_idx, expr=dep,
                     nonlocal_agg=nonlocal_agg)
             dep_data.append(this_dep_data)
@@ -1315,9 +1331,10 @@ class TimestepCounter(LogQuantity):
 
 
 class StepToStepDuration(PostLogQuantity):
-    """Records the CPU time between invocations of
-    :meth:`LogManager.tick_before` and
-    :meth:`LogManager.tick_after`.
+    """Records the wall time between the starts of consecutive time steps, i.e.,
+    the wall time between :meth:`LogManager.tick_before` of step x and
+    :meth:`LogManager.tick_before` of step x+1. The value stored is the value for
+    step x+1.
 
     .. automethod:: __init__
     """
@@ -1339,9 +1356,8 @@ class StepToStepDuration(PostLogQuantity):
 
 
 class TimestepDuration(PostLogQuantity):
-    """Records the CPU time between the starts of time steps.
-    :meth:`LogManager.tick_before` and
-    :meth:`LogManager.tick_after`.
+    """Records the wall time between invocations of :meth:`LogManager.tick_before`
+    and :meth:`LogManager.tick_after`, i.e., the duration of the time step.
 
     .. automethod:: __init__
     """
@@ -1400,7 +1416,8 @@ class InitTime(LogQuantity):
 
 
 class CPUTime(LogQuantity):
-    """Records (monotonically increasing) CPU time.
+    """Records (monotonically increasing) wall time since the quantity was
+    initialized.
 
     .. automethod:: __init__
     """
