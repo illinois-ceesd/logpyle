@@ -73,14 +73,14 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from sqlite3 import Connection
 from dataclasses import dataclass
+from sqlite3 import Connection
 from time import monotonic as time_monotonic
 from typing import (TYPE_CHECKING, Any, Callable, Dict, Generator, Iterable,
                     List, Optional, Sequence, TextIO, Tuple, Type, Union, cast)
 
-from pymbolic.mapper.dependency import DependencyMapper  # type: ignore[import]
 from pymbolic.compiler import CompiledExpression  # type: ignore[import]
+from pymbolic.mapper.dependency import DependencyMapper  # type: ignore[import]
 from pymbolic.primitives import Expression  # type: ignore[import]
 from pytools.datatable import DataTable
 
@@ -407,14 +407,6 @@ class _WatchInfo:
     compiled: CompiledExpression
     unit: str
     format: str
-
-
-class _WatchInfo(Record):
-    pass
-
-
-class _DependencyData(Record):
-    pass
 
 
 class LogManager:
