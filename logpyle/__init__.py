@@ -295,9 +295,9 @@ class _GatherDescriptor:
 
 @dataclass(frozen=True)
 class _QuantityData:
-    unit: str
-    description: str
-    default_aggregator: Callable[..., Any]
+    unit: Optional[str]
+    description: Optional[str]
+    default_aggregator: Optional[Callable[..., Any]]
 
 
 def _join_by_first_of_tuple(list_of_iterables: List[Iterable[Tuple[int, Any]]]) \
@@ -389,14 +389,15 @@ def _set_up_schema(db_conn: Connection) -> int:
     return schema_version
 
 
-@dataclass(frozen=True)
+@dataclass
 class _DependencyData:
     name: str
     qdat: _QuantityData
     agg_func: Callable[..., Any]
     varname: str
     expr: Expression
-    nonlocal_agg: Callable[..., Any]
+    nonlocal_agg: bool
+    table: Optional[DataTable] = None
 
 
 @dataclass
@@ -405,7 +406,7 @@ class _WatchInfo:
     expr: Expression
     dep_data: List[_DependencyData]
     compiled: CompiledExpression
-    unit: str
+    unit: Optional[str]
     format: str
 
 
@@ -963,7 +964,8 @@ class LogManager:
 
         data = []
 
-        for key, values in _join_by_first_of_tuple([dd.table for dd in dep_data]):
+        for key, values in _join_by_first_of_tuple(
+                [dd.table for dd in dep_data if dd.table]):
             try:
                 data.append((key, compiled(*values)))
             except ZeroDivisionError:
@@ -1127,6 +1129,8 @@ class LogManager:
 
             qdat = self.quantity_data[name]
 
+            assert agg_func
+
             this_dep_data = _DependencyData(name=name, qdat=qdat, agg_func=agg_func,
                     varname="logvar%d" % dep_idx, expr=dep,
                     nonlocal_agg=nonlocal_agg)
@@ -1176,7 +1180,7 @@ class LogManager:
                     return f"{watch.format}".format(display=display, value=value,
                                                     unit=unit)
                 except ZeroDivisionError:
-                    return "%s:div0" % watch.display
+                    return f"{display}:div0"
             if self.watches:
                 print("".join(
                         compute_watch_str(watch) for watch in self.watches),
