@@ -10,11 +10,11 @@ from logpyle import (GCStats, IntervalTimer, LogManager, LogQuantity,
 
 
 class Fifteen(LogQuantity):
-    def __call__(self):
+    def __call__(self) -> int:
         return 15
 
 
-def main():
+def main() -> None:
     logmgr = LogManager("log.sqlite", "wo")
 
     # set a run property

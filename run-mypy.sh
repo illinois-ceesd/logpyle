@@ -4,7 +4,7 @@ set -ex
 
 mypy --strict logpyle
 
-mypy --follow-imports silent examples
+mypy --strict examples
 
 mypy --strict bin/logtool
 mypy --strict bin/runalyzer
