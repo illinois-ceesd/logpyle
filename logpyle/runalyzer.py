@@ -191,7 +191,8 @@ class MagicRunDB(RunDB):
         magic_columns = set()
         import re
 
-        def replace_magic_column(match: re.Match[Any]) -> str:
+        # should be: re.Match[Any]
+        def replace_magic_column(match: Any) -> str:
             qty_name = match.group(1)
             rank_aggregator = match.group(2)
 
