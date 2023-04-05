@@ -2,7 +2,10 @@
 
 set -ex
 
-mypy logpyle examples
+mypy --strict logpyle
 
-mypy bin/logtool
-mypy bin/runalyzer
+mypy --strict examples
+
+mypy --strict bin/logtool
+mypy --strict bin/runalyzer
+mypy --strict bin/runalyzer-gather

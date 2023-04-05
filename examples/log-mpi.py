@@ -2,6 +2,7 @@
 
 from random import uniform
 from time import sleep
+from typing import Any, Callable
 from warnings import warn
 
 from mpi4py import MPI
@@ -13,14 +14,14 @@ from logpyle import (IntervalTimer, LogManager, LogQuantity,
 
 class Fifteen(LogQuantity):
     @property
-    def default_aggregator(self):
+    def default_aggregator(self) -> Callable[..., Any]:  # type: ignore[override]
         return min
 
-    def __call__(self):
+    def __call__(self) -> int:
         return 15
 
 
-def main():
+def main() -> None:
     logmgr = LogManager("mpi-log.sqlite", "wu", MPI.COMM_WORLD)
 
     # Set a run property
