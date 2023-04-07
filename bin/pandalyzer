@@ -2,8 +2,8 @@
 
 
 def main():
-    import sys
     import argparse
+    import sys
 
     parser = argparse.ArgumentParser(description="Analyze a logpyle database.")
     parser.add_argument("-c", "--commands", action="store",
@@ -12,8 +12,8 @@ def main():
     parser.add_argument("scriptfile", nargs="?", help="script file to read")
     args = parser.parse_args()
 
-    from logpyle.pandalyzer import (make_db, make_pandalyzer_symbols,
-                                    PandalyzerConsole)
+    from logpyle.pandalyzer import (PandalyzerConsole, make_db,
+                                    make_pandalyzer_symbols)
 
     if args.scriptfile:
         db = make_db(args.dbfile, interactive=False)

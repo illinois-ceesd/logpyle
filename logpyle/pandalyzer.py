@@ -1,10 +1,10 @@
 import code
-import pandas as pd
-from sqlalchemy import create_engine
-from warnings import warn
-from pytools import Table
-
 from typing import Optional
+from warnings import warn
+
+import pandas as pd
+from pytools import Table
+from sqlalchemy import create_engine
 
 # Commands:
 #  .help        show this help message
@@ -135,7 +135,7 @@ class RunDB:
         print(table_from_df(res))
 
     def plot(self, values: list, **kwargs):
-        from matplotlib.pyplot import show, legend
+        from matplotlib.pyplot import legend, show
 
         if len(values) < 2:
             raise ValueError("Need at least two elements in 'values'.")
@@ -205,10 +205,10 @@ class PandalyzerConsole(code.InteractiveConsole):
             pass
 
         try:
+            import atexit
+            import os
             import readline
             import rlcompleter  # noqa: F401
-            import os
-            import atexit
 
             histfile = os.path.join(os.environ["HOME"], ".runalyzerhist")
             if os.access(histfile, os.R_OK):
