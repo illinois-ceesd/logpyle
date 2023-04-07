@@ -134,7 +134,7 @@ class RunDB:
         print(len(res), "quantities.")
         print(table_from_df(res))
 
-    def plot(self, values: list, kind: str = "line"):
+    def plot(self, values: list, **kwargs):
         from matplotlib.pyplot import show, legend
 
         if len(values) < 2:
@@ -157,10 +157,10 @@ class RunDB:
 
         df = pd.concat(data, axis=1, keys=values)
 
-        p = df.plot(x=values[0], y=values[1], kind=kind, color=next(colors))
+        p = df.plot(x=values[0], y=values[1], color=next(colors), **kwargs)
 
         for v in values[2:]:
-            p = df.plot(x=values[0], y=v, kind=kind, ax=p, color=next(colors))
+            p = df.plot(x=values[0], y=v, ax=p, color=next(colors), **kwargs)
 
         legend(legend_entries[1:])
         p.axes.set_xlabel(legend_entries[0])
