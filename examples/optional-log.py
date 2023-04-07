@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 
+from contextlib import nullcontext
 from random import uniform
 from time import sleep
+from typing import Union
 
-from logpyle import (IntervalTimer, LogManager, add_general_quantities,
-                     add_run_info, add_simulation_quantities, set_dt)
+from logpyle import (IntervalTimer, LogManager, _SubTimer,
+                     add_general_quantities, add_run_info,
+                     add_simulation_quantities, set_dt)
 
 
-def main(use_logpyle):
+def main(use_logpyle: bool) -> None:
     if use_logpyle:
         logmgr = LogManager("optional-log.sqlite", "w")
     else:
@@ -23,9 +26,8 @@ def main(use_logpyle):
     if logmgr:
         vis_timer = IntervalTimer("t_vis", "Time spent visualizing")
         logmgr.add_quantity(vis_timer)
-        time_vis = vis_timer.get_sub_timer()
+        time_vis: Union[_SubTimer, nullcontext[None]] = vis_timer.get_sub_timer()
     else:
-        from contextlib import nullcontext
         time_vis = nullcontext()
 
     if logmgr:

@@ -28,7 +28,6 @@ setup(name="logpyle",
           "Natural Language :: English",
           "Programming Language :: Python",
           "Programming Language :: Python :: 3",
-          "Programming Language :: Python :: 3.6",
           "Programming Language :: Python :: 3.7",
           "Topic :: Scientific/Engineering",
           "Topic :: Scientific/Engineering :: Information Analysis",
@@ -38,7 +37,7 @@ setup(name="logpyle",
           "Topic :: Utilities",
           ],
 
-      python_requires="~=3.6",
+      python_requires="~=3.7",
 
       install_requires=[
           "pytools>=2011.1",

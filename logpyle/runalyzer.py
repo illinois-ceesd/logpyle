@@ -14,34 +14,43 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from pytools import Record, cartesian_product
+from dataclasses import dataclass
+from itertools import product
+from sqlite3 import Connection, Cursor
+from typing import (Any, Callable, Dict, Generator, List, Optional, Sequence,
+                    Set, Tuple, Type, Union)
+
+from pytools import Table
 
 
-class PlotStyle(Record):
-    pass
+@dataclass(frozen=True)
+class PlotStyle:
+    dashes: Tuple[int, ...]
+    color: str
 
 
 PLOT_STYLES = [
         PlotStyle(dashes=dashes, color=color)
-        for dashes, color in cartesian_product(
+        for dashes, color in product(
             [(), (12, 2), (4, 2),  (2, 2), (2, 8)],
             ["blue", "green", "red", "magenta", "cyan"],
             )]
 
 
 class RunDB:
-    def __init__(self, db, interactive):
+    def __init__(self, db: Connection, interactive: bool) -> None:
         self.db = db
         self.interactive = interactive
-        self.rank_agg_tables = set()
+        self.rank_agg_tables: Set[Tuple[str, Callable[..., Any]]] = set()
 
-    def q(self, qry, *extra_args):
+    def q(self, qry: str, *extra_args: Any) -> Cursor:
         return self.db.execute(self.mangle_sql(qry), extra_args)
 
-    def mangle_sql(self, qry):
+    def mangle_sql(self, qry: str) -> str:
         return qry
 
-    def get_rank_agg_table(self, qty, rank_aggregator):
+    def get_rank_agg_table(self, qty: str,
+                           rank_aggregator: Callable[..., Any]) -> str:
         tbl_name = f"rankagg_{rank_aggregator}_{qty}"
 
         if (qty, rank_aggregator) in self.rank_agg_tables:
@@ -58,7 +67,8 @@ class RunDB:
         self.rank_agg_tables.add((qty, rank_aggregator))
         return tbl_name
 
-    def scatter_cursor(self, cursor, labels=None, *args, **kwargs):
+    def scatter_cursor(self, cursor: Cursor, labels: Optional[List[str]] = None,
+                       *args: Any, **kwargs: Any) -> None:
         import matplotlib.pyplot as plt
 
         data_args = tuple(zip(*list(cursor)))
@@ -74,7 +84,8 @@ class RunDB:
         if self.interactive:
             plt.show()
 
-    def plot_cursor(self, cursor, labels=None, *args, **kwargs):
+    def plot_cursor(self, cursor: Cursor, labels: Optional[List[str]] = None,
+                    *args: Any, **kwargs: Any) -> None:
         from matplotlib.pyplot import legend, plot, show
 
         auto_style = kwargs.pop("auto_style", True)
@@ -100,12 +111,13 @@ class RunDB:
         elif len(cursor.description) > 2:
             small_legend = kwargs.pop("small_legend", True)
 
-            def format_label(kv_pairs):
+            def format_label(kv_pairs: Sequence[Tuple[str, Any]]) -> str:
                 return " ".join(f"{column}:{value}"
                             for column, value in kv_pairs)
             format_label = kwargs.pop("format_label", format_label)
 
-            def do_plot(x, y, row_rest):
+            def do_plot(x: List[float], y: List[float],
+                        row_rest: Tuple[Any, ...]) -> None:
                 my_kwargs = kwargs.copy()
                 style = PLOT_STYLES[style_idx[0] % len(PLOT_STYLES)]
                 if auto_style:
@@ -122,7 +134,7 @@ class RunDB:
 
             style_idx = [0]
             for x, y, rest in split_cursor(cursor):
-                do_plot(x, y, rest)
+                do_plot(x, y, rest)  # type: ignore[arg-type]
 
             if small_legend:
                 from matplotlib.font_manager import FontProperties
@@ -134,13 +146,15 @@ class RunDB:
         if self.interactive:
             show()
 
-    def print_cursor(self, cursor):
+    def print_cursor(self, cursor: Cursor) -> None:
         print(table_from_cursor(cursor))
 
 
-def split_cursor(cursor):
-    x = []
-    y = []
+def split_cursor(cursor: Cursor) -> Generator[
+        Tuple[List[Any], List[Any], Optional[Tuple[Any, ...]]], None, None]:
+
+    x: List[Any] = []
+    y: List[Any] = []
     last_rest = None
     for row in cursor:
         row_tuple = tuple(row)
@@ -162,24 +176,25 @@ def split_cursor(cursor):
         yield x, y, last_rest
 
 
-def table_from_cursor(cursor):
-    from pytools import Table
+def table_from_cursor(cursor: Cursor) -> Table:
     tbl = Table()
-    tbl.add_row([column[0] for column in cursor.description])
+    tbl.add_row(tuple([column[0] for column in cursor.description]))
     for row in cursor:
         tbl.add_row(row)
     return tbl
 
 
 class MagicRunDB(RunDB):
-    def mangle_sql(self, qry):
+    def mangle_sql(self, qry: str) -> str:
         up_qry = qry.upper()
         if "FROM" in up_qry and "$$" not in up_qry:
             return qry
 
         magic_columns = set()
+        import re
 
-        def replace_magic_column(match):
+        # should be: re.Match[Any]
+        def replace_magic_column(match: Any) -> str:
             qty_name = match.group(1)
             rank_aggregator = match.group(2)
 
@@ -191,7 +206,6 @@ class MagicRunDB(RunDB):
                 magic_columns.add((qty_name, None))
                 return "%s.value AS %s" % (qty_name, qty_name)
 
-        import re
         magic_column_re = re.compile(r"\$([a-zA-Z][A-Za-z0-9_]*)(\.[a-z]*)?")
         qry, _ = magic_column_re.subn(replace_magic_column, qry)
 
@@ -226,7 +240,7 @@ class MagicRunDB(RunDB):
                     full_tbl_src, full_tbl, addendum)
             last_tbl = full_tbl
 
-        def get_clause_indices(qry):
+        def get_clause_indices(qry: str) -> Dict[str, int]:
             other_clauses = ["UNION",  "INTERSECT", "EXCEPT", "WHERE", "GROUP",
                     "HAVING", "ORDER", "LIMIT", ";"]
 
@@ -257,7 +271,8 @@ class MagicRunDB(RunDB):
         return qry
 
 
-def make_runalyzer_symbols(db):
+def make_runalyzer_symbols(db: RunDB) \
+        -> Dict[str, Union[RunDB, str, None, Callable[..., Any]]]:
     return {
             "__name__": "__console__",
             "__doc__": None,
@@ -273,7 +288,7 @@ def make_runalyzer_symbols(db):
 
 
 class RunalyzerConsole(code.InteractiveConsole):
-    def __init__(self, db):
+    def __init__(self, db: RunDB) -> None:
         self.db = db
         code.InteractiveConsole.__init__(self,
                 make_runalyzer_symbols(db))
@@ -304,7 +319,7 @@ class RunalyzerConsole(code.InteractiveConsole):
 
         self.last_push_result = False
 
-    def push(self, cmdline):
+    def push(self, cmdline: str) -> bool:
         if cmdline.startswith("."):
             try:
                 self.execute_magic(cmdline)
@@ -316,7 +331,7 @@ class RunalyzerConsole(code.InteractiveConsole):
 
         return self.last_push_result
 
-    def execute_magic(self, cmdline):
+    def execute_magic(self, cmdline: str) -> None:
         cmd_end = cmdline.find(" ")
         if cmd_end == -1:
             cmd = cmdline[1:]
@@ -390,13 +405,14 @@ from pytools import VarianceAggregator  # noqa: E402
 
 
 class Variance(VarianceAggregator):
-    def __init__(self):
-        VarianceAggregator.__init__(self, entire_pop=True)
+    def __init__(self) -> None:
+        VarianceAggregator.__init__(self,  # type: ignore[no-untyped-call]
+                                    entire_pop=True)
 
 
 class StdDeviation(Variance):
-    def finalize(self):
-        result = Variance.finalize(self)
+    def finalize(self) -> Optional[float]:
+        result = Variance.finalize(self)  # type: ignore[no-untyped-call]
 
         if result is None:
             return None
@@ -406,29 +422,29 @@ class StdDeviation(Variance):
 
 
 class Norm1:
-    def __init__(self):
-        self.abs_sum = 0
+    def __init__(self) -> None:
+        self.abs_sum = 0.0
 
-    def step(self, value):
+    def step(self, value: float) -> None:
         self.abs_sum += abs(value)
 
-    def finalize(self):
+    def finalize(self) -> float:
         return self.abs_sum
 
 
 class Norm2:
-    def __init__(self):
-        self.square_sum = 0
+    def __init__(self) -> None:
+        self.square_sum = 0.0
 
-    def step(self, value):
+    def step(self, value: float) -> None:
         self.square_sum += value**2
 
-    def finalize(self):
+    def finalize(self) -> float:
         from math import sqrt
         return sqrt(self.square_sum)
 
 
-def my_sprintf(format, arg):
+def my_sprintf(format: str, arg: str) -> str:
     return format % arg
 
 # }}}
@@ -436,13 +452,13 @@ def my_sprintf(format, arg):
 
 # {{{ main program
 
-def make_wrapped_db(filename, interactive, mangle):
+def make_wrapped_db(filename: str, interactive: bool, mangle: bool) -> RunDB:
     import sqlite3
     db = sqlite3.connect(filename)
-    db.create_aggregate("stddev", 1, StdDeviation)
+    db.create_aggregate("stddev", 1, StdDeviation)  # type: ignore[arg-type]
     db.create_aggregate("var", 1, Variance)
-    db.create_aggregate("norm1", 1, Norm1)
-    db.create_aggregate("norm2", 1, Norm2)
+    db.create_aggregate("norm1", 1, Norm1)  # type: ignore[arg-type]
+    db.create_aggregate("norm2", 1, Norm2)  # type: ignore[arg-type]
 
     db.create_function("sprintf", 2, my_sprintf)
     from math import pow, sqrt
@@ -450,7 +466,7 @@ def make_wrapped_db(filename, interactive, mangle):
     db.create_function("pow", 2, pow)
 
     if mangle:
-        db_wrap_class = MagicRunDB
+        db_wrap_class: Type[RunDB] = MagicRunDB
     else:
         db_wrap_class = RunDB
 
