@@ -474,20 +474,20 @@ class LogManager:
                  watch_interval: float = 1.0) -> None:
         """Initialize this log manager instance.
 
-        :param filename: If given, the filename to which this log is bound.
+        :arg filename: If given, the filename to which this log is bound.
           If this database exists, the current state is loaded from it.
-        :param mode: One of "w", "r" for write, read. "w" assumes that the
+        :arg mode: One of "w", "r" for write, read. "w" assumes that the
           database is initially empty. May also be "wu" to indicate that
           a unique filename should be chosen automatically. May also be "wo"
           to indicate that the file should be overwritten.
         :arg mpi_comm: An optional :class:`mpi4py.MPI.Comm` object.
           If given, logs are periodically synchronized to the head node,
           which then writes them out to disk.
-        :param capture_warnings: Tap the Python warnings facility and save warnings
+        :arg capture_warnings: Tap the Python warnings facility and save warnings
           to the log file.
-        :param commit_interval: actually perform a commit only every N times a commit
+        :arg commit_interval: actually perform a commit only every N times a commit
           is requested.
-        :param watch_interval: print watches every N seconds.
+        :arg watch_interval: print watches every N seconds.
         """
 
         assert isinstance(mode, str), "mode must be a string"
@@ -696,7 +696,7 @@ class LogManager:
     def add_watches(self, watches: List[Union[str, Tuple[str, str]]]) -> None:
         """Add quantities that are printed after every time step.
 
-        :param watches:
+        :arg watches:
             List of expressions to watch. Each element can either be
             a string of the expression to watch, or a tuple of the expression
             and a format string. In the format string, you can use the custom
@@ -737,7 +737,7 @@ class LogManager:
     def set_watch_interval(self, interval: float) -> None:
         """Set the interval (in seconds) between the time watches are printed.
 
-        :param interval: watch printing interval in seconds.
+        :arg interval: watch printing interval in seconds.
         """
         self.watch_interval = interval
         self.next_watch_tick = self.tick_count + 1
@@ -745,8 +745,8 @@ class LogManager:
     def set_constant(self, name: str, value: Any) -> None:
         """Make a named, constant value available in the log.
 
-        :param name: the name of the constant.
-        :param value: the value of the constant.
+        :arg name: the name of the constant.
+        :arg value: the value of the constant.
         """
         existed = name in self.constants
         self.constants[name] = value
@@ -870,8 +870,8 @@ class LogManager:
     def add_quantity(self, quantity: LogQuantity, interval: int = 1) -> None:
         """Add a :class:`LogQuantity` to this manager.
 
-        :param quantity: add the specified :class:`LogQuantity`.
-        :param interval: interval (in time steps) when to gather this quantity.
+        :arg quantity: add the specified :class:`LogQuantity`.
+        :arg interval: interval (in time steps) when to gather this quantity.
         """
 
         def add_internal(name: str, unit: Optional[str], description: Optional[str],
@@ -1496,8 +1496,8 @@ def set_dt(mgr: LogManager, dt: float) -> None:
 def add_simulation_quantities(mgr: LogManager, dt: Optional[float] = None) -> None:
     """Add :class:`LogQuantity` objects relating to simulation time.
 
-    :param mgr: the :class:`LogManager` instance.
-    :param dt: (deprecated, use :meth:`set_dt` instead)
+    :arg mgr: the :class:`LogManager` instance.
+    :arg dt: (deprecated, use :meth:`set_dt` instead)
     """
     if dt is not None:
         from warnings import warn
