@@ -371,7 +371,7 @@ Available Python symbols:
     dbscatter(cursor): make scatterplot result of cursor
     dbprint(cursor): print result of cursor
     split_cursor(cursor): x,y,data gather that .plot uses internally
-    table_from_cursor(cursor)
+    table_from_cursor(cursor): Create a printable table from a cursor
 """)
         elif cmd == "q":
             self.db.print_cursor(self.db.q(args))
