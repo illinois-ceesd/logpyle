@@ -375,6 +375,9 @@ def _set_up_schema(db_conn: Connection) -> int:
       create table constants (
         name text,
         value blob)""")
+
+    # schema_version < 2 is missing the 'rank' field
+    # in the warnings table
     db_conn.execute("""
       create table warnings (
         rank integer,
@@ -385,7 +388,18 @@ def _set_up_schema(db_conn: Connection) -> int:
         lineno integer
         )""")
 
-    schema_version = 2
+    # schema_version < 3 does not have the logging table
+    db_conn.execute("""
+      create table logging (
+        rank integer,
+        step integer,
+        level text,
+        message text,
+        filename text,
+        lineno integer
+        )""")
+
+    schema_version = 3
     return schema_version
 
 
@@ -451,12 +465,14 @@ class LogManager:
 
     .. automethod:: get_table
     .. automethod:: get_warnings
+    .. automethod:: get_logging
     .. automethod:: get_expr_dataset
     .. automethod:: get_joint_dataset
 
     .. rubric:: Configuration
 
     .. automethod:: capture_warnings
+    .. automethod:: capture_logging
     .. automethod:: add_watches
     .. automethod:: set_watch_interval
     .. automethod:: set_constant
@@ -471,7 +487,8 @@ class LogManager:
     def __init__(self, filename: Optional[str] = None, mode: str = "r",
                  mpi_comm: Optional["mpi4py.MPI.Comm"] = None,
                  capture_warnings: bool = True, commit_interval: int = 90,
-                 watch_interval: float = 1.0) -> None:
+                 watch_interval: float = 1.0,
+                 capture_logging: bool = True) -> None:
         """Initialize this log manager instance.
 
         :arg filename: If given, the filename to which this log is bound.
@@ -610,6 +627,10 @@ class LogManager:
         if capture_warnings:
             self.capture_warnings(True)
 
+        self.logging_handler: Optional[logging.Handler] = None
+        if capture_logging:
+            self.capture_logging(True)
+
     def capture_warnings(self, enable: bool = True) -> None:
         def _showwarning(message: Union[Warning, str], category: Type[Warning],
                          filename: str, lineno: int, file: Optional[TextIO] = None,
@@ -641,6 +662,47 @@ class LogManager:
 
             warnings.showwarning = self.old_showwarning
             self.old_showwarning = None
+
+    def capture_logging(self, enable: bool = True) -> None:
+        class LogpyleLogHandler(logging.Handler):
+            def __init__(self, mgr: LogManager) -> None:
+                logging.Handler.__init__(self)
+                self.mgr = mgr
+
+            def emit(self, record: logging.LogRecord) -> None:
+                self.mgr.db_conn.execute("insert into logging values (?,?,?,?,?,?)",
+                (self.mgr.rank, self.mgr.tick_count, record.levelname,
+                 record.getMessage(), record.pathname, record.lineno))
+
+        root_logger = logging.getLogger()
+
+        if enable:
+            if self.mode[0] == "w" and self.logging_handler is None:
+                self.logging_handler = LogpyleLogHandler(self)
+                root_logger.addHandler(self.logging_handler)
+            elif self.logging_handler:
+                from warnings import warn
+                warn("Logging capture already enabled")
+        else:
+            if self.logging_handler:
+                root_logger.removeHandler(self.logging_handler)
+            self.logging_handler = None
+
+    def get_logging(self) -> DataTable:
+        columns = ["rank", "step", "level", "message", "filename", "lineno"]
+
+        result = DataTable(columns)  # type: ignore[no-untyped-call]
+
+        if self.schema_version < 3:
+            from warnings import warn
+            warn("This database lacks a 'logging' table")
+            return result
+
+        for row in self.db_conn.execute(
+                "select %s from logging" % (", ".join(columns))):
+            result.insert_row(row)  # type: ignore[no-untyped-call]
+
+        return result
 
     def _load(self) -> None:
         if self.mpi_comm and self.mpi_comm.rank != self.head_rank:

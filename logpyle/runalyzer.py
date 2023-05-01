@@ -345,6 +345,8 @@ Commands:
  .q SQL       execute a (potentially mangled) query
  .runprops    show a list of run properties
  .quantities  show a list of time-dependent quantities
+ .warnings    show a list of warnings
+ .logging     show a list of logging messages
 
 Plotting:
  .plot SQL    plot results of (potentially mangled) query.
@@ -382,6 +384,10 @@ Available Python symbols:
                 print(col)
         elif cmd == "quantities":
             self.db.print_cursor(self.db.q("select * from quantities order by name"))
+        elif cmd == "warnings":
+            self.db.print_cursor(self.db.q("select * from warnings"))
+        elif cmd == "logging":
+            self.db.print_cursor(self.db.q("select * from logging"))
         elif cmd == "title":
             from pylab import title
             title(args)
