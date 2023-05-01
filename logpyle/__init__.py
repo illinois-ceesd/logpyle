@@ -470,7 +470,7 @@ class LogManager:
 
     def __init__(self, filename: Optional[str] = None, mode: str = "r",
                  mpi_comm: Optional["mpi4py.MPI.Comm"] = None,
-                 capture_warnings: bool = True, commit_interval: float = 90,
+                 capture_warnings: bool = True, commit_interval: int = 90,
                  watch_interval: float = 1.0) -> None:
         """Initialize this log manager instance.
 
