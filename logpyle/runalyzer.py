@@ -343,7 +343,7 @@ class RunalyzerConsole(code.InteractiveConsole):
 Commands:
  .help        show this help message
  .q SQL       execute a (potentially mangled) query
- .runprops    show a list of run properties
+ .constants   show a list of (constant) run properties
  .quantities  show a list of time-dependent quantities
 
 Plotting:
@@ -374,7 +374,7 @@ Available Python symbols:
         elif cmd == "q":
             self.db.print_cursor(self.db.q(args))
 
-        elif cmd == "runprops":
+        elif cmd == "runprops" or cmd == "constants":
             cursor = self.db.db.execute("select * from runs")
             columns = [column[0] for column in cursor.description]
             columns.sort()
