@@ -200,68 +200,6 @@ def make_name_map(map_str: str) -> Dict[str, str]:
     return result
 
 
-def transfer_data_table(db_conn: Connection, tbl_name: str,
-                        data_table: DataTable) -> None:
-    db_conn.executemany("insert into %s (%s) values (%s)" %
-            (tbl_name,
-                ", ".join(data_table.column_names),
-                ", ".join("?" * len(data_table.column_names))),
-            data_table.data)
-
-
-def gather_single_file(outfile: str, infiles: List[str]) -> None:
-    from pytools import ProgressBar
-    pb = ProgressBar("Importing...", len(infiles))  # type: ignore[no-untyped-call]
-
-    import sqlite3
-    db_conn = sqlite3.connect(outfile)
-
-    from logpyle import _set_up_schema
-    _set_up_schema(db_conn)
-
-    from pickle import dumps
-
-    seen_constants = set()
-    seen_quantities = set()
-
-    for dbname in infiles:
-        pb.progress()  # type: ignore[no-untyped-call]
-
-        logmgr = LogManager(dbname, "r")
-
-        # transfer warnings
-        transfer_data_table(db_conn, "warnings", logmgr.get_warnings())
-
-        # transfer logging
-        transfer_data_table(db_conn, "logging", logmgr.get_logging())
-
-        # transfer constants
-        for key, val in logmgr.constants.items():
-            if key not in seen_constants:
-                db_conn.execute("insert into constants values (?,?)",
-                        (key, memoryview(dumps(val))))
-                seen_constants.add(key)
-
-        for qname, qdata in logmgr.quantity_data.items():
-            db_conn.execute("""insert into quantities values (?,?,?,?)""", (
-                  qname, qdata.unit, qdata.description,
-                  memoryview(dumps(qdata.default_aggregator))))
-
-            if qname not in seen_quantities:
-                db_conn.execute("""create table %s
-                  (step integer, rank integer, value real)""" % qname)
-                seen_quantities.add(qname)
-
-            transfer_data_table(db_conn, qname, logmgr.get_table(qname))
-
-        logmgr.close()
-
-    pb.finished()  # type: ignore[no-untyped-call]
-
-    db_conn.commit()
-    db_conn.close()
-
-
 def _normalize_types(x: Any) -> Any:
     # get rid of numpy types
     if isinstance(x, int):
@@ -401,8 +339,6 @@ def main() -> None:
     from optparse import OptionParser
 
     parser = OptionParser(usage="%prog OUTDB DBFILES ...")
-    parser.add_option("-1", "--single", action="store_true",
-            help="Gather single-run instead of multi-run file")
     parser.add_option("-s", "--show-features", action="store_true",
             help="Only print the features found and quit")
     parser.add_option("-d", "--dir-features", action="store_true",
@@ -444,15 +380,7 @@ def main() -> None:
             print(fmap.get(feat_name, feat_name), feat_type)
         sys.exit(0)
 
-    if options.single:
-        if len(set(dbname_to_run_id.values())) > 1:
-            raise ValueError(
-                    "data seems to come from more than one run--"
-                    "can't write single-run file")
-        gather_single_file(outfile, infiles)
-    else:
-        gather_multi_file(outfile, infiles, fmap, qmap, fg, features,
-                dbname_to_run_id)
+    gather_multi_file(outfile, infiles, fmap, qmap, fg, features, dbname_to_run_id)
 
 
 if __name__ == "__main__":
