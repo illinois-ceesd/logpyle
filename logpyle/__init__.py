@@ -376,12 +376,13 @@ def _set_up_schema(db_conn: Connection) -> int:
         name text,
         value blob)""")
 
-    # schema_version < 2 is missing the 'rank' field
-    # in the warnings table
+    # schema_version < 2 is missing the 'rank' field.
+    # schema_version < 3 is missing the 'unixtime' field.
     db_conn.execute("""
       create table warnings (
         rank integer,
         step integer,
+        unixtime integer,
         message text,
         category text,
         filename text,
@@ -393,6 +394,7 @@ def _set_up_schema(db_conn: Connection) -> int:
       create table logging (
         rank integer,
         step integer,
+        unixtime integer,
         level text,
         message text,
         filename text,
@@ -638,11 +640,14 @@ class LogManager:
             assert self.old_showwarning
             self.old_showwarning(message, category, filename, lineno, file, line)
 
+            from time import time
+
             if self.schema_version >= 1 and self.mode[0] == "w":
                 if self.schema_version >= 2:
-                    self.db_conn.execute("insert into warnings values (?,?,?,?,?,?)",
-                            (self.rank, self.tick_count, str(message), str(category),
-                                filename, lineno))
+                    self.db_conn.execute(
+                            "insert into warnings values (?,?,?,?,?,?,?)",
+                            (self.rank, self.tick_count, time(), str(message),
+                             str(category), filename, lineno))
                 else:
                     self.db_conn.execute("insert into warnings values (?,?,?,?,?)",
                             (self.tick_count, str(message), str(category),
@@ -670,9 +675,12 @@ class LogManager:
                 self.mgr = mgr
 
             def emit(self, record: logging.LogRecord) -> None:
-                self.mgr.db_conn.execute("insert into logging values (?,?,?,?,?,?)",
-                (self.mgr.rank, self.mgr.tick_count, record.levelname,
-                 record.getMessage(), record.pathname, record.lineno))
+                from time import time
+                self.mgr.db_conn.execute(
+                    "insert into logging values (?,?,?,?,?,?,?)",
+                    (self.mgr.rank, self.mgr.tick_count, time(), record.
+                     levelname, record.getMessage(), record.pathname,
+                     record.lineno))
 
         root_logger = logging.getLogger()
 
@@ -689,7 +697,9 @@ class LogManager:
             self.logging_handler = None
 
     def get_logging(self) -> DataTable:
-        columns = ["rank", "step", "level", "message", "filename", "lineno"]
+        # Match the table set up by _set_up_schema
+        columns = ["rank", "step", "unixtime", "level", "message", "filename",
+                   "lineno"]
 
         result = DataTable(columns)  # type: ignore[no-untyped-call]
 
@@ -743,9 +753,13 @@ class LogManager:
         return result
 
     def get_warnings(self) -> DataTable:
+        # Match the table set up by _set_up_schema
         columns = ["step", "message", "category", "filename", "lineno"]
         if self.schema_version >= 2:
             columns.insert(0, "rank")
+
+            if self.schema_version >= 3:
+                columns.insert(2, "unixtime")
 
         result = DataTable(columns)  # type: ignore[no-untyped-call]
 
