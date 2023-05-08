@@ -229,16 +229,16 @@ class MultiPostLogQuantity(MultiLogQuantity, PostLogQuantity):
 
 
 class DtConsumer:
-    def __init__(self, dt: Optional[float]) -> None:
-        self.dt = dt
+    def __init__(self) -> None:
+        self.dt: Optional[float] = None
 
     def set_dt(self, dt: Optional[float]) -> None:
         self.dt = dt
 
 
 class TimeTracker(DtConsumer):
-    def __init__(self, dt: Optional[float], start: float = 0) -> None:
-        DtConsumer.__init__(self, dt)
+    def __init__(self, start: float = 0) -> None:
+        DtConsumer.__init__(self)
         self.t = start
 
     def tick(self) -> None:
@@ -248,10 +248,10 @@ class TimeTracker(DtConsumer):
 class SimulationLogQuantity(PostLogQuantity, DtConsumer):
     """A source of loggable scalars that needs to know the simulation timestep."""
 
-    def __init__(self, dt: Optional[float], name: str, unit: Optional[str] = None,
+    def __init__(self, name: str, unit: Optional[str] = None,
                  description: Optional[str] = None) -> None:
         PostLogQuantity.__init__(self, name, unit, description)
-        DtConsumer.__init__(self, dt)
+        DtConsumer.__init__(self)
 
 
 class PushLogQuantity(LogQuantity):
@@ -337,25 +337,8 @@ def _join_by_first_of_tuple(list_of_iterables: List[Iterable[Tuple[int, Any]]]) 
 
 
 def _get_unique_id() -> str:
-    try:
-        from uuid import uuid1
-    except ImportError:
-        try:
-            import hashlib
-            checksum = hashlib.md5()
-        except ImportError:
-            # for Python << 2.5
-            import md5  # type: ignore
-            checksum = md5.new()
-
-        from random import Random
-        rng = Random()
-        rng.seed()
-        for _ in range(20):
-            checksum.update(str(rng.randrange(1 << 30)).encode("utf-32"))
-        return checksum.hexdigest()
-    else:
-        return uuid1().hex
+    from uuid import uuid1
+    return uuid1().hex
 
 
 def _get_unique_suffix() -> str:
@@ -1539,10 +1522,9 @@ def add_general_quantities(mgr: LogManager) -> None:
 class SimulationTime(TimeTracker, LogQuantity):
     """Record (monotonically increasing) simulation time."""
 
-    def __init__(self, dt: Optional[float], name: str = "t_sim",
-                 start: float = 0) -> None:
+    def __init__(self, name: str = "t_sim", start: float = 0) -> None:
         LogQuantity.__init__(self, name, "s", "Simulation Time")
-        TimeTracker.__init__(self, dt, start)
+        TimeTracker.__init__(self, start)
 
     def __call__(self) -> float:
         return self.t
@@ -1551,16 +1533,19 @@ class SimulationTime(TimeTracker, LogQuantity):
 class Timestep(SimulationLogQuantity):
     """Record the magnitude of the simulated time step."""
 
-    def __init__(self, dt: Optional[float], name: str = "dt",
-                 unit: str = "s") -> None:
-        SimulationLogQuantity.__init__(self, dt, name, unit, "Simulation Timestep")
+    def __init__(self, name: str = "dt", unit: str = "s") -> None:
+        SimulationLogQuantity.__init__(self, name, unit, "Simulation Timestep")
 
     def __call__(self) -> Optional[float]:
         return self.dt
 
 
 def set_dt(mgr: LogManager, dt: float) -> None:
-    """Set the simulation timestep on :class:`LogManager` ``mgr`` to ``dt``."""
+    """Set the simulation timestep on :class:`LogManager` ``mgr`` to ``dt``.
+
+    :arg mgr: the :class:`LogManager` instance.
+    :arg dt: the simulation timestep.
+    """
 
     for gd_lst in [mgr.before_gather_descriptors,
             mgr.after_gather_descriptors]:
@@ -1569,19 +1554,13 @@ def set_dt(mgr: LogManager, dt: float) -> None:
                 gd.quantity.set_dt(dt)
 
 
-def add_simulation_quantities(mgr: LogManager, dt: Optional[float] = None) -> None:
+def add_simulation_quantities(mgr: LogManager) -> None:
     """Add :class:`LogQuantity` objects relating to simulation time.
 
     :arg mgr: the :class:`LogManager` instance.
-    :arg dt: (deprecated, use :meth:`set_dt` instead)
     """
-    if dt is not None:
-        from warnings import warn
-        warn("Specifying dt ahead of time is a deprecated practice. "
-                "Use logpyle.set_dt() instead.")
-
-    mgr.add_quantity(SimulationTime(dt))
-    mgr.add_quantity(Timestep(dt))
+    mgr.add_quantity(SimulationTime())
+    mgr.add_quantity(Timestep())
 
 
 def add_run_info(mgr: LogManager) -> None:
