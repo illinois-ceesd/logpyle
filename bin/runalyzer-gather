@@ -236,6 +236,8 @@ def gather_multi_file(outfile: str, infiles: List[str], fmap: Dict[str, str],
     db_conn.execute("create table runs (%s)" % ",".join(run_columns))
     db_conn.execute("create index runs_id on runs (id)")
 
+    # Caveat: the next three tables need to match the tables in _set_up_schema,
+    # plus the 'id'/'run_id' columns.
     db_conn.execute("""create table quantities (
             id integer primary key,
             name text,
@@ -244,10 +246,29 @@ def gather_multi_file(outfile: str, infiles: List[str], fmap: Dict[str, str],
             rank_aggregator text
             )""")
 
-    db_conn.execute("""create table warnings (
-            run_id integer, step integer, rank integer, message text,
-            category text, filename text, lineno integer
-            )""")
+    db_conn.execute("""
+      create table warnings (
+        run_id integer,
+        rank integer,
+        step integer,
+        unixtime integer,
+        message text,
+        category text,
+        filename text,
+        lineno integer
+        )""")
+
+    db_conn.execute("""
+      create table logging (
+        run_id integer,
+        rank integer,
+        step integer,
+        unixtime integer,
+        level text,
+        message text,
+        filename text,
+        lineno integer
+        )""")
 
     created_tables = set()
 
@@ -285,6 +306,7 @@ def gather_multi_file(outfile: str, infiles: List[str], fmap: Dict[str, str],
                 my_data)
 
         transfer_data_table_multi(db_conn, "warnings", logmgr.get_warnings())
+        transfer_data_table_multi(db_conn, "logging", logmgr.get_logging())
 
         for qname, qdat in logmgr.quantity_data.items():
             tgt_qname = qmap.get(qname, qname)

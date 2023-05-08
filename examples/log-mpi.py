@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import logging
 from random import uniform
 from time import sleep
 from typing import Any, Callable
@@ -19,6 +20,9 @@ class Fifteen(LogQuantity):
 
     def __call__(self) -> int:
         return 15
+
+
+logger = logging.getLogger(__name__)
 
 
 def main() -> None:
@@ -63,9 +67,12 @@ def main() -> None:
             with vis_timer.start_sub_timer():
                 sleep(0.05)
 
-        # Illustrate warnings capture
+        # Illustrate warnings/logging capture
         if uniform(0, 1) < 0.05:
             warn("Oof. Something went awry.")
+
+        if istep == 16:
+            logger.warning("test logging")
 
         logmgr.tick_after()
 

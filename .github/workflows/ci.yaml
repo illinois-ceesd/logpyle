@@ -51,6 +51,12 @@ jobs:
 
             # Perform some simple tests on the output file
 
+            ## Check for warnings and logging
+            runalyzer summary.sqlite  -c 'db.print_cursor(db.q("select * from warnings"))'
+            runalyzer summary.sqlite  -c 'db.print_cursor(db.q("select * from warnings"))' | grep Oof
+            runalyzer summary.sqlite  -c 'db.print_cursor(db.q("select * from logging"))'
+            runalyzer summary.sqlite  -c 'db.print_cursor(db.q("select * from logging"))' | grep WARNING
+
             ## Check that t_log is within [0, 1]
             runalyzer -m summary.sqlite -c 'assert all([0 < r[0] < 1 for r in q("select $t_log.max")])'
 
@@ -67,6 +73,14 @@ jobs:
             rm summary.sqlite
             runalyzer-gather summary.sqlite mpi-log*.sqlite
             runalyzer -m summary.sqlite -c 'dbplot(q("select $t_sim.max, $t_step.max"))'
+
+            # Perform some simple tests on the output file
+
+            ## Check for warnings and logging
+            runalyzer summary.sqlite  -c 'db.print_cursor(db.q("select * from warnings"))'
+            runalyzer summary.sqlite  -c 'db.print_cursor(db.q("select * from warnings"))' | grep Oof
+            runalyzer summary.sqlite  -c 'db.print_cursor(db.q("select * from logging"))'
+            runalyzer summary.sqlite  -c 'db.print_cursor(db.q("select * from logging"))' | grep WARNING
 
             ## Check that t_log is within [0, 1]
             runalyzer -m summary.sqlite -c 'assert all([0 < r[0] < 1 for r in q("select $t_log.max")])'

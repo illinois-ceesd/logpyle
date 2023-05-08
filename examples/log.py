@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import logging
 from random import uniform
 from time import sleep
 from warnings import warn
@@ -12,6 +13,9 @@ from logpyle import (GCStats, IntervalTimer, LogManager, LogQuantity,
 class Fifteen(LogQuantity):
     def __call__(self) -> int:
         return 15
+
+
+logger = logging.getLogger(__name__)
 
 
 def main() -> None:
@@ -42,7 +46,7 @@ def main() -> None:
     for istep in range(200):
         logmgr.tick_before()
 
-        dt = uniform(0.01, 0.1)
+        dt = uniform(0.01, 0.05)
         set_dt(logmgr, dt)
         sleep(dt)
 
@@ -56,10 +60,12 @@ def main() -> None:
             warn("Oof. Something went awry.")
 
         if istep == 50:
+            logger.warning("test logging")
             print("FYI: Setting watch interval to 5 seconds.")
             logmgr.set_watch_interval(5)
 
         if istep == 150:
+            logger.error("another logging test")
             print("FYI: Setting watch interval back to 1 second.")
             logmgr.set_watch_interval(1)
 
