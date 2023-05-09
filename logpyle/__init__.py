@@ -562,8 +562,13 @@ class LogManager:
                 except OSError:
                     pass
 
-            self.db_conn = sqlite.connect(filename, timeout=30)
+            # check_same_thread is False since we need to override thread safety
+            # for warnings/logging capture.
+            self.db_conn = sqlite.connect(filename, timeout=30,
+                                          check_same_thread=False)
+
             self.mode = mode
+
             try:
                 self.db_conn.execute("select * from quantities;")
             except sqlite.OperationalError:
@@ -638,11 +643,16 @@ class LogManager:
 
         import warnings
         if enable:
-            if self.old_showwarning is None:
-                self.old_showwarning = warnings.showwarning
-                warnings.showwarning = _showwarning
+            from logpyle.utils import is_sqlite3_fully_threadsafe
+            if not is_sqlite3_fully_threadsafe():
+                warnings.warn("sqlite3 is not fully threadsafe, can not enable "
+                              "warnings capture")
             else:
-                raise RuntimeError("Warnings capture was enabled twice")
+                if self.old_showwarning is None:
+                    self.old_showwarning = warnings.showwarning
+                    warnings.showwarning = _showwarning
+                else:
+                    raise RuntimeError("Warnings capture was enabled twice")
         else:
             if self.old_showwarning is None:
                 raise RuntimeError(
@@ -668,12 +678,18 @@ class LogManager:
         root_logger = logging.getLogger()
 
         if enable:
-            if self.mode[0] == "w" and self.logging_handler is None:
-                self.logging_handler = LogpyleLogHandler(self)
-                root_logger.addHandler(self.logging_handler)
-            elif self.logging_handler:
+            from logpyle.utils import is_sqlite3_fully_threadsafe
+            if not is_sqlite3_fully_threadsafe():
                 from warnings import warn
-                warn("Logging capture already enabled")
+                warn("sqlite3 is not fully threadsafe, can not enable "
+                     "logging capture")
+            else:
+                if self.mode[0] == "w" and self.logging_handler is None:
+                    self.logging_handler = LogpyleLogHandler(self)
+                    root_logger.addHandler(self.logging_handler)
+                elif self.logging_handler:
+                    from warnings import warn
+                    warn("Logging capture already enabled")
         else:
             if self.logging_handler:
                 root_logger.removeHandler(self.logging_handler)
