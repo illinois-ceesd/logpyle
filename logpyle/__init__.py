@@ -719,6 +719,9 @@ class LogManager:
         if self.old_showwarning is not None:
             self.capture_warnings(False)
 
+        if self.logging_handler:
+            self.capture_logging(False)
+
         self.save()
         self.db_conn.close()
 
