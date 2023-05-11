@@ -623,17 +623,11 @@ class LogManager:
         self.warning_data: List[_LogWarningInfo] = []
         self.old_showwarning: Optional[Callable[..., Any]] = None
         if capture_warnings:
-            if self.schema_version < 3:
-                raise ValueError("Warnings capture needs at least schema_version 3, "
-                                f" got {self.schema_version}")
             self.capture_warnings(True)
 
         self.logging_data: List[_LogWarningInfo] = []
         self.logging_handler: Optional[logging.Handler] = None
         if capture_logging:
-            if self.schema_version < 3:
-                raise ValueError("Logging capture needs at least schema_version 3, "
-                                f" got {self.schema_version}")
             self.capture_logging(True)
 
         # }}}
@@ -659,6 +653,9 @@ class LogManager:
 
         import warnings
         if enable:
+            if self.schema_version < 3:
+                raise ValueError("Warnings capture needs at least schema_version 3, "
+                                f" got {self.schema_version}")
             if self.old_showwarning is None:
                 self.old_showwarning = warnings.showwarning
                 warnings.showwarning = _showwarning
@@ -691,6 +688,9 @@ class LogManager:
         root_logger = logging.getLogger()
 
         if enable:
+            if self.schema_version < 3:
+                raise ValueError("Logging capture needs at least schema_version 3, "
+                                f" got {self.schema_version}")
             if self.mode[0] == "w" and self.logging_handler is None:
                 self.logging_handler = LogpyleLogHandler(self)
                 root_logger.addHandler(self.logging_handler)
