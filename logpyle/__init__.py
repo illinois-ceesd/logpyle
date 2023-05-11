@@ -409,6 +409,16 @@ class _WatchInfo:
     format: str
 
 
+@dataclass(frozen=True)
+class _LogWarningInfo:
+    tick_count: int
+    time: float
+    message: str
+    category: str
+    filename: str
+    lineno: int
+
+
 class LogManager:
     """A distributed-memory-capable diagnostic time-series logging facility.
     It is meant to log data from a computation, with certain log quantities
@@ -608,13 +618,19 @@ class LogManager:
 
             break
 
+        # {{{ warnings/logging capture
+
+        self.warning_data: List[_LogWarningInfo] = []
         self.old_showwarning: Optional[Callable[..., Any]] = None
         if capture_warnings:
             self.capture_warnings(True)
 
+        self.logging_data: List[_LogWarningInfo] = []
         self.logging_handler: Optional[logging.Handler] = None
         if capture_logging:
             self.capture_logging(True)
+
+        # }}}
 
     def capture_warnings(self, enable: bool = True) -> None:
         def _showwarning(message: Union[Warning, str], category: Type[Warning],
@@ -625,19 +641,20 @@ class LogManager:
 
             from time import time
 
-            if self.schema_version >= 1 and self.mode[0] == "w":
-                if self.schema_version >= 2:
-                    self.db_conn.execute(
-                            "insert into warnings values (?,?,?,?,?,?,?)",
-                            (self.rank, self.tick_count, time(), str(message),
-                             str(category), filename, lineno))
-                else:
-                    self.db_conn.execute("insert into warnings values (?,?,?,?,?)",
-                            (self.tick_count, str(message), str(category),
-                                filename, lineno))
+            self.warning_data.append(_LogWarningInfo(
+                tick_count=self.tick_count,
+                time=time(),
+                message=str(message),
+                category=str(category),
+                filename=filename,
+                lineno=lineno
+            ))
 
         import warnings
         if enable:
+            if self.schema_version < 3:
+                raise ValueError("Warnings capture needs at least schema_version 3, "
+                                f" got {self.schema_version}")
             if self.old_showwarning is None:
                 self.old_showwarning = warnings.showwarning
                 warnings.showwarning = _showwarning
@@ -659,15 +676,20 @@ class LogManager:
 
             def emit(self, record: logging.LogRecord) -> None:
                 from time import time
-                self.mgr.db_conn.execute(
-                    "insert into logging values (?,?,?,?,?,?,?)",
-                    (self.mgr.rank, self.mgr.tick_count, time(), record.
-                     levelname, record.getMessage(), record.pathname,
-                     record.lineno))
+                self.mgr.logging_data.append(
+                    _LogWarningInfo(tick_count=self.mgr.tick_count,
+                                time=time(),
+                                message=record.getMessage(),
+                                category=record.levelname,
+                                filename=record.pathname,
+                                lineno=record.lineno))
 
         root_logger = logging.getLogger()
 
         if enable:
+            if self.schema_version < 3:
+                raise ValueError("Logging capture needs at least schema_version 3, "
+                                f" got {self.schema_version}")
             if self.mode[0] == "w" and self.logging_handler is None:
                 self.logging_handler = LogpyleLogHandler(self)
                 root_logger.addHandler(self.logging_handler)
@@ -919,7 +941,30 @@ class LogManager:
             self.commit_countdown = self.commit_interval
             self.db_conn.commit()
 
+    def save_logging(self) -> None:
+        for log in self.logging_data:
+            self.db_conn.execute(
+                "insert into logging values (?,?,?,?,?,?,?)",
+                (self.rank, log.tick_count, log.time,
+                log.category, log.message, log.filename,
+                log.lineno))
+
+        self.logging_data = []
+
+    def save_warnings(self) -> None:
+        for w in self.warning_data:
+            self.db_conn.execute(
+                "insert into warnings values (?,?,?,?,?,?,?)",
+                (self.rank, w.tick_count, w.time, w.message,
+                    w.category, w.filename, w.lineno))
+
+        self.warning_data = []
+
     def save(self) -> None:
+        if self.mode[0] == "w":
+            self.save_logging()
+            self.save_warnings()
+
         from sqlite3 import OperationalError
         try:
             self.db_conn.commit()
