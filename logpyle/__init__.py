@@ -639,17 +639,16 @@ class LogManager:
             assert self.old_showwarning
             self.old_showwarning(message, category, filename, lineno, file, line)
 
-            if self.mode[0] == "w":
-                from time import time
+            from time import time
 
-                self.warning_data.append(_LogWarningInfo(
-                    tick_count=self.tick_count,
-                    time=time(),
-                    message=str(message),
-                    category=str(category),
-                    filename=filename,
-                    lineno=lineno
-                ))
+            self.warning_data.append(_LogWarningInfo(
+                tick_count=self.tick_count,
+                time=time(),
+                message=str(message),
+                category=str(category),
+                filename=filename,
+                lineno=lineno
+            ))
 
         import warnings
         if enable:
@@ -962,8 +961,9 @@ class LogManager:
         self.warning_data = []
 
     def save(self) -> None:
-        self.save_logging()
-        self.save_warnings()
+        if self.mode[0] == "w":
+            self.save_logging()
+            self.save_warnings()
 
         from sqlite3 import OperationalError
         try:
