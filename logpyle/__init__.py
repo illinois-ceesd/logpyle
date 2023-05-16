@@ -622,12 +622,12 @@ class LogManager:
 
         self.warning_data: List[_LogWarningInfo] = []
         self.old_showwarning: Optional[Callable[..., Any]] = None
-        if capture_warnings:
+        if capture_warnings and self.mode[0] == "w":
             self.capture_warnings(True)
 
         self.logging_data: List[_LogWarningInfo] = []
         self.logging_handler: Optional[logging.Handler] = None
-        if capture_logging:
+        if capture_logging and self.mode[0] == "w":
             self.capture_logging(True)
 
         # }}}
