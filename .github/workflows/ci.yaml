@@ -27,15 +27,15 @@ jobs:
         strategy:
           fail-fast: false
           matrix:
-            python-version: [3.7, 3.8, 3.9, 3.10, 3.x]
+            python-version: ['3.7', '3.8', '3.9', '3.10', '3.x']
             os: [ubuntu-latest, macos-latest]
 
         steps:
         - uses: actions/checkout@v3
-        - name: Set up Python '${{ matrix.python-version }}' on ${{ matrix.os }}
+        - name: Set up Python ${{ matrix.python-version }} on ${{ matrix.os }}
           uses: actions/setup-python@v4
           with:
-            python-version: '${{ matrix.python-version }}'
+            python-version: ${{ matrix.python-version }}
         - name: Install prerequisites
           run: |
             [[ $(uname) == "Darwin" ]] && brew install open-mpi
