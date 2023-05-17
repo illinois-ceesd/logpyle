@@ -32,10 +32,10 @@ jobs:
 
         steps:
         - uses: actions/checkout@v3
-        - name: Set up Python ${{ matrix.python-version }} on ${{ matrix.os }}
+        - name: Set up Python '${{ matrix.python-version }}' on ${{ matrix.os }}
           uses: actions/setup-python@v4
           with:
-            python-version: ${{ matrix.python-version }}
+            python-version: '${{ matrix.python-version }}'
         - name: Install prerequisites
           run: |
             [[ $(uname) == "Darwin" ]] && brew install open-mpi
