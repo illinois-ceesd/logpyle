@@ -55,7 +55,7 @@ logged quantities::
     9  | fifteen | None | None                        | None
     5  | step    | 1    | Timesteps                   | None
     2  | t_2step | s    | Step-to-step duration       | None
-    3  | t_cpu   | s    | Wall time                   | None
+    3  | t_wall  | s    | Wall time                   | None
     4  | t_log   | s    | Time spent updating the log | None
     6  | t_sim   | s    | Simulation Time             | None
     1  | t_step  | s    | Time step duration          | None

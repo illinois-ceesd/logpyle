@@ -22,7 +22,7 @@ Built-in Log General-Purpose Quantities
 .. autoclass:: StepToStepDuration
 .. autoclass:: TimestepDuration
 .. autoclass:: InitTime
-.. autoclass:: CPUTime
+.. autoclass:: WallTime
 .. autoclass:: ETA
 .. autoclass:: MemoryHwm
 .. autoclass:: GCStats
@@ -1439,6 +1439,14 @@ class StepToStepDuration(PostLogQuantity):
     :meth:`LogManager.tick_before` of step x+1. The value stored is the value for
     step x+1.
 
+    .. note::
+
+        In most cases, this quantity should approximately match ``t_step`` +
+        ``t_log``. If it does not, it might indicate that the application
+        performs operations outside :meth:`LogManager.tick_before` and
+        :meth:`LogManager.tick_after`, or that some other time is not being
+        accounted for.
+
     .. automethod:: __init__
     """
 
@@ -1518,13 +1526,13 @@ class InitTime(LogQuantity):
         return time() - self.create_time
 
 
-class CPUTime(LogQuantity):
+class WallTime(LogQuantity):
     """Records (monotonically increasing) wall time since the quantity was
     initialized.
 
     .. automethod:: __init__
     """
-    def __init__(self, name: str = "t_cpu") -> None:
+    def __init__(self, name: str = "t_wall") -> None:
         LogQuantity.__init__(self, name, "s", "Wall time")
 
         self.start = time_monotonic()
@@ -1560,7 +1568,7 @@ def add_general_quantities(mgr: LogManager) -> None:
 
     mgr.add_quantity(TimestepDuration())
     mgr.add_quantity(StepToStepDuration())
-    mgr.add_quantity(CPUTime())
+    mgr.add_quantity(WallTime())
     mgr.add_quantity(LogUpdateDuration(mgr))
     mgr.add_quantity(TimestepCounter())
     mgr.add_quantity(InitTime())
