@@ -1,13 +1,12 @@
 import logging
 import pytest
+import random
 from random import uniform
 from time import (sleep,monotonic as time_monotonic)
 from warnings import warn
 
 
-from logpyle import (GCStats, IntervalTimer, LogManager, LogQuantity,
-                     add_general_quantities, add_run_info,
-                     add_simulation_quantities, set_dt)
+from logpyle import *
 
 
 # Notes to self
@@ -86,19 +85,136 @@ def test_logging_warnings_from_warnings_module():
 
 	logmgr.close()
 
-	assert True
+
+def test_logging_warnings_from_logging_module():
+	logmgr = LogManager("log.sqlite", "wo")
+	
+	logger = logging.getLogger(__name__)
+	# logging.basicConfig() # required to log to terminal
+
+	first_warning_message = "Not a warning: First warning message!!!"
+
+	logmgr.tick_before()	
+	logger.warning(first_warning_message)
+	logmgr.tick_after()
+
+	# ensure that the warning was caught properly
+	# print(logmgr.save_logging())
+	print(logmgr.logging_data)
+	assert logmgr.logging_data[0].message == first_warning_message
+	assert logmgr.logging_data[0].category == 'WARNING'
+	assert logmgr.logging_data[0].tick_count == 0
+	
+	second_warning_message = "Not a warning: Second warning message!!!"
+	
+	logmgr.tick_before()
+	logger.warning(second_warning_message)
+	logmgr.tick_after()
+
+	# ensure that the warning was caught properly
+	print(logmgr.logging_data[1])
+	assert logmgr.logging_data[1].message == second_warning_message
+	assert logmgr.logging_data[1].category == 'WARNING'
+	assert logmgr.logging_data[1].tick_count == 1
+
+	# save warnings to database
+	logmgr.save_logging()
+
+	# ensure that warnings are of the correct form
+	message_ind = logmgr.get_logging().column_names.index("message")
+	step_ind = logmgr.get_logging().column_names.index("step")
+	data = logmgr.get_logging().data
+	
+	# ensure the first warning has been saved correctly
+	assert data[0][message_ind] == first_warning_message
+	assert data[0][step_ind] == 0
+
+	# ensure the second warning has been saved correctly
+	assert data[1][message_ind] == second_warning_message
+	assert data[1][step_ind] == 1
+
+	logmgr.close()
 
 
-def test_accurate_interval_timer():
-	# todo
+
+
+def test_accurate_TimestepCounter_quantity():
+	logmgr = LogManager("log.sqlite", "wo")
+
+	test_timer = TimestepCounter("t_step_count")
+	logmgr.add_quantity(test_timer)
+
+	n1 = 200
+	n2 = 120
+
+	for i in range(n1):
+		logmgr.tick_before()
+		# do something ...
+		logmgr.tick_after()
+	assert logmgr.last_values["t_step_count"] == n1 - 1
+	
+	for i in range(n2):
+		logmgr.tick_before()
+		# do something ...
+		logmgr.tick_after()
+	assert logmgr.last_values["t_step_count"] == n1 + n2 - 1
+
+	logmgr.close()
+
+
+def test_accurate_StepToStepDuration_quantity():
+	tol = 0.005
+	minTime = 0.02
+	logmgr = LogManager("log.sqlite", "wo")
+
+	test_timer = StepToStepDuration("t_slp")
+	logmgr.add_quantity(test_timer)
+
+	for i in range(20):
+		logmgr.tick_before()
+		# do something ...
+		sleepTime = random.random()/30 + minTime
+		logmgr.tick_after()
+
+		sleep(sleepTime)
+
+		logmgr.tick_before()
+		print(sleepTime,test_timer()) # assert that these quantities only differ by a max of tol defined above
+		assert abs(test_timer() - sleepTime) < tol
+		# do something ...
+		logmgr.tick_after()
+
+	logmgr.close()
+
+
+def test_accurate_TimestepDuration_quantity():
+	tol = 0.005
+	minTime = 0.02
+	logmgr = LogManager("log.sqlite", "wo")
+	
+	test_timer = TimestepDuration("t_slp")
+	logmgr.add_quantity(test_timer)
+
+	for i in range(20):
+		sleepTime = random.random()/30 + minTime
+
+		logmgr.tick_before()
+		sleep(sleepTime)
+		logmgr.tick_after()
+
+		actual_time = logmgr.get_expr_dataset("t_slp")[2][-1][1]
+		print(sleepTime,actual_time) # assert that these quantities only differ by a max of tol defined above
+		assert abs(actual_time - sleepTime) < tol
+
+	logmgr.close()
 	pass
 
 
-def test_accurate_general_quantities():
+def test_accurate_BLANK_quantity():
 	# todo
-	pass
+	logmgr = LogManager("log.sqlite", "wo")
 
 
-def test_accurate_simmulation_quantities():
-	# todo
+	logmgr.close()
 	pass
+
