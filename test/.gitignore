@@ -1,0 +1,10 @@
+coverage_re/
+__pycache__/
+*.sqlite
+*.sqlite3
+*.db
+*.db3
+*.s3db
+*.sl3
+*-journal
+THIS_LOG_SHOULD_BE_DELETED*
