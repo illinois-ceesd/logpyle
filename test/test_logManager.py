@@ -2,6 +2,7 @@ import logging
 import pytest
 import random
 import mpi4py
+from pymbolic.primitives import Variable
 from random import uniform
 from time import sleep, monotonic as time_monotonic
 from warnings import warn
@@ -29,6 +30,14 @@ from logpyle import (
 #
 # 1) Might want to add documentation to PushLogQuantity specifying that it
 # 		keeps track of quantities pushed outside of tick time interval.
+# 2) Double enable/disable warnings/logging are not equivilent. Logging only
+#       gives a warning for double enable, while warning throws a RuntimeError
+#       for either double enable or double disable.
+# 3) get_joint_dataset seems to fail when a quantity does not have any
+#       time steps endured.
+# 4) write_datafile comments out the first line that has the title. it also
+#       has the first data point. Prob should have a new line after the title.
+#       The tests currently written assume that this behavior is intentional.
 #
 
 
@@ -384,12 +393,45 @@ def test_simulation_quantities():
     pass
 
 
-def test_open_existing_database():
-    # TODO
+def test_nonexisting_table():
     logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
 
+    add_general_quantities(logmgr)
+
+    with pytest.raises(KeyError):
+        logmgr.get_table("nonexistent table")
+
     logmgr.close()
-    pass
+
+
+def test_existing_database_no_overwrite():
+    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
+    logmgr.close()
+
+    with pytest.raises(RuntimeError):
+        logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "w")
+
+
+def test_existing_database_with_overwrite():
+    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
+    logmgr.close()
+
+    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
+
+
+def test_open_existing_database():
+    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
+
+    add_general_quantities(logmgr)
+    logmgr.tick_before()
+    logmgr.tick_after()
+    logmgr.save()
+
+    logmgr.close()
+    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "r")
+
+    with pytest.raises(RuntimeError):
+        logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "w")
 
 
 def test_add_run_info():
@@ -437,6 +479,30 @@ def test_set_dt():
     pass
 
 
+def test_CallableLogQuantity():
+    # TODO
+    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
+
+    logmgr.close()
+    pass
+
+
+def test_MultiLogQuantity():
+    # TODO
+    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
+
+    logmgr.close()
+    pass
+
+
+def test_MultiLogQuantity():
+    # TODO
+    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
+
+    logmgr.close()
+    pass
+
+
 def test_MultiPostLogQuantity():
     # TODO
     logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
@@ -445,10 +511,101 @@ def test_MultiPostLogQuantity():
     pass
 
 
-def test_add_watches():
-    # TODO
-    # test adding a few watches
+def test_double_enable_warnings():
     logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
+
+    # default is enabled
+    with pytest.raises(RuntimeError):
+        logmgr.capture_warnings(True)
+
+    logmgr.close()
+
+
+def test_double_disable_warnings():
+    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
+
+    # default is enabled
+    logmgr.capture_warnings(False)
+    with pytest.raises(RuntimeError):
+        logmgr.capture_warnings(False)
+
+    logmgr.close()
+
+
+# def test_double_enable_logging():
+#     # TODO
+#     logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
+
+#     # default is enabled
+#     with pytest.raises(RuntimeError):
+#         logmgr.capture_logging(True)
+
+#     logmgr.close()
+
+
+# def test_double_disable_logging():
+#     # TODO
+#     logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
+
+#     # default is enabled
+#     logmgr.capture_logging(False)
+#     with pytest.raises(RuntimeError):
+#         logmgr.capture_logging(False)
+
+#     logmgr.close()
+
+
+def test_double_add_quantity():
+    class Fifteen(LogQuantity):
+        def __call__(self) -> int:
+            return 15
+
+    class FifteenStr(LogQuantity):
+        def __call__(self) -> int:
+            return "15.0"
+
+    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
+
+    logmgr.add_quantity(Fifteen("fifteen"))
+    with pytest.raises(RuntimeError):
+        logmgr.add_quantity(Fifteen("fifteen"))
+
+    logmgr.close()
+
+
+def test_add_watches():
+    # test adding a few watches
+
+    class Fifteen(LogQuantity):
+        def __call__(self) -> int:
+            return 15
+
+    class FifteenStr(LogQuantity):
+        def __call__(self) -> int:
+            return "15.0"
+
+    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
+
+    logmgr.add_quantity(Fifteen("name1"))
+    logmgr.add_quantity(Fifteen("name2"))
+    logmgr.add_quantity(FifteenStr("tup_name1"))
+
+    watch_list = ["name1", ("tup_name1", "str"), "name2"]
+
+    logmgr.add_watches(watch_list)
+
+    logmgr.tick_before()
+    # do something ...
+    logmgr.tick_before()
+    logmgr.save()
+
+    # check that all watches are present
+    actualWatches = [watch.expr for watch in logmgr.watches]
+    expected = ["name1", "tup_name1", "name2"]
+    actualWatches.sort()
+    expected.sort()
+    print(actualWatches, expected)
+    assert actualWatches == expected
 
     logmgr.close()
     pass
@@ -463,6 +620,7 @@ def test_nameless_LogManager():
 
 
 def test_unique_suffix():
+    # TODO
     logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED.sqlite", "wu")
     logmgr.close()
     pass
@@ -481,12 +639,213 @@ def test_time_and_count_function():
     pass
 
 
+def test_EventCounter():
+    # TODO
+    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
+
+    logmgr.close()
+    pass
+
+
+def test_joint_dataset():
+    # TODO
+    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
+
+    add_general_quantities(logmgr)
+    logmgr.tick_before()
+    logmgr.tick_after()
+    logmgr.save()
+
+    idealQuantitiesAdded = [
+        "t_step",
+        ("cpu time", Variable("s"), "t_wall"),
+        "memory_usage_hwm",
+        "t_init",
+    ]
+    quantityNames = [
+        "t_step",
+        "cpu time",
+        "memory_usage_hwm",
+        "t_init",
+    ]
+    dataset = logmgr.get_joint_dataset(idealQuantitiesAdded)
+
+    print(dataset)
+    names = list(dataset[0])
+    names.sort()
+    quantityNames.sort()
+
+    for quantity in quantityNames:
+        assert quantity in names
+    assert len(names) == len(quantityNames)
+
+    logmgr.close()
+
+
+def test_plot_data():
+    # TODO
+    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
+
+    add_general_quantities(logmgr)
+
+    logmgr.tick_before()
+    # do something ...
+    logmgr.tick_after()
+
+    # there should be one step
+    data1 = logmgr.get_plot_data("t_wall", "t_wall")
+    print(data1)
+    assert len(data1[0][0]) == 1
+
+    logmgr.tick_before()
+    # do something ...
+    logmgr.tick_after()
+
+    # there should be two steps
+    data2 = logmgr.get_plot_data("t_wall", "t_wall")
+    print(data2)
+    assert len(data2[0][0]) == 2
+
+    logmgr.tick_before()
+    # do something ...
+    logmgr.tick_after()
+
+    # there should be three steps
+    data3 = logmgr.get_plot_data("t_wall", "t_wall")
+    print(data3)
+    assert len(data3[0][0]) == 3
+
+    # first two of three steps should be taken
+    data0_1 = logmgr.get_plot_data("t_wall", "t_wall", 0, 1)
+    print(data0_1)
+    assert len(data0_1) == 2
+
+    # last two of three steps should be taken
+    data1_2 = logmgr.get_plot_data("t_wall", "t_wall", 1, 2)
+    print(data1_2)
+    assert len(data1_2) == 2
+
+    logmgr.close()
+
+
+def test_empty_plot_data():
+    # TODO
+    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
+
+    add_general_quantities(logmgr)
+
+    # there should be zero step
+    data0 = logmgr.get_plot_data("t_wall", "t_wall")
+    print(data0)
+    assert len(data0[0][0]) == 0
+
+    logmgr.tick_before()
+    # do something ...
+    logmgr.tick_after()
+
+    # there should be one step
+    data1 = logmgr.get_plot_data("t_wall", "t_wall")
+    print(data1)
+    assert len(data1[0][0]) == 1
+
+    logmgr.tick_before()
+    # do something ...
+    logmgr.tick_after()
+
+    # there should be two steps
+    data2 = logmgr.get_plot_data("t_wall", "t_wall")
+    print(data2)
+    assert len(data2[0][0]) == 2
+
+    logmgr.tick_before()
+    # do something ...
+    logmgr.tick_after()
+
+    # there should be three steps
+    data3 = logmgr.get_plot_data("t_wall", "t_wall")
+    print(data3)
+    assert len(data3[0][0]) == 3
+
+    # first two of three steps should be taken
+    data0_1 = logmgr.get_plot_data("t_wall", "t_wall", 0, 1)
+    print(data0_1)
+    assert len(data0_1) == 2
+
+    # last two of three steps should be taken
+    data1_2 = logmgr.get_plot_data("t_wall", "t_wall", 1, 2)
+    print(data1_2)
+    assert len(data1_2) == 2
+
+    logmgr.close()
+
+
+def test_write_datafile():
+    # TODO
+
+    def hasContents(str1):
+        trimedStr = str1.strip()
+        if len(trimedStr) == 0:
+            return False
+        else:
+            return True
+
+    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
+
+    add_general_quantities(logmgr)
+
+    N = 20
+
+    for i in range(N):
+        logmgr.tick_before()
+        # do something ...
+        logmgr.tick_after()
+
+    # filename = "THIS_LOG_SHOULD_BE_DELETED.txt"
+    filename = "dataout.txt"
+
+    logmgr.write_datafile(filename, "t_wall", "t_wall")
+
+    File_object = open(filename, "r")
+    lines = File_object.readlines()
+    lines = filter(hasContents, lines)
+
+    i = 0
+    for line in lines:
+        print(line)
+        i += 1
+
+    print(i)
+    assert i == N
+
+    logmgr.close()
+    pass
+
+
+def test_plot_matplotlib():
+    # TODO
+    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
+
+    add_general_quantities(logmgr)
+
+    logmgr.tick_before()
+    # do something ...
+    logmgr.tick_after()
+
+    logmgr.close()
+    pass
+
+
 def test_accurate_BLANK_quantity():
     # TODO
     logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
 
     logmgr.close()
     pass
+
+
+# TODO
+# Test various aggregators in quantities.
+# (loc, min, max, avg, median, sum, norm2, invalid_agg).
 
 
 # -------------------- Time Intensive Tests --------------------
