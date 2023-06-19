@@ -1,7 +1,6 @@
 import logging
 import pytest
 import random
-import mpi4py
 from pymbolic.primitives import Variable
 from random import uniform
 from time import sleep, monotonic as time_monotonic
@@ -23,6 +22,8 @@ from logpyle import (
     LogQuantity,
     InitTime,
     ETA,
+    EventCounter,
+    time_and_count_function,
 )
 
 
@@ -30,19 +31,20 @@ from logpyle import (
 #
 # 1) Might want to add documentation to PushLogQuantity specifying that it
 # 		keeps track of quantities pushed outside of tick time interval.
+#
 # 2) Double enable/disable warnings/logging are not equivilent. Logging only
 #       gives a warning for double enable, while warning throws a RuntimeError
 #       for either double enable or double disable.
+#
 # 3) get_joint_dataset seems to fail when a quantity does not have any
 #       time steps endured.
+#
 # 4) write_datafile comments out the first line that has the title. it also
 #       has the first data point. Prob should have a new line after the title.
 #       The tests currently written assume that this behavior is intentional.
+# 5) event counter calls pop on a counter that is not guarenteed to have the
+#       pop function.
 #
-
-
-def test_example():
-    assert True
 
 
 def test_start_time_has_past():
@@ -633,7 +635,30 @@ def test_read_nonexistant_database():
 
 def test_time_and_count_function():
     # TODO
+    tol = 0.1
     logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
+
+    def func_to_be_timed(t: float):
+        sleep(t)
+        return
+
+    timer = IntervalTimer("t_duration")
+    counter = EventCounter("num_itr")
+
+    logmgr.add_quantity(counter)
+
+    logmgr.tick_before()
+
+    N = 10
+    for i in range(N):
+        time_and_count_function(func_to_be_timed, timer, counter)(0.1)
+
+    logmgr.tick_after()
+
+    print(timer.elapsed, counter.events)
+
+    assert abs(timer.elapsed - N * 0.1) < tol
+    assert counter.events == N
 
     logmgr.close()
     pass
@@ -641,7 +666,50 @@ def test_time_and_count_function():
 
 def test_EventCounter():
     # TODO
+    # the event counter should keep track of events that occur
+    # during the timestep
     logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
+
+    counter1 = EventCounter("num_events1")
+    counter2 = EventCounter("num_events2")
+
+    logmgr.add_quantity(counter1)
+
+    N = 21
+    logmgr.tick_before()
+
+    for i in range(N):
+        counter1.add()
+
+    print(counter1.events)
+    assert counter1.events == N
+
+    logmgr.tick_after()
+
+    # transfer counter1's count to counter2's
+    logmgr.tick_before()
+
+    # at the beggining of tick, counter should clear
+    print(counter1.events)
+    assert counter1.events == 0
+
+    for i in range(N):
+        if i % 3 == 0:
+            counter1.add()
+
+    counter2.transfer(counter1)
+
+    assert counter1.events == 0
+    assert counter2.events == N
+
+    for i in range(N):
+        if i % 3 == 0:
+            counter2.add()
+
+    print(counter2.events)
+    assert counter2.events == 2 * N
+
+    logmgr.tick_after()
 
     logmgr.close()
     pass
@@ -780,8 +848,6 @@ def test_empty_plot_data():
 
 
 def test_write_datafile():
-    # TODO
-
     def hasContents(str1):
         trimedStr = str1.strip()
         if len(trimedStr) == 0:
@@ -822,14 +888,18 @@ def test_write_datafile():
 
 
 def test_plot_matplotlib():
-    # TODO
     logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
 
     add_general_quantities(logmgr)
 
-    logmgr.tick_before()
-    # do something ...
-    logmgr.tick_after()
+    N = 20
+
+    for i in range(N):
+        logmgr.tick_before()
+        # do something ...
+        logmgr.tick_after()
+
+    logmgr.plot_matplotlib("t_wall", "t_wall")
 
     logmgr.close()
     pass
@@ -897,7 +967,6 @@ def test_accurate_ETA_quantity():
 
 @pytest.mark.slow
 def test_MemoryHwm_quantity():
-    # TODO
     # can only check if nothing breaks and the watermark never lowers,
     # as we do not know what else is on the system
     logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
