@@ -866,8 +866,8 @@ def test_write_datafile():
         # do something ...
         logmgr.tick_after()
 
-    # filename = "THIS_LOG_SHOULD_BE_DELETED.txt"
-    filename = "dataout.txt"
+    filename = "THIS_LOG_SHOULD_BE_DELETED.txt"
+    # filename = "dataout.txt"
 
     logmgr.write_datafile(filename, "t_wall", "t_wall")
 
