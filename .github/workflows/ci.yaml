@@ -119,4 +119,20 @@ jobs:
                 curl -L -O -k https://gitlab.tiker.net/inducer/ci-support/raw/main/prepare-and-run-mypy.sh
                 export EXTRA_INSTALL="pytools numpy types-psutil"
                 . ./prepare-and-run-mypy.sh python3
+                
+    pytest:
+        name: Pytest
+        runs-on: ubuntu-latest
+        steps:
+        - uses: actions/checkout@v3
+        -
+            uses: actions/setup-python@v4
+            with:
+                python-version: '3.x'
+
+        - name: Run tests
+          run: |
+            cd test
+            python -m pip install pytest
+            python -m pytest --durations=0 --tb=native --doctest-modules -rxsw . ../doc/*.rst ../doc/*/*.rst
 
