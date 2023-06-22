@@ -132,6 +132,7 @@ jobs:
 
         - name: Run tests
           run: |
+            pip install -e .
             cd test
             python -m pip install pytest pymbolic
             python -m pytest --durations=0 --tb=native --doctest-modules -rxsw . ../doc/*.rst
