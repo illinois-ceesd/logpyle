@@ -300,7 +300,7 @@ class _QuantityData:
     default_aggregator: Optional[Callable[..., Any]]
 
 
-def _join_by_first_of_tuple(list_of_iterables: List[Iterable[Tuple[int, Any]]]) \
+def _join_by_first_of_tuple(list_of_iterables: List[Iterable[Any]]) \
         -> Generator[Tuple[int, List[Any]], None, None]:
     loi = [i.__iter__() for i in list_of_iterables]
     if not loi:
@@ -706,7 +706,7 @@ class LogManager:
         columns = ["rank", "step", "unixtime", "level", "message", "filename",
                    "lineno"]
 
-        result = DataTable(columns)  # type: ignore[no-untyped-call]
+        result = DataTable(columns)
 
         if self.schema_version < 3:
             from warnings import warn
@@ -715,7 +715,7 @@ class LogManager:
 
         for row in self.db_conn.execute(
                 "select %s from logging" % (", ".join(columns))):
-            result.insert_row(row)  # type: ignore[no-untyped-call]
+            result.insert_row(row)
 
         return result
 
@@ -752,11 +752,11 @@ class LogManager:
             raise KeyError("invalid quantity name '%s'" % q_name)
 
         result = DataTable(
-            ["step", "rank", "value"])  # type: ignore[no-untyped-call]
+            ["step", "rank", "value"])
 
         for row in self.db_conn.execute(
                 "select step, rank, value from %s" % q_name):
-            result.insert_row(row)  # type: ignore[no-untyped-call]
+            result.insert_row(row)
 
         return result
 
@@ -769,11 +769,11 @@ class LogManager:
             if self.schema_version >= 3:
                 columns.insert(2, "unixtime")
 
-        result = DataTable(columns)  # type: ignore[no-untyped-call]
+        result = DataTable(columns)
 
         for row in self.db_conn.execute(
                 "select %s from warnings" % (", ".join(columns))):
-            result.insert_row(row)  # type: ignore[no-untyped-call]
+            result.insert_row(row)
 
         return result
 
@@ -1046,7 +1046,7 @@ class LogManager:
         # aggregate table data
         for dd in dep_data:
             table = self.get_table(dd.name)
-            table.sort(["step"])  # type: ignore[no-untyped-call]
+            table.sort(["step"])
             dd.table = table.aggregated(["step"],  # type: ignore
                                         "value", dd.agg_func).data
 
