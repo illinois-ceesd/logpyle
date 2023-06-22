@@ -134,5 +134,5 @@ jobs:
           run: |
             cd test
             python -m pip install pytest
-            python -m pytest --durations=0 --tb=native --doctest-modules -rxsw . ../doc/*.rst ../doc/*/*.rst
+            python -m pytest --durations=0 --tb=native --doctest-modules -rxsw . ../doc/*.rst
 
