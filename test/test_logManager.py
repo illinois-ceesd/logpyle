@@ -35,31 +35,40 @@ from logpyle import (
 # 2) Double enable/disable warnings/logging are not equivilent. Logging only
 #       gives a warning for double enable, while warning throws a RuntimeError
 #       for either double enable or double disable.
+#       File as issue in logpyle
 #
 # 3) get_joint_dataset seems to fail when a quantity does not have any
 #       time steps endured.
+#       File as issue in logpyle
 #
 # 4) write_datafile comments out the first line that has the title. it also
 #       has the first data point. Prob should have a new line after the title.
 #       The tests currently written assume that this behavior is intentional.
+#       File as issue in logpyle
+#
 # 5) event counter calls pop on a counter that is not guarenteed to have the
 #       pop function.
+#       File as issue in logpyle
 #
 
 
-def test_start_time_has_past():
+@pytest.fixture
+def basicLogmgr():
+    # setup
     logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
-    assert logmgr.start_time <= time_monotonic()
+    # give obj to test
+    yield logmgr
+    # cleanup object
     logmgr.close()
 
 
-def test_empty_on_init():
-    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
+def test_start_time_has_past(basicLogmgr):
+    assert basicLogmgr.start_time <= time_monotonic()
 
+
+def test_empty_on_init(basicLogmgr):
     # ensure that there are no initial watches
-    assert len(logmgr.watches) == 0
-
-    logmgr.close()
+    assert len(basicLogmgr.watches) == 0
 
 
 def test_basic_warning():
@@ -67,42 +76,40 @@ def test_basic_warning():
         warn("Oof. Something went awry.", UserWarning)
 
 
-def test_logging_warnings_from_warnings_module():
-    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
-
+def test_logging_warnings_from_warnings_module(basicLogmgr):
     first_warning_message = "Not a warning: First warning message!!!"
     first_warning_type = UserWarning
 
-    logmgr.tick_before()
+    basicLogmgr.tick_before()
     warn(first_warning_message, first_warning_type)
-    logmgr.tick_after()
+    basicLogmgr.tick_after()
 
     # ensure that the warning was caught properly
-    print(logmgr.warning_data[0])
-    assert logmgr.warning_data[0].message == first_warning_message
-    assert logmgr.warning_data[0].category == str(first_warning_type)
-    assert logmgr.warning_data[0].tick_count == 0
+    print(basicLogmgr.warning_data[0])
+    assert basicLogmgr.warning_data[0].message == first_warning_message
+    assert basicLogmgr.warning_data[0].category == str(first_warning_type)
+    assert basicLogmgr.warning_data[0].tick_count == 0
 
     second_warning_message = "Not a warning: Second warning message!!!"
     second_warning_type = UserWarning
 
-    logmgr.tick_before()
+    basicLogmgr.tick_before()
     warn(second_warning_message, second_warning_type)
-    logmgr.tick_after()
+    basicLogmgr.tick_after()
 
     # ensure that the warning was caught properly
-    print(logmgr.warning_data[1])
-    assert logmgr.warning_data[1].message == second_warning_message
-    assert logmgr.warning_data[1].category == str(second_warning_type)
-    assert logmgr.warning_data[1].tick_count == 1
+    print(basicLogmgr.warning_data[1])
+    assert basicLogmgr.warning_data[1].message == second_warning_message
+    assert basicLogmgr.warning_data[1].category == str(second_warning_type)
+    assert basicLogmgr.warning_data[1].tick_count == 1
 
     # save warnings to database
-    logmgr.save_warnings()
+    basicLogmgr.save_warnings()
 
     # ensure that warnings are of the correct form
-    message_ind = logmgr.get_warnings().column_names.index("message")
-    step_ind = logmgr.get_warnings().column_names.index("step")
-    data = logmgr.get_warnings().data
+    message_ind = basicLogmgr.get_warnings().column_names.index("message")
+    step_ind = basicLogmgr.get_warnings().column_names.index("step")
+    data = basicLogmgr.get_warnings().data
 
     # ensure the first warning has been saved correctly
     assert data[0][message_ind] == first_warning_message
@@ -112,47 +119,44 @@ def test_logging_warnings_from_warnings_module():
     assert data[1][message_ind] == second_warning_message
     assert data[1][step_ind] == 1
 
-    logmgr.close()
 
-
-def test_logging_warnings_from_logging_module():
-    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
+def test_logging_warnings_from_logging_module(basicLogmgr):
+    basicLogmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
 
     logger = logging.getLogger(__name__)
     # logging.basicConfig() # required to log to terminal
 
     first_warning_message = "Not a warning: First warning message!!!"
 
-    logmgr.tick_before()
+    basicLogmgr.tick_before()
     logger.warning(first_warning_message)
-    logmgr.tick_after()
+    basicLogmgr.tick_after()
 
     # ensure that the warning was caught properly
-    # print(logmgr.save_logging())
-    print(logmgr.logging_data)
-    assert logmgr.logging_data[0].message == first_warning_message
-    assert logmgr.logging_data[0].category == "WARNING"
-    assert logmgr.logging_data[0].tick_count == 0
+    print(basicLogmgr.logging_data)
+    assert basicLogmgr.logging_data[0].message == first_warning_message
+    assert basicLogmgr.logging_data[0].category == "WARNING"
+    assert basicLogmgr.logging_data[0].tick_count == 0
 
     second_warning_message = "Not a warning: Second warning message!!!"
 
-    logmgr.tick_before()
+    basicLogmgr.tick_before()
     logger.warning(second_warning_message)
-    logmgr.tick_after()
+    basicLogmgr.tick_after()
 
     # ensure that the warning was caught properly
-    print(logmgr.logging_data[1])
-    assert logmgr.logging_data[1].message == second_warning_message
-    assert logmgr.logging_data[1].category == "WARNING"
-    assert logmgr.logging_data[1].tick_count == 1
+    print(basicLogmgr.logging_data[1])
+    assert basicLogmgr.logging_data[1].message == second_warning_message
+    assert basicLogmgr.logging_data[1].category == "WARNING"
+    assert basicLogmgr.logging_data[1].tick_count == 1
 
     # save warnings to database
-    logmgr.save_logging()
+    basicLogmgr.save_logging()
 
     # ensure that warnings are of the correct form
-    message_ind = logmgr.get_logging().column_names.index("message")
-    step_ind = logmgr.get_logging().column_names.index("step")
-    data = logmgr.get_logging().data
+    message_ind = basicLogmgr.get_logging().column_names.index("message")
+    step_ind = basicLogmgr.get_logging().column_names.index("step")
+    data = basicLogmgr.get_logging().data
 
     # ensure the first warning has been saved correctly
     assert data[0][message_ind] == first_warning_message
@@ -162,141 +166,117 @@ def test_logging_warnings_from_logging_module():
     assert data[1][message_ind] == second_warning_message
     assert data[1][step_ind] == 1
 
-    logmgr.close()
 
-
-def test_accurate_TimestepCounter_quantity():
-    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
-
+def test_accurate_TimestepCounter_quantity(basicLogmgr):
     test_timer = TimestepCounter("t_step_count")
-    logmgr.add_quantity(test_timer)
+    basicLogmgr.add_quantity(test_timer)
 
     n1 = 200
     n2 = 120
 
     for i in range(n1):
-        logmgr.tick_before()
+        basicLogmgr.tick_before()
         # do something ...
-        logmgr.tick_after()
-    assert logmgr.last_values["t_step_count"] == n1 - 1
+        basicLogmgr.tick_after()
+    assert basicLogmgr.last_values["t_step_count"] == n1 - 1
 
     for i in range(n2):
-        logmgr.tick_before()
+        basicLogmgr.tick_before()
         # do something ...
-        logmgr.tick_after()
-    assert logmgr.last_values["t_step_count"] == n1 + n2 - 1
-
-    logmgr.close()
+        basicLogmgr.tick_after()
+    assert basicLogmgr.last_values["t_step_count"] == n1 + n2 - 1
 
 
-def test_accurate_StepToStepDuration_quantity():
+def test_accurate_StepToStepDuration_quantity(basicLogmgr):
     tol = 0.005
     minTime = 0.02
-    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
 
     test_timer = StepToStepDuration("t_slp")
-    logmgr.add_quantity(test_timer)
+    basicLogmgr.add_quantity(test_timer)
 
     for i in range(20):
-        logmgr.tick_before()
+        basicLogmgr.tick_before()
         # do something ...
         sleepTime = random.random() / 30 + minTime
-        logmgr.tick_after()
+        basicLogmgr.tick_after()
 
         sleep(sleepTime)
 
-        logmgr.tick_before()
+        basicLogmgr.tick_before()
         # assert that these quantities only differ by a max of tol
         # defined above
         print(sleepTime, test_timer())
         assert abs(test_timer() - sleepTime) < tol
         # do something ...
-        logmgr.tick_after()
-
-    logmgr.close()
+        basicLogmgr.tick_after()
 
 
-def test_accurate_TimestepDuration_quantity():
+def test_accurate_TimestepDuration_quantity(basicLogmgr):
     tol = 0.005
     minTime = 0.02
-    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
 
     test_timer = TimestepDuration("t_slp")
-    logmgr.add_quantity(test_timer)
+    basicLogmgr.add_quantity(test_timer)
 
     for i in range(20):
         sleepTime = random.random() / 30 + minTime
 
-        logmgr.tick_before()
+        basicLogmgr.tick_before()
         sleep(sleepTime)
-        logmgr.tick_after()
+        basicLogmgr.tick_after()
 
-        actual_time = logmgr.get_expr_dataset("t_slp")[2][-1][1]
+        actual_time = basicLogmgr.get_expr_dataset("t_slp")[2][-1][1]
         # assert that these quantities only differ by a max of tol
         # defined above
         print(sleepTime, actual_time)
         assert abs(actual_time - sleepTime) < tol
 
-    logmgr.close()
-    pass
 
-
-def test_accurate_WallTime_quantity():
+def test_accurate_WallTime_quantity(basicLogmgr):
     tol = 0.1
     minTime = 0.02
-    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
 
     N = 20
 
     test_timer = WallTime("t_total")
     startTime = time_monotonic()
 
-    logmgr.add_quantity(test_timer)
+    basicLogmgr.add_quantity(test_timer)
     for i in range(N):
         sleepBeforeTime = random.random() / 30 + minTime
         sleepDuringTime = random.random() / 30 + minTime
 
         sleep(sleepBeforeTime)
 
-        logmgr.tick_before()
+        basicLogmgr.tick_before()
         sleep(sleepDuringTime)
-        logmgr.tick_after()
+        basicLogmgr.tick_after()
 
         now = time_monotonic()
         totalTime = now - startTime
-        actual_time = logmgr.get_expr_dataset("t_total")[-1][-1][-1]
+        actual_time = basicLogmgr.get_expr_dataset("t_total")[-1][-1][-1]
         print(totalTime, actual_time)
         # assert that these quantities only differ by a max of tol
         # defined above
         assert abs(totalTime - actual_time) < tol
 
-    logmgr.close()
-    pass
 
-
-def test_basic_Push_Log_quantity():
-    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
-
+def test_basic_Push_Log_quantity(basicLogmgr):
     pushQuantity = PushLogQuantity("pusher")
-    logmgr.add_quantity(pushQuantity)
+    basicLogmgr.add_quantity(pushQuantity)
 
     for i in range(20):
         pushQuantity.push_value(i)
-        logmgr.tick_before()
+        basicLogmgr.tick_before()
         # do something ...
-        logmgr.tick_after()
-        print(logmgr.get_expr_dataset("pusher"))
-        assert logmgr.get_expr_dataset("pusher")[-1][-1][-1] == i
-
-    logmgr.close()
-    pass
+        basicLogmgr.tick_after()
+        print(basicLogmgr.get_expr_dataset("pusher"))
+        assert basicLogmgr.get_expr_dataset("pusher")[-1][-1][-1] == i
 
 
-def test_double_push_Push_Log_quantity():
-    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
-
+def test_double_push_Push_Log_quantity(basicLogmgr):
     pushQuantity = PushLogQuantity("pusher")
-    logmgr.add_quantity(pushQuantity)
+    basicLogmgr.add_quantity(pushQuantity)
 
     firstVal = 25
     secondVal = 36
@@ -304,28 +284,20 @@ def test_double_push_Push_Log_quantity():
     pushQuantity.push_value(firstVal)
     with pytest.raises(RuntimeError):
         pushQuantity.push_value(secondVal)
-        logmgr.tick_before()
-        # do something ...
-        logmgr.tick_after()
-        assert logmgr.get_expr_dataset("pusher")[-1][-1][-1] == firstVal
-
-    logmgr.close()
 
 
-def test_accurate_InitTime_quantity():
+def test_accurate_InitTime_quantity(basicLogmgr):
     # TODO
     pass
 
 
-def test_general_quantities():
+def test_general_quantities(basicLogmgr):
     # verify that exactly all general quantities were added
 
-    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
-
-    add_general_quantities(logmgr)
-    logmgr.tick_before()
-    logmgr.tick_after()
-    logmgr.save()
+    add_general_quantities(basicLogmgr)
+    basicLogmgr.tick_before()
+    basicLogmgr.tick_after()
+    basicLogmgr.save()
 
     idealQuantitiesAdded = [
         "t_step",
@@ -337,7 +309,7 @@ def test_general_quantities():
         "t_init",
     ]
 
-    actualQuantitiesAdded = logmgr.db_conn.execute(
+    actualQuantitiesAdded = basicLogmgr.db_conn.execute(
         "select * from quantities"
     ).fetchall()
 
@@ -353,29 +325,24 @@ def test_general_quantities():
 
     assert len(idealQuantitiesAdded) == len(actualQuantitiesAdded)
 
-    logmgr.close()
-    pass
 
-
-def test_simulation_quantities():
-    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
-
-    add_simulation_quantities(logmgr)
+def test_simulation_quantities(basicLogmgr):
+    add_simulation_quantities(basicLogmgr)
 
     # must set a dt for simulation quantities
-    set_dt(logmgr, 0.05)
+    set_dt(basicLogmgr, 0.05)
 
-    logmgr.tick_before()
+    basicLogmgr.tick_before()
     sleep(0.01)
-    logmgr.tick_after()
-    logmgr.save()
+    basicLogmgr.tick_after()
+    basicLogmgr.save()
 
     idealQuantitiesAdded = [
         "t_sim",
         "dt",
     ]
 
-    actualQuantitiesAdded = logmgr.db_conn.execute(
+    actualQuantitiesAdded = basicLogmgr.db_conn.execute(
         "select * from quantities"
     ).fetchall()
 
@@ -391,19 +358,12 @@ def test_simulation_quantities():
 
     assert len(idealQuantitiesAdded) == len(actualQuantitiesAdded)
 
-    logmgr.close()
-    pass
 
-
-def test_nonexisting_table():
-    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
-
-    add_general_quantities(logmgr)
+def test_nonexisting_table(basicLogmgr):
+    add_general_quantities(basicLogmgr)
 
     with pytest.raises(KeyError):
-        logmgr.get_table("nonexistent table")
-
-    logmgr.close()
+        basicLogmgr.get_table("nonexistent table")
 
 
 def test_existing_database_no_overwrite():
@@ -428,136 +388,105 @@ def test_open_existing_database():
     logmgr.tick_before()
     logmgr.tick_after()
     logmgr.save()
-
     logmgr.close()
+
     logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "r")
 
     with pytest.raises(RuntimeError):
         logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "w")
 
 
-def test_add_run_info():
+def test_nameless_LogManager():
     # TODO
-    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
-
+    logmgr = LogManager(None, "wo")
     logmgr.close()
+
+
+def test_unique_suffix():
+    # TODO
+    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED.sqlite", "wu")
+    logmgr.close()
+
+
+def test_read_nonexistant_database():
+    with pytest.raises(RuntimeError):
+        LogManager("THIS_LOG_SHOULD_BE_DELETED_AND_DOES_NOT_EXIST", "r")
+
+
+def test_add_run_info(basicLogmgr):
+    # TODO
     pass
 
 
-def test_unimplemented_logging_quantity():
-    # TODO
-    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
-
+def test_unimplemented_logging_quantity(basicLogmgr):
     # LogQuantity is an abstract interface and should not be called
     with pytest.raises(NotImplementedError):
         test_timer = LogQuantity("t_step_count")
-        logmgr.add_quantity(test_timer)
+        basicLogmgr.add_quantity(test_timer)
 
-        logmgr.tick_before()
+        basicLogmgr.tick_before()
         # do something ...
-        logmgr.tick_after()
-
-    logmgr.close()
-    pass
+        basicLogmgr.tick_after()
 
 
-def test_GCStats():
+def test_GCStats(basicLogmgr):
     # TODO
     # will check if the example code breaks from using GCStats
     # should expand on later
-    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
-
-    logmgr.close()
     pass
 
 
-def test_set_dt():
+def test_set_dt(basicLogmgr):
     # TODO
     # Should verify that the dt is changed and is applied
     # to dt consuming quantities after changing
-    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
-
-    logmgr.close()
     pass
 
 
-def test_CallableLogQuantity():
+def test_CallableLogQuantity(basicLogmgr):
     # TODO
-    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
-
-    logmgr.close()
     pass
 
 
-def test_MultiLogQuantity():
+def test_MultiLogQuantity(basicLogmgr):
     # TODO
-    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
-
-    logmgr.close()
     pass
 
 
-def test_MultiLogQuantity():
+def test_MultiPostLogQuantity(basicLogmgr):
     # TODO
-    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
-
-    logmgr.close()
     pass
 
 
-def test_MultiPostLogQuantity():
-    # TODO
-    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
-
-    logmgr.close()
-    pass
-
-
-def test_double_enable_warnings():
-    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
-
+def test_double_enable_warnings(basicLogmgr):
     # default is enabled
     with pytest.raises(RuntimeError):
-        logmgr.capture_warnings(True)
-
-    logmgr.close()
+        basicLogmgr.capture_warnings(True)
 
 
-def test_double_disable_warnings():
-    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
-
+def test_double_disable_warnings(basicLogmgr):
     # default is enabled
-    logmgr.capture_warnings(False)
+    basicLogmgr.capture_warnings(False)
     with pytest.raises(RuntimeError):
-        logmgr.capture_warnings(False)
-
-    logmgr.close()
+        basicLogmgr.capture_warnings(False)
 
 
-# def test_double_enable_logging():
-#     # TODO
-#     logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
-
-#     # default is enabled
-#     with pytest.raises(RuntimeError):
-#         logmgr.capture_logging(True)
-
-#     logmgr.close()
+def test_double_enable_logging(basicLogmgr):
+    # TODO
+    # default is enabled
+    with pytest.raises(RuntimeError):
+        basicLogmgr.capture_logging(True)
 
 
-# def test_double_disable_logging():
-#     # TODO
-#     logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
-
-#     # default is enabled
-#     logmgr.capture_logging(False)
-#     with pytest.raises(RuntimeError):
-#         logmgr.capture_logging(False)
-
-#     logmgr.close()
+def test_double_disable_logging(basicLogmgr):
+    # TODO
+    # default is enabled
+    basicLogmgr.capture_logging(False)
+    with pytest.raises(RuntimeError):
+        basicLogmgr.capture_logging(False)
 
 
-def test_double_add_quantity():
+def test_double_add_quantity(basicLogmgr):
     class Fifteen(LogQuantity):
         def __call__(self) -> int:
             return 15
@@ -566,16 +495,12 @@ def test_double_add_quantity():
         def __call__(self) -> int:
             return "15.0"
 
-    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
-
-    logmgr.add_quantity(Fifteen("fifteen"))
+    basicLogmgr.add_quantity(Fifteen("fifteen"))
     with pytest.raises(RuntimeError):
-        logmgr.add_quantity(Fifteen("fifteen"))
-
-    logmgr.close()
+        basicLogmgr.add_quantity(Fifteen("fifteen"))
 
 
-def test_add_watches():
+def test_add_watches(basicLogmgr):
     # test adding a few watches
 
     class Fifteen(LogQuantity):
@@ -586,57 +511,31 @@ def test_add_watches():
         def __call__(self) -> int:
             return "15.0"
 
-    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
-
-    logmgr.add_quantity(Fifteen("name1"))
-    logmgr.add_quantity(Fifteen("name2"))
-    logmgr.add_quantity(FifteenStr("tup_name1"))
+    basicLogmgr.add_quantity(Fifteen("name1"))
+    basicLogmgr.add_quantity(Fifteen("name2"))
+    basicLogmgr.add_quantity(FifteenStr("tup_name1"))
 
     watch_list = ["name1", ("tup_name1", "str"), "name2"]
 
-    logmgr.add_watches(watch_list)
+    basicLogmgr.add_watches(watch_list)
 
-    logmgr.tick_before()
+    basicLogmgr.tick_before()
     # do something ...
-    logmgr.tick_before()
-    logmgr.save()
+    basicLogmgr.tick_before()
+    basicLogmgr.save()
 
     # check that all watches are present
-    actualWatches = [watch.expr for watch in logmgr.watches]
+    actualWatches = [watch.expr for watch in basicLogmgr.watches]
     expected = ["name1", "tup_name1", "name2"]
     actualWatches.sort()
     expected.sort()
     print(actualWatches, expected)
     assert actualWatches == expected
 
-    logmgr.close()
-    pass
 
-
-def test_nameless_LogManager():
-    # TODO
-    logmgr = LogManager(None, "wo")
-
-    logmgr.close()
-    pass
-
-
-def test_unique_suffix():
-    # TODO
-    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED.sqlite", "wu")
-    logmgr.close()
-    pass
-
-
-def test_read_nonexistant_database():
-    with pytest.raises(RuntimeError):
-        LogManager("THIS_LOG_SHOULD_BE_DELETED_AND_DOES_NOT_EXIST", "r")
-
-
-def test_time_and_count_function():
+def test_time_and_count_function(basicLogmgr):
     # TODO
     tol = 0.1
-    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
 
     def func_to_be_timed(t: float):
         sleep(t)
@@ -645,38 +544,33 @@ def test_time_and_count_function():
     timer = IntervalTimer("t_duration")
     counter = EventCounter("num_itr")
 
-    logmgr.add_quantity(counter)
+    basicLogmgr.add_quantity(counter)
 
-    logmgr.tick_before()
+    basicLogmgr.tick_before()
 
     N = 10
     for i in range(N):
         time_and_count_function(func_to_be_timed, timer, counter)(0.1)
 
-    logmgr.tick_after()
+    basicLogmgr.tick_after()
 
     print(timer.elapsed, counter.events)
 
     assert abs(timer.elapsed - N * 0.1) < tol
     assert counter.events == N
 
-    logmgr.close()
-    pass
 
-
-def test_EventCounter():
-    # TODO
+def test_EventCounter(basicLogmgr):
     # the event counter should keep track of events that occur
     # during the timestep
-    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
 
     counter1 = EventCounter("num_events1")
     counter2 = EventCounter("num_events2")
 
-    logmgr.add_quantity(counter1)
+    basicLogmgr.add_quantity(counter1)
 
     N = 21
-    logmgr.tick_before()
+    basicLogmgr.tick_before()
 
     for i in range(N):
         counter1.add()
@@ -684,10 +578,10 @@ def test_EventCounter():
     print(counter1.events)
     assert counter1.events == N
 
-    logmgr.tick_after()
+    basicLogmgr.tick_after()
 
     # transfer counter1's count to counter2's
-    logmgr.tick_before()
+    basicLogmgr.tick_before()
 
     # at the beggining of tick, counter should clear
     print(counter1.events)
@@ -709,20 +603,14 @@ def test_EventCounter():
     print(counter2.events)
     assert counter2.events == 2 * N
 
-    logmgr.tick_after()
-
-    logmgr.close()
-    pass
+    basicLogmgr.tick_after()
 
 
-def test_joint_dataset():
-    # TODO
-    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
-
-    add_general_quantities(logmgr)
-    logmgr.tick_before()
-    logmgr.tick_after()
-    logmgr.save()
+def test_joint_dataset(basicLogmgr):
+    add_general_quantities(basicLogmgr)
+    basicLogmgr.tick_before()
+    basicLogmgr.tick_after()
+    basicLogmgr.save()
 
     idealQuantitiesAdded = [
         "t_step",
@@ -736,7 +624,7 @@ def test_joint_dataset():
         "memory_usage_hwm",
         "t_init",
     ]
-    dataset = logmgr.get_joint_dataset(idealQuantitiesAdded)
+    dataset = basicLogmgr.get_joint_dataset(idealQuantitiesAdded)
 
     print(dataset)
     names = list(dataset[0])
@@ -747,107 +635,95 @@ def test_joint_dataset():
         assert quantity in names
     assert len(names) == len(quantityNames)
 
-    logmgr.close()
 
+def test_plot_data(basicLogmgr):
+    add_general_quantities(basicLogmgr)
 
-def test_plot_data():
-    # TODO
-    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
-
-    add_general_quantities(logmgr)
-
-    logmgr.tick_before()
+    basicLogmgr.tick_before()
     # do something ...
-    logmgr.tick_after()
+    basicLogmgr.tick_after()
 
     # there should be one step
-    data1 = logmgr.get_plot_data("t_wall", "t_wall")
+    data1 = basicLogmgr.get_plot_data("t_wall", "t_wall")
     print(data1)
     assert len(data1[0][0]) == 1
 
-    logmgr.tick_before()
+    basicLogmgr.tick_before()
     # do something ...
-    logmgr.tick_after()
+    basicLogmgr.tick_after()
 
     # there should be two steps
-    data2 = logmgr.get_plot_data("t_wall", "t_wall")
+    data2 = basicLogmgr.get_plot_data("t_wall", "t_wall")
     print(data2)
     assert len(data2[0][0]) == 2
 
-    logmgr.tick_before()
+    basicLogmgr.tick_before()
     # do something ...
-    logmgr.tick_after()
+    basicLogmgr.tick_after()
 
     # there should be three steps
-    data3 = logmgr.get_plot_data("t_wall", "t_wall")
+    data3 = basicLogmgr.get_plot_data("t_wall", "t_wall")
     print(data3)
     assert len(data3[0][0]) == 3
 
     # first two of three steps should be taken
-    data0_1 = logmgr.get_plot_data("t_wall", "t_wall", 0, 1)
+    data0_1 = basicLogmgr.get_plot_data("t_wall", "t_wall", 0, 1)
     print(data0_1)
     assert len(data0_1) == 2
 
     # last two of three steps should be taken
-    data1_2 = logmgr.get_plot_data("t_wall", "t_wall", 1, 2)
+    data1_2 = basicLogmgr.get_plot_data("t_wall", "t_wall", 1, 2)
     print(data1_2)
     assert len(data1_2) == 2
 
-    logmgr.close()
 
-
-def test_empty_plot_data():
-    # TODO
-    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
-
-    add_general_quantities(logmgr)
+def test_empty_plot_data(basicLogmgr):
+    add_general_quantities(basicLogmgr)
 
     # there should be zero step
-    data0 = logmgr.get_plot_data("t_wall", "t_wall")
+    data0 = basicLogmgr.get_plot_data("t_wall", "t_wall")
     print(data0)
     assert len(data0[0][0]) == 0
 
-    logmgr.tick_before()
+    basicLogmgr.tick_before()
     # do something ...
-    logmgr.tick_after()
+    basicLogmgr.tick_after()
 
     # there should be one step
-    data1 = logmgr.get_plot_data("t_wall", "t_wall")
+    data1 = basicLogmgr.get_plot_data("t_wall", "t_wall")
     print(data1)
     assert len(data1[0][0]) == 1
 
-    logmgr.tick_before()
+    basicLogmgr.tick_before()
     # do something ...
-    logmgr.tick_after()
+    basicLogmgr.tick_after()
 
     # there should be two steps
-    data2 = logmgr.get_plot_data("t_wall", "t_wall")
+    data2 = basicLogmgr.get_plot_data("t_wall", "t_wall")
     print(data2)
     assert len(data2[0][0]) == 2
 
-    logmgr.tick_before()
+    basicLogmgr.tick_before()
     # do something ...
-    logmgr.tick_after()
+    basicLogmgr.tick_after()
 
     # there should be three steps
-    data3 = logmgr.get_plot_data("t_wall", "t_wall")
+    data3 = basicLogmgr.get_plot_data("t_wall", "t_wall")
     print(data3)
     assert len(data3[0][0]) == 3
 
     # first two of three steps should be taken
-    data0_1 = logmgr.get_plot_data("t_wall", "t_wall", 0, 1)
+    data0_1 = basicLogmgr.get_plot_data("t_wall", "t_wall", 0, 1)
     print(data0_1)
     assert len(data0_1) == 2
 
     # last two of three steps should be taken
-    data1_2 = logmgr.get_plot_data("t_wall", "t_wall", 1, 2)
+    data1_2 = basicLogmgr.get_plot_data("t_wall", "t_wall", 1, 2)
     print(data1_2)
     assert len(data1_2) == 2
 
-    logmgr.close()
 
-
-def test_write_datafile():
+def test_write_datafile(basicLogmgr):
     def hasContents(str1):
         trimedStr = str1.strip()
         if len(trimedStr) == 0:
@@ -855,21 +731,19 @@ def test_write_datafile():
         else:
             return True
 
-    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
-
-    add_general_quantities(logmgr)
+    add_general_quantities(basicLogmgr)
 
     N = 20
 
     for i in range(N):
-        logmgr.tick_before()
+        basicLogmgr.tick_before()
         # do something ...
-        logmgr.tick_after()
+        basicLogmgr.tick_after()
 
     filename = "THIS_LOG_SHOULD_BE_DELETED.txt"
     # filename = "dataout.txt"
 
-    logmgr.write_datafile(filename, "t_wall", "t_wall")
+    basicLogmgr.write_datafile(filename, "t_wall", "t_wall")
 
     File_object = open(filename, "r")
     lines = File_object.readlines()
@@ -883,113 +757,128 @@ def test_write_datafile():
     print(i)
     assert i == N
 
-    logmgr.close()
-    pass
 
-
-def test_plot_matplotlib():
-    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
-
-    add_general_quantities(logmgr)
+def test_plot_matplotlib(basicLogmgr):
+    add_general_quantities(basicLogmgr)
 
     N = 20
 
     for i in range(N):
-        logmgr.tick_before()
+        basicLogmgr.tick_before()
         # do something ...
-        logmgr.tick_after()
+        basicLogmgr.tick_after()
 
-    logmgr.plot_matplotlib("t_wall", "t_wall")
-
-    logmgr.close()
-    pass
+    basicLogmgr.plot_matplotlib("t_wall", "t_wall")
 
 
-def test_accurate_BLANK_quantity():
+def test_min_aggregator(basicLogmgr):
     # TODO
-    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
-
-    logmgr.close()
     pass
 
 
-# TODO
-# Test various aggregators in quantities.
-# (loc, min, max, avg, median, sum, norm2, invalid_agg).
+test_aggregator_data = [
+    ("loc", [51, 15, 67, -3, 0, -5, 99, 2], 2),
+    ("min", [51, 15, 67, -3, 0, -5, 99, 2], 2),
+    ("max", [51, 15, 67, -3, 0, -5, 99, 2], 2),
+    ("avg", [51, 15, 67, -3, 0, -5, 99, 2], 2),
+    ("median", [51, 15, 67, -3, 0, -5, 99, 2], 2),
+    ("sum", [51, 15, 67, -3, 0, -5, 99, 2], 2),
+    ("norm2", [51, 15, 67, -3, 0, -5, 99, 2], 2),
+    ("NOT_REAL_AGG", [51, 15, 67, -3, 0, -5, 99, 2], 2),
+]
+
+
+@pytest.mark.parametrize("agg, data, expected", test_aggregator_data)
+def test_single_rank_aggregator(basicLogmgr, agg, data, expected):
+    add_general_quantities(basicLogmgr)
+
+    pushQ = PushLogQuantity("value")
+    basicLogmgr.add_quantity(pushQ)
+
+    for val in data:
+        print(val)
+        pushQ.push_value(val)
+        basicLogmgr.tick_before()
+        # do something ...
+        basicLogmgr.tick_after()
+
+    basicLogmgr.save()
+
+    # NOT_REAL_AGG should raise an error
+    if agg == "NOT_REAL_AGG":
+        with pytest.raises(ValueError):
+            result = basicLogmgr.get_expr_dataset("value." + agg)
+        return
+
+    # nothing else should raise an error
+    result = basicLogmgr.get_expr_dataset("value." + agg)
+    print(result)
+    assert result[-1][-1][-1] == expected
 
 
 # -------------------- Time Intensive Tests --------------------
 
 
-@pytest.mark.slow
-def test_accurate_ETA_quantity():
+def test_accurate_ETA_quantity(basicLogmgr):
     # should begin calculation and ensure that the true time is
     # within a tolerance of the estimated time
     tol = 0.3
-    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
 
     test_timer = ETA(50, "t_fin")
-    logmgr.add_quantity(test_timer)
+    basicLogmgr.add_quantity(test_timer)
 
     sleepTime = 0.1
 
     # add first tick
-    logmgr.tick_before()
+    basicLogmgr.tick_before()
     sleep(sleepTime)
-    logmgr.tick_after()
+    basicLogmgr.tick_after()
 
     # add second tick
-    logmgr.tick_before()
+    basicLogmgr.tick_before()
     sleep(sleepTime)
-    logmgr.tick_after()
+    basicLogmgr.tick_after()
 
     N = 30
-    last = logmgr.get_expr_dataset("t_fin")[-1][-1][-1]
-    # print(logmgr.get_expr_dataset("t_fin")[-1][-1][-1])
+    last = basicLogmgr.get_expr_dataset("t_fin")[-1][-1][-1]
 
     for i in range(N):
-        logmgr.tick_before()
+        basicLogmgr.tick_before()
         sleep(sleepTime)
-        logmgr.tick_after()
+        basicLogmgr.tick_after()
 
-        actual_time = logmgr.get_expr_dataset("t_fin")[-1][-1][-1]
+        actual_time = basicLogmgr.get_expr_dataset("t_fin")[-1][-1][-1]
         print(last, actual_time)
         # assert that these quantities only
         # differ by a max of tol defined above
         if i > 5:  # dont expect the first couple to be accurate
             assert abs(last - actual_time) < tol
         last = last - sleepTime
-    # assert False
-
-    logmgr.close()
-    pass
 
 
-@pytest.mark.slow
-def test_MemoryHwm_quantity():
+def test_MemoryHwm_quantity(basicLogmgr):
     # can only check if nothing breaks and the watermark never lowers,
     # as we do not know what else is on the system
-    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
 
     # set a run property
-    logmgr.set_constant("myconst", uniform(0, 1))
+    basicLogmgr.set_constant("myconst", uniform(0, 1))
 
     # Generic run metadata, such as command line, host, and time
-    add_run_info(logmgr)
+    add_run_info(basicLogmgr)
 
     # Time step duration, wall time, ...
-    add_general_quantities(logmgr)
+    add_general_quantities(basicLogmgr)
 
     # Simulation time, time step
-    add_simulation_quantities(logmgr)
+    add_simulation_quantities(basicLogmgr)
 
     # Additional quantities to log
     vis_timer = IntervalTimer("t_vis", "Time spent visualizing")
-    logmgr.add_quantity(vis_timer)
-    logmgr.add_quantity(GCStats())
+    basicLogmgr.add_quantity(vis_timer)
+    basicLogmgr.add_quantity(GCStats())
 
     # Watches are printed periodically during execution
-    logmgr.add_watches(
+    basicLogmgr.add_watches(
         [
             "step.max",
             "t_sim.max",
@@ -1001,10 +890,10 @@ def test_MemoryHwm_quantity():
     )
 
     for istep in range(200):
-        logmgr.tick_before()
+        basicLogmgr.tick_before()
 
         dt = uniform(0.01, 0.05)
-        set_dt(logmgr, dt)
+        set_dt(basicLogmgr, dt)
         sleep(dt)
 
         # Illustrate custom timers
@@ -1014,13 +903,10 @@ def test_MemoryHwm_quantity():
 
         if istep == 50:
             print("FYI: Setting watch interval to 5 seconds.")
-            logmgr.set_watch_interval(5)
+            basicLogmgr.set_watch_interval(5)
 
         if istep == 150:
             print("FYI: Setting watch interval back to 1 second.")
-            logmgr.set_watch_interval(1)
+            basicLogmgr.set_watch_interval(1)
 
-        logmgr.tick_after()
-
-    logmgr.close()
-    pass
+        basicLogmgr.tick_after()
