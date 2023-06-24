@@ -472,9 +472,26 @@ def test_read_nonexistant_database():
         LogManager("THIS_LOG_SHOULD_BE_DELETED_AND_DOES_NOT_EXIST", "r")
 
 
-def test_add_run_info(basicLogmgr):
-    # TODO
-    pass
+def test_add_run_info(basicLogmgr: LogManager):
+    from socket import gethostname
+
+    timeTol = 0.5
+
+    add_run_info(basicLogmgr)
+
+    savedMachine = basicLogmgr.constants["machine"]
+    print(savedMachine)
+    assert savedMachine == gethostname()
+
+    from time import time
+
+    # ensure that it is the same day that this log was created
+    savedDate = basicLogmgr.constants["date"]
+    print(savedDate)
+
+    savedTime = basicLogmgr.constants["unixtime"]
+    print(savedTime)
+    assert abs(time() - savedTime) < timeTol
 
 
 def test_unimplemented_logging_quantity(basicLogmgr):
@@ -956,6 +973,7 @@ def test_MemoryHwm_quantity(basicLogmgr):
             "t_vis",
             "t_log",
             "memory_usage_hwm",
+            "myconst",
         ]
     )
 
