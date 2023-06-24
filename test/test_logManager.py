@@ -53,12 +53,16 @@ from logpyle import (
 
 @pytest.fixture
 def basicLogmgr():
+    import os
+
     # setup
-    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
+    filename = "THIS_LOG_SHOULD_BE_DELETED.sqlite"
+    logmgr = LogManager(filename, "wo")
     # give obj to test
     yield logmgr
     # cleanup object
     logmgr.close()
+    os.remove(filename)
 
 
 def test_start_time_has_past(basicLogmgr):
@@ -283,11 +287,6 @@ def test_double_push_Push_Log_quantity(basicLogmgr):
         pushQuantity.push_value(secondVal)
 
 
-def test_accurate_InitTime_quantity(basicLogmgr):
-    # TODO
-    pass
-
-
 def test_general_quantities(basicLogmgr):
     # verify that exactly all general quantities were added
 
@@ -364,7 +363,7 @@ def test_nonexisting_table(basicLogmgr):
 
 
 def test_existing_database_no_overwrite():
-    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
+    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED.sqlite", "wo")
     add_general_quantities(logmgr)
     logmgr.tick_before()
     logmgr.tick_after()
@@ -373,36 +372,58 @@ def test_existing_database_no_overwrite():
     logmgr.close()
 
     with pytest.raises(RuntimeError):
-        logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "w")
+        logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED.sqlite", "w")
 
 
 def test_existing_database_with_overwrite():
-    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
+    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED.sqlite", "wo")
     add_general_quantities(logmgr)
+    print(logmgr.get_expr_dataset("t_wall"))
     logmgr.tick_before()
     logmgr.tick_after()
+    print(logmgr.get_expr_dataset("t_wall"))
 
     logmgr.save()
     logmgr.close()
 
-    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
+    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED.sqlite", "wo")
+    # expect the data to have been overwritten
+    with pytest.raises(KeyError):
+        print(logmgr.get_expr_dataset("t_wall"))
+
+
+def test_existing_file_with_overwrite():
+    # the os should remove this file before creating the new db
+    filename = "THIS_LOG_SHOULD_BE_DELETED.sqlite"
+    with open(filename, "w", encoding="utf-8") as f:
+        f.write("This file is a test\n")
+
+    logmgr = LogManager(filename, "wo")
     logmgr.close()
 
 
 def test_open_existing_database():
-    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "wo")
+    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED.sqlite", "wo")
 
     add_general_quantities(logmgr)
+
+    firstTick = logmgr.get_expr_dataset("t_wall")
+    print(firstTick)
+
     logmgr.tick_before()
     logmgr.tick_after()
+
+    secondTick = logmgr.get_expr_dataset("t_wall")
+    print(secondTick)
 
     logmgr.save()
     logmgr.close()
 
-    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "r")
-
-    with pytest.raises(RuntimeError):
-        logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED", "w")
+    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED.sqlite", "r")
+    # expect the data to be the same as the second tick
+    savedData = logmgr.get_expr_dataset("t_wall")
+    print(savedData)
+    assert savedData == secondTick
 
 
 # assuming that a nameless (in memory) database should not save
@@ -424,9 +445,26 @@ def test_nameless_LogManager():
 
 
 def test_unique_suffix():
-    # TODO
+    # testing two in a row with no computation in between should force
+    # a collision due to the names being based on time of day
+    import os
+
+    def isUniqueFilename(str: str):
+        if str.startswith("THIS_LOG_SHOULD_BE_DELETED-"):
+            return True
+        else:
+            return False
+
     logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED.sqlite", "wu")
     logmgr.close()
+
+    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED.sqlite", "wu")
+    logmgr.close()
+
+    # assert that two distinct databases were created
+    files = [f for f in os.listdir() if isUniqueFilename(f)]
+    print(files)
+    assert len(files) == 2
 
 
 def test_read_nonexistant_database():
