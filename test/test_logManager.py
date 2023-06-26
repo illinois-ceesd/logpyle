@@ -28,25 +28,9 @@ from logpyle import (
 
 # Notes to self
 #
-# 1) Might want to add documentation to PushLogQuantity specifying that it
-# 		keeps track of quantities pushed outside of tick time interval.
-#
-# 2) Double enable/disable warnings/logging are not equivilent. Logging only
+# 1) Double enable/disable warnings/logging are not equivilent. Logging only
 #       gives a warning for double enable, while warning throws a RuntimeError
 #       for either double enable or double disable.
-#       File as issue in logpyle
-#
-# 3) get_joint_dataset seems to fail when a quantity does not have any
-#       time steps endured.
-#       File as issue in logpyle
-#
-# 4) write_datafile comments out the first line that has the title. it also
-#       has the first data point. Prob should have a new line after the title.
-#       The tests currently written assume that this behavior is intentional.
-#       File as issue in logpyle
-#
-# 5) event counter calls pop on a counter that is not guarenteed to have the
-#       pop function.
 #       File as issue in logpyle
 #
 
@@ -65,11 +49,11 @@ def basicLogmgr():
     os.remove(filename)
 
 
-def test_start_time_has_past(basicLogmgr):
+def test_start_time_has_past(basicLogmgr: LogManager):
     assert basicLogmgr.start_time <= time_monotonic()
 
 
-def test_empty_on_init(basicLogmgr):
+def test_empty_on_init(basicLogmgr: LogManager):
     # ensure that there are no initial watches
     assert len(basicLogmgr.watches) == 0
 
@@ -79,7 +63,7 @@ def test_basic_warning():
         warn("Oof. Something went awry.", UserWarning)
 
 
-def test_logging_warnings_from_warnings_module(basicLogmgr):
+def test_logging_warnings_from_warnings_module(basicLogmgr: LogManager):
     first_warning_message = "Not a warning: First warning message!!!"
     first_warning_type = UserWarning
 
@@ -123,7 +107,7 @@ def test_logging_warnings_from_warnings_module(basicLogmgr):
     assert data[1][step_ind] == 1
 
 
-def test_logging_warnings_from_logging_module(basicLogmgr):
+def test_logging_warnings_from_logging_module(basicLogmgr: LogManager):
     logger = logging.getLogger(__name__)
     # logging.basicConfig() # required to log to terminal
 
@@ -168,7 +152,7 @@ def test_logging_warnings_from_logging_module(basicLogmgr):
     assert data[1][step_ind] == 1
 
 
-def test_accurate_TimestepCounter_quantity(basicLogmgr):
+def test_accurate_TimestepCounter_quantity(basicLogmgr: LogManager):
     test_timer = TimestepCounter("t_step_count")
     basicLogmgr.add_quantity(test_timer)
 
@@ -188,7 +172,7 @@ def test_accurate_TimestepCounter_quantity(basicLogmgr):
     assert basicLogmgr.last_values["t_step_count"] == n1 + n2 - 1
 
 
-def test_accurate_StepToStepDuration_quantity(basicLogmgr):
+def test_accurate_StepToStepDuration_quantity(basicLogmgr: LogManager):
     tol = 0.005
     minTime = 0.02
 
@@ -212,7 +196,7 @@ def test_accurate_StepToStepDuration_quantity(basicLogmgr):
         basicLogmgr.tick_after()
 
 
-def test_accurate_TimestepDuration_quantity(basicLogmgr):
+def test_accurate_TimestepDuration_quantity(basicLogmgr: LogManager):
     tol = 0.005
     minTime = 0.02
 
@@ -233,7 +217,7 @@ def test_accurate_TimestepDuration_quantity(basicLogmgr):
         assert abs(actual_time - sleepTime) < tol
 
 
-def test_accurate_WallTime_quantity(basicLogmgr):
+def test_accurate_WallTime_quantity(basicLogmgr: LogManager):
     tol = 0.1
     minTime = 0.02
 
@@ -262,7 +246,7 @@ def test_accurate_WallTime_quantity(basicLogmgr):
         assert abs(totalTime - actual_time) < tol
 
 
-def test_basic_Push_Log_quantity(basicLogmgr):
+def test_basic_Push_Log_quantity(basicLogmgr: LogManager):
     pushQuantity = PushLogQuantity("pusher")
     basicLogmgr.add_quantity(pushQuantity)
 
@@ -275,7 +259,7 @@ def test_basic_Push_Log_quantity(basicLogmgr):
         assert basicLogmgr.get_expr_dataset("pusher")[-1][-1][-1] == i
 
 
-def test_double_push_Push_Log_quantity(basicLogmgr):
+def test_double_push_Push_Log_quantity(basicLogmgr: LogManager):
     pushQuantity = PushLogQuantity("pusher")
     basicLogmgr.add_quantity(pushQuantity)
 
@@ -287,7 +271,7 @@ def test_double_push_Push_Log_quantity(basicLogmgr):
         pushQuantity.push_value(secondVal)
 
 
-def test_general_quantities(basicLogmgr):
+def test_general_quantities(basicLogmgr: LogManager):
     # verify that exactly all general quantities were added
 
     add_general_quantities(basicLogmgr)
@@ -322,7 +306,7 @@ def test_general_quantities(basicLogmgr):
     assert len(idealQuantitiesAdded) == len(actualQuantitiesAdded)
 
 
-def test_simulation_quantities(basicLogmgr):
+def test_simulation_quantities(basicLogmgr: LogManager):
     add_simulation_quantities(basicLogmgr)
 
     # must set a dt for simulation quantities
@@ -355,7 +339,7 @@ def test_simulation_quantities(basicLogmgr):
     assert len(idealQuantitiesAdded) == len(actualQuantitiesAdded)
 
 
-def test_nonexisting_table(basicLogmgr):
+def test_nonexisting_table(basicLogmgr: LogManager):
     add_general_quantities(basicLogmgr)
 
     with pytest.raises(KeyError):
@@ -363,7 +347,10 @@ def test_nonexisting_table(basicLogmgr):
 
 
 def test_existing_database_no_overwrite():
-    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED.sqlite", "wo")
+    import os
+
+    filename = "THIS_LOG_SHOULD_BE_DELETED.sqlite"
+    logmgr = LogManager(filename, "wo")
     add_general_quantities(logmgr)
     logmgr.tick_before()
     logmgr.tick_after()
@@ -374,9 +361,14 @@ def test_existing_database_no_overwrite():
     with pytest.raises(RuntimeError):
         logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED.sqlite", "w")
 
+    os.remove(filename)
+
 
 def test_existing_database_with_overwrite():
-    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED.sqlite", "wo")
+    import os
+
+    filename = "THIS_LOG_SHOULD_BE_DELETED.sqlite"
+    logmgr = LogManager(filename, "wo")
     add_general_quantities(logmgr)
     print(logmgr.get_expr_dataset("t_wall"))
     logmgr.tick_before()
@@ -391,9 +383,13 @@ def test_existing_database_with_overwrite():
     with pytest.raises(KeyError):
         print(logmgr.get_expr_dataset("t_wall"))
 
+    os.remove(filename)
+
 
 def test_existing_file_with_overwrite():
     # the os should remove this file before creating the new db
+    import os
+
     filename = "THIS_LOG_SHOULD_BE_DELETED.sqlite"
     with open(filename, "w", encoding="utf-8") as f:
         f.write("This file is a test\n")
@@ -401,9 +397,14 @@ def test_existing_file_with_overwrite():
     logmgr = LogManager(filename, "wo")
     logmgr.close()
 
+    os.remove(filename)
+
 
 def test_open_existing_database():
-    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED.sqlite", "wo")
+    import os
+
+    filename = "THIS_LOG_SHOULD_BE_DELETED.sqlite"
+    logmgr = LogManager(filename, "wo")
 
     add_general_quantities(logmgr)
 
@@ -424,6 +425,8 @@ def test_open_existing_database():
     savedData = logmgr.get_expr_dataset("t_wall")
     print(savedData)
     assert savedData == secondTick
+
+    os.remove(filename)
 
 
 # assuming that a nameless (in memory) database should not save
@@ -466,10 +469,18 @@ def test_unique_suffix():
     print(files)
     assert len(files) == 2
 
+    os.remove(files[0])
+    os.remove(files[1])
+
 
 def test_read_nonexistant_database():
+    import os
+
+    fakeFileName = "THIS_LOG_SHOULD_BE_DELETED_AND_DOES_NOT_EXIST"
     with pytest.raises(RuntimeError):
-        LogManager("THIS_LOG_SHOULD_BE_DELETED_AND_DOES_NOT_EXIST", "r")
+        LogManager(fakeFileName, "r")
+
+    os.remove(fakeFileName)
 
 
 def test_add_run_info(basicLogmgr: LogManager):
@@ -494,7 +505,7 @@ def test_add_run_info(basicLogmgr: LogManager):
     assert abs(time() - savedTime) < timeTol
 
 
-def test_unimplemented_logging_quantity(basicLogmgr):
+def test_unimplemented_logging_quantity(basicLogmgr: LogManager):
     # LogQuantity is an abstract interface and should not be called
     with pytest.raises(NotImplementedError):
         test_timer = LogQuantity("t_step_count")
@@ -505,42 +516,42 @@ def test_unimplemented_logging_quantity(basicLogmgr):
         basicLogmgr.tick_after()
 
 
-def test_GCStats(basicLogmgr):
+def test_GCStats(basicLogmgr: LogManager):
     # TODO
     # will check if the example code breaks from using GCStats
     # should expand on later
     pass
 
 
-def test_set_dt(basicLogmgr):
+def test_set_dt(basicLogmgr: LogManager):
     # TODO
     # Should verify that the dt is changed and is applied
     # to dt consuming quantities after changing
     pass
 
 
-def test_CallableLogQuantity(basicLogmgr):
+def test_CallableLogQuantity(basicLogmgr: LogManager):
     # TODO
     pass
 
 
-def test_MultiLogQuantity(basicLogmgr):
+def test_MultiLogQuantity(basicLogmgr: LogManager):
     # TODO
     pass
 
 
-def test_MultiPostLogQuantity(basicLogmgr):
+def test_MultiPostLogQuantity(basicLogmgr: LogManager):
     # TODO
     pass
 
 
-def test_double_enable_warnings(basicLogmgr):
+def test_double_enable_warnings(basicLogmgr: LogManager):
     # default is enabled
     with pytest.raises(RuntimeError):
         basicLogmgr.capture_warnings(True)
 
 
-def test_double_disable_warnings(basicLogmgr):
+def test_double_disable_warnings(basicLogmgr: LogManager):
     # default is enabled
     basicLogmgr.capture_warnings(False)
     with pytest.raises(RuntimeError):
@@ -549,7 +560,7 @@ def test_double_disable_warnings(basicLogmgr):
 
 # # TODO
 # # currently not raising
-# def test_double_enable_logging(basicLogmgr):
+# def test_double_enable_logging(basicLogmgr: LogManager):
 #     # TODO
 #     # default is enabled
 #     with pytest.raises(RuntimeError):
@@ -558,7 +569,7 @@ def test_double_disable_warnings(basicLogmgr):
 
 # # TODO
 # # currently not raising
-# def test_double_disable_logging(basicLogmgr):
+# def test_double_disable_logging(basicLogmgr: LogManager):
 #     # TODO
 #     # default is enabled
 #     basicLogmgr.capture_logging(False)
@@ -566,7 +577,7 @@ def test_double_disable_warnings(basicLogmgr):
 #         basicLogmgr.capture_logging(False)
 
 
-def test_double_add_quantity(basicLogmgr):
+def test_double_add_quantity(basicLogmgr: LogManager):
     class Fifteen(LogQuantity):
         def __call__(self) -> int:
             return 15
@@ -580,7 +591,7 @@ def test_double_add_quantity(basicLogmgr):
         basicLogmgr.add_quantity(Fifteen("fifteen"))
 
 
-def test_add_watches(basicLogmgr):
+def test_add_watches(basicLogmgr: LogManager):
     # test adding a few watches
 
     class Fifteen(LogQuantity):
@@ -618,7 +629,7 @@ def test_IntervalTimer_subtimer():
     pass
 
 
-def test_time_and_count_function(basicLogmgr):
+def test_time_and_count_function(basicLogmgr: LogManager):
     # TODO
     tol = 0.1
 
@@ -646,7 +657,7 @@ def test_time_and_count_function(basicLogmgr):
 
 
 # # TODO currently calls unimplemented function
-# def test_EventCounter(basicLogmgr):
+# def test_EventCounter(basicLogmgr: LogManager):
 #     # the event counter should keep track of events that occur
 #     # during the timestep
 
@@ -692,7 +703,7 @@ def test_time_and_count_function(basicLogmgr):
 #     basicLogmgr.tick_after()
 
 
-def test_joint_dataset(basicLogmgr):
+def test_joint_dataset(basicLogmgr: LogManager):
     add_general_quantities(basicLogmgr)
     basicLogmgr.tick_before()
     basicLogmgr.tick_after()
@@ -722,7 +733,7 @@ def test_joint_dataset(basicLogmgr):
     assert len(names) == len(quantityNames)
 
 
-def test_plot_data(basicLogmgr):
+def test_plot_data(basicLogmgr: LogManager):
     add_general_quantities(basicLogmgr)
 
     basicLogmgr.tick_before()
@@ -764,7 +775,7 @@ def test_plot_data(basicLogmgr):
 
 
 # # TODO currently crashes when no timesteps are present
-# def test_empty_plot_data(basicLogmgr):
+# def test_empty_plot_data(basicLogmgr: LogManager):
 #     add_general_quantities(basicLogmgr)
 
 #     # there should be zero step
@@ -810,7 +821,9 @@ def test_plot_data(basicLogmgr):
 #     assert len(data1_2) == 2
 
 
-def test_write_datafile(basicLogmgr):
+def test_write_datafile(basicLogmgr: LogManager):
+    import os
+
     def hasContents(str1):
         trimedStr = str1.strip()
         if len(trimedStr) == 0:
@@ -844,8 +857,10 @@ def test_write_datafile(basicLogmgr):
     print(i)
     assert i == N
 
+    os.remove(filename)
 
-def test_plot_matplotlib(basicLogmgr):
+
+def test_plot_matplotlib(basicLogmgr: LogManager):
     add_general_quantities(basicLogmgr)
 
     N = 20
@@ -856,11 +871,6 @@ def test_plot_matplotlib(basicLogmgr):
         basicLogmgr.tick_after()
 
     basicLogmgr.plot_matplotlib("t_wall", "t_wall")
-
-
-def test_min_aggregator(basicLogmgr):
-    # TODO
-    pass
 
 
 test_aggregator_data = [
@@ -906,7 +916,7 @@ def test_single_rank_aggregator(basicLogmgr, agg, data, expected):
 # -------------------- Time Intensive Tests --------------------
 
 
-def test_accurate_ETA_quantity(basicLogmgr):
+def test_accurate_ETA_quantity(basicLogmgr: LogManager):
     # should begin calculation and ensure that the true time is
     # within a tolerance of the estimated time
     tol = 0.3
@@ -943,7 +953,7 @@ def test_accurate_ETA_quantity(basicLogmgr):
         last = last - sleepTime
 
 
-def test_MemoryHwm_quantity(basicLogmgr):
+def test_MemoryHwm_quantity(basicLogmgr: LogManager):
     # can only check if nothing breaks and the watermark never lowers,
     # as we do not know what else is on the system
 
