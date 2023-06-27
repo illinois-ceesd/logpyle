@@ -1486,6 +1486,7 @@ class TimestepDuration(PostLogQuantity):
 
     def __call__(self) -> float:
         now = time_monotonic()
+        assert hasattr(self, "last_start"), "did not call tick_before before tick_after"
         result = now - self.last_start
         del self.last_start
         return result
