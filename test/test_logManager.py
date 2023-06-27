@@ -20,6 +20,8 @@ from logpyle import (
     TimestepCounter,
     WallTime,
     LogQuantity,
+    CallableLogQuantityAdapter,
+    DtConsumer,
     ETA,
     EventCounter,
     time_and_count_function,
@@ -524,15 +526,63 @@ def test_GCStats(basicLogmgr: LogManager):
 
 
 def test_set_dt(basicLogmgr: LogManager):
-    # TODO
-    # Should verify that the dt is changed and is applied
+    # Should verify that the dt is set/changed and is applied
     # to dt consuming quantities after changing
-    pass
+    add_simulation_quantities(basicLogmgr)
+    for descriptor_list in [
+        basicLogmgr.before_gather_descriptors,
+        basicLogmgr.after_gather_descriptors,
+    ]:
+        for descriptor in descriptor_list:
+            q_dt = descriptor.quantity.dt
+            print(q_dt)
+            assert q_dt is None
+
+    set_dt(basicLogmgr, 0.5)
+
+    for descriptor_list in [
+        basicLogmgr.before_gather_descriptors,
+        basicLogmgr.after_gather_descriptors,
+    ]:
+        for descriptor in descriptor_list:
+            q_dt = descriptor.quantity.dt
+            print(q_dt)
+            assert q_dt is not None
+            assert q_dt == 0.5
+
+    set_dt(basicLogmgr, 0.02)
+
+    for descriptor_list in [
+        basicLogmgr.before_gather_descriptors,
+        basicLogmgr.after_gather_descriptors,
+    ]:
+        for descriptor in descriptor_list:
+            q_dt = descriptor.quantity.dt
+            print(q_dt)
+            assert q_dt is not None
+            assert q_dt == 0.02
 
 
 def test_CallableLogQuantity(basicLogmgr: LogManager):
-    # TODO
-    pass
+    global counter
+    counter = 0
+
+    def calledFunc() -> float:
+        global counter
+        counter += 1
+        return random.random()
+
+    callable = CallableLogQuantityAdapter(calledFunc, "caller")
+    basicLogmgr.add_quantity(callable)
+
+    N = 50
+    for i in range(N):
+        basicLogmgr.tick_before()
+        # do something ...
+        basicLogmgr.tick_after()
+
+    print(counter)
+    assert counter == N
 
 
 def test_MultiLogQuantity(basicLogmgr: LogManager):
