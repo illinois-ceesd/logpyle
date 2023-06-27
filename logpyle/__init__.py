@@ -1145,7 +1145,7 @@ class LogManager:
                 expr_x, expr_y)
 
         outf = open(filename, "w")
-        outf.write(f"# {label_x} vs. {label_y}")
+        outf.write(f"# {label_x} vs. {label_y}\n")
         for dx, dy in zip(data_x, data_y):
             outf.write("{}\t{}\n".format(repr(dx), repr(dy)))
         outf.close()
