@@ -434,7 +434,8 @@ def test_open_existing_database():
 
 # assuming that a nameless (in memory) database should not save
 # data after closing.
-def test_nameless_LogManager():
+# TODO check for reading in memory db
+def test_in_memory_db_LogManager():
     # Tests an in memory database
     logmgr = LogManager(None, "wo")
     add_general_quantities(logmgr)
@@ -941,7 +942,6 @@ def test_write_datafile(basicLogmgr: LogManager):
         basicLogmgr.tick_after()
 
     filename = "THIS_LOG_SHOULD_BE_DELETED.txt"
-    # filename = "dataout.txt"
 
     basicLogmgr.write_datafile(filename, "t_wall", "t_wall")
 
@@ -955,7 +955,7 @@ def test_write_datafile(basicLogmgr: LogManager):
         i += 1
 
     print(i)
-    assert i == N
+    assert i == N + 1  # N data points plus the title
 
     os.remove(filename)
 
