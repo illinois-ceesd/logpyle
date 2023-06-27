@@ -434,8 +434,7 @@ def test_open_existing_database():
 
 # assuming that a nameless (in memory) database should not save
 # data after closing.
-# TODO check for reading in memory db
-def test_in_memory_db_LogManager():
+def test_in_memory_LogManager():
     # Tests an in memory database
     logmgr = LogManager(None, "wo")
     add_general_quantities(logmgr)
@@ -447,6 +446,28 @@ def test_in_memory_db_LogManager():
 
     with pytest.raises(KeyError):
         logmgr = LogManager(None, "wo")
+        val = logmgr.get_expr_dataset("t_wall")
+        print(val)
+
+
+def test_reading_in_memory_LogManager():
+    # ensure in memory db can not be read
+    with pytest.raises(RuntimeError):
+        logmgr = LogManager(None, "r")
+
+    # attempt to save in memory db
+
+    logmgr = LogManager(None, "wo")
+    add_general_quantities(logmgr)
+    logmgr.tick_before()
+    logmgr.tick_after()
+
+    logmgr.save()
+    logmgr.close()
+
+    # attempt to read saved db, ensure this fails as it shouldnt be saved
+    with pytest.raises(RuntimeError):
+        logmgr = LogManager(None, "r")
         val = logmgr.get_expr_dataset("t_wall")
         print(val)
 
