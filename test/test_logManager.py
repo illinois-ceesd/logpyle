@@ -21,6 +21,7 @@ from logpyle import (
     WallTime,
     LogQuantity,
     CallableLogQuantityAdapter,
+    MultiLogQuantity,
     DtConsumer,
     ETA,
     EventCounter,
@@ -585,14 +586,55 @@ def test_CallableLogQuantity(basicLogmgr: LogManager):
     assert counter == N
 
 
+def test_update_constants(basicLogmgr: LogManager):
+    basicLogmgr.set_constant("value", 27)
+
+    assert basicLogmgr.constants["value"] == 27
+
+    basicLogmgr.tick_before()
+    # do something ...
+    assert basicLogmgr.constants["value"] == 27
+    basicLogmgr.tick_after()
+
+    assert basicLogmgr.constants["value"] == 27
+
+    basicLogmgr.set_constant("value", 81)
+
+    assert basicLogmgr.constants["value"] == 81
+
+    basicLogmgr.tick_before()
+    # do something ...
+    assert basicLogmgr.constants["value"] == 81
+    basicLogmgr.tick_after()
+
+    assert basicLogmgr.constants["value"] == 81
+
+
 def test_MultiLogQuantity(basicLogmgr: LogManager):
     # TODO
+    multiLog = MultiLogQuantity(["q_one", "q_two"])
+    basicLogmgr.add_quantity(multiLog)
     pass
+
+
+def test_MultiLogQuantity_call_not_implemented(basicLogmgr: LogManager):
+    multiLog = MultiLogQuantity(["q_one", "q_two"])
+    basicLogmgr.add_quantity(multiLog)
+    with pytest.raises(NotImplementedError):
+        multiLog()
 
 
 def test_MultiPostLogQuantity(basicLogmgr: LogManager):
     # TODO
     pass
+
+
+# def test_disable_enable_warnings(basicLogmgr: LogManager):
+#     # default is enabled
+#     basicLogmgr.capture_warnings(False)
+#     basicLogmgr.capture_warnings(True)
+#     with pytest.raises(RuntimeError):
+#         basicLogmgr.capture_warnings(True)
 
 
 def test_double_enable_warnings(basicLogmgr: LogManager):
@@ -606,6 +648,14 @@ def test_double_disable_warnings(basicLogmgr: LogManager):
     basicLogmgr.capture_warnings(False)
     with pytest.raises(RuntimeError):
         basicLogmgr.capture_warnings(False)
+
+
+# tests double enable logging as is (strange asymmetry with warnings)
+def test_double_enable_logging(basicLogmgr: LogManager):
+    # TODO
+    # default is enabled
+    with pytest.warns(UserWarning):
+        basicLogmgr.capture_logging(True)
 
 
 # # TODO
