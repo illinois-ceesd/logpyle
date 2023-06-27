@@ -541,13 +541,6 @@ def test_unimplemented_logging_quantity(basicLogmgr: LogManager):
         basicLogmgr.tick_after()
 
 
-def test_GCStats(basicLogmgr: LogManager):
-    # TODO
-    # will check if the example code breaks from using GCStats
-    # should expand on later
-    pass
-
-
 def test_set_dt(basicLogmgr: LogManager):
     # Should verify that the dt is set/changed and is applied
     # to dt consuming quantities after changing
@@ -651,14 +644,6 @@ def test_MultiPostLogQuantity(basicLogmgr: LogManager):
     pass
 
 
-# def test_disable_enable_warnings(basicLogmgr: LogManager):
-#     # default is enabled
-#     basicLogmgr.capture_warnings(False)
-#     basicLogmgr.capture_warnings(True)
-#     with pytest.raises(RuntimeError):
-#         basicLogmgr.capture_warnings(True)
-
-
 def test_double_enable_warnings(basicLogmgr: LogManager):
     # default is enabled
     with pytest.raises(RuntimeError):
@@ -674,29 +659,9 @@ def test_double_disable_warnings(basicLogmgr: LogManager):
 
 # tests double enable logging as is (strange asymmetry with warnings)
 def test_double_enable_logging(basicLogmgr: LogManager):
-    # TODO
     # default is enabled
     with pytest.warns(UserWarning):
         basicLogmgr.capture_logging(True)
-
-
-# # TODO
-# # currently not raising
-# def test_double_enable_logging(basicLogmgr: LogManager):
-#     # TODO
-#     # default is enabled
-#     with pytest.raises(RuntimeError):
-#         basicLogmgr.capture_logging(True)
-
-
-# # TODO
-# # currently not raising
-# def test_double_disable_logging(basicLogmgr: LogManager):
-#     # TODO
-#     # default is enabled
-#     basicLogmgr.capture_logging(False)
-#     with pytest.raises(RuntimeError):
-#         basicLogmgr.capture_logging(False)
 
 
 def test_double_add_quantity(basicLogmgr: LogManager):
@@ -752,7 +717,6 @@ def test_IntervalTimer_subtimer():
 
 
 def test_time_and_count_function(basicLogmgr: LogManager):
-    # TODO
     tol = 0.1
 
     def func_to_be_timed(t: float):
@@ -894,53 +858,6 @@ def test_plot_data(basicLogmgr: LogManager):
     data1_2 = basicLogmgr.get_plot_data("t_wall", "t_wall", 1, 2)
     print(data1_2)
     assert len(data1_2) == 2
-
-
-# # TODO currently crashes when no timesteps are present
-# def test_empty_plot_data(basicLogmgr: LogManager):
-#     add_general_quantities(basicLogmgr)
-
-#     # there should be zero step
-#     data0 = basicLogmgr.get_plot_data("t_wall", "t_wall")
-#     print(data0)
-#     assert len(data0[0][0]) == 0
-
-#     basicLogmgr.tick_before()
-#     # do something ...
-#     basicLogmgr.tick_after()
-
-#     # there should be one step
-#     data1 = basicLogmgr.get_plot_data("t_wall", "t_wall")
-#     print(data1)
-#     assert len(data1[0][0]) == 1
-
-#     basicLogmgr.tick_before()
-#     # do something ...
-#     basicLogmgr.tick_after()
-
-#     # there should be two steps
-#     data2 = basicLogmgr.get_plot_data("t_wall", "t_wall")
-#     print(data2)
-#     assert len(data2[0][0]) == 2
-
-#     basicLogmgr.tick_before()
-#     # do something ...
-#     basicLogmgr.tick_after()
-
-#     # there should be three steps
-#     data3 = basicLogmgr.get_plot_data("t_wall", "t_wall")
-#     print(data3)
-#     assert len(data3[0][0]) == 3
-
-#     # first two of three steps should be taken
-#     data0_1 = basicLogmgr.get_plot_data("t_wall", "t_wall", 0, 1)
-#     print(data0_1)
-#     assert len(data0_1) == 2
-
-#     # last two of three steps should be taken
-#     data1_2 = basicLogmgr.get_plot_data("t_wall", "t_wall", 1, 2)
-#     print(data1_2)
-#     assert len(data1_2) == 2
 
 
 def test_write_datafile(basicLogmgr: LogManager):
@@ -1129,3 +1046,105 @@ def test_MemoryHwm_quantity(basicLogmgr: LogManager):
             basicLogmgr.set_watch_interval(1)
 
         basicLogmgr.tick_after()
+
+
+def test_GCStats(basicLogmgr: LogManager):
+    # will check if the example code breaks from using GCStats
+    # should expand on later
+    # currently ensures that after some time, GC from generation 1
+    # eventually goes into generation 2
+    gcStats = GCStats()
+    basicLogmgr.add_quantity(gcStats)
+
+    outerList = {}
+
+    last = None
+    memoryHasChangedGenerations = False
+
+    for istep in range(1000):
+        basicLogmgr.tick_before()
+
+        soonToBeLostRef = ['garb1', 'garb2', 'garb3'] * istep
+        outerList[istep] = ([soonToBeLostRef])
+
+        basicLogmgr.tick_after()
+
+        sleep(0.02)
+
+        cur = gcStats()
+        # [enabled, # in generation1,  # in generation2, # in generation3,
+        #  gen1 collections, gen1 collected, gen1 uncollected,
+        #  gen2 collections, gen2 collected, gen2 uncollected,
+        #  gen3 collections, gen3 collected, gen3 uncollected]
+        print(cur)
+        if last is not None and cur[2] > last[2]:
+            memoryHasChangedGenerations = True
+        last = cur
+
+    assert memoryHasChangedGenerations
+
+
+# # TODO
+# # currently not raising
+# def test_double_enable_logging(basicLogmgr: LogManager):
+#     # TODO
+#     # default is enabled
+#     with pytest.raises(RuntimeError):
+#         basicLogmgr.capture_logging(True)
+
+
+# # TODO
+# # currently not raising
+# def test_double_disable_logging(basicLogmgr: LogManager):
+#     # TODO
+#     # default is enabled
+#     basicLogmgr.capture_logging(False)
+#     with pytest.raises(RuntimeError):
+#         basicLogmgr.capture_logging(False)
+
+
+# # TODO currently crashes when no timesteps are present
+# def test_empty_plot_data(basicLogmgr: LogManager):
+#     add_general_quantities(basicLogmgr)
+
+#     # there should be zero step
+#     data0 = basicLogmgr.get_plot_data("t_wall", "t_wall")
+#     print(data0)
+#     assert len(data0[0][0]) == 0
+
+#     basicLogmgr.tick_before()
+#     # do something ...
+#     basicLogmgr.tick_after()
+
+#     # there should be one step
+#     data1 = basicLogmgr.get_plot_data("t_wall", "t_wall")
+#     print(data1)
+#     assert len(data1[0][0]) == 1
+
+#     basicLogmgr.tick_before()
+#     # do something ...
+#     basicLogmgr.tick_after()
+
+#     # there should be two steps
+#     data2 = basicLogmgr.get_plot_data("t_wall", "t_wall")
+#     print(data2)
+#     assert len(data2[0][0]) == 2
+
+#     basicLogmgr.tick_before()
+#     # do something ...
+#     basicLogmgr.tick_after()
+
+#     # there should be three steps
+#     data3 = basicLogmgr.get_plot_data("t_wall", "t_wall")
+#     print(data3)
+#     assert len(data3[0][0]) == 3
+
+#     # first two of three steps should be taken
+#     data0_1 = basicLogmgr.get_plot_data("t_wall", "t_wall", 0, 1)
+#     print(data0_1)
+#     assert len(data0_1) == 2
+
+#     # last two of three steps should be taken
+#     data1_2 = basicLogmgr.get_plot_data("t_wall", "t_wall", 1, 2)
+#     print(data1_2)
+#     assert len(data1_2) == 2
