@@ -35,6 +35,10 @@ from logpyle import (
 #       gives a warning for double enable, while warning throws a RuntimeError
 #       for either double enable or double disable.
 #       File as issue in logpyle
+# 2) MultiLogQuantity has two optional parameters, units and descriptions.
+#    these are not truly optional currently as they not initializing them
+#    causes get_expr_dataset to crash
+#    (descriptions seem fine, but units must be specified)
 #
 
 
@@ -624,24 +628,11 @@ def test_update_constants(basicLogmgr: LogManager):
 
     assert basicLogmgr.constants["value"] == 81
 
-
-def test_MultiLogQuantity(basicLogmgr: LogManager):
-    # TODO
-    multiLog = MultiLogQuantity(["q_one", "q_two"])
-    basicLogmgr.add_quantity(multiLog)
-    pass
-
-
 def test_MultiLogQuantity_call_not_implemented(basicLogmgr: LogManager):
     multiLog = MultiLogQuantity(["q_one", "q_two"])
     basicLogmgr.add_quantity(multiLog)
     with pytest.raises(NotImplementedError):
         multiLog()
-
-
-def test_MultiPostLogQuantity(basicLogmgr: LogManager):
-    # TODO
-    pass
 
 
 def test_double_enable_warnings(basicLogmgr: LogManager):
@@ -711,9 +702,38 @@ def test_add_watches(basicLogmgr: LogManager):
     assert actualWatches == expected
 
 
-def test_IntervalTimer_subtimer():
-    # TODO
-    pass
+def test_IntervalTimer_subtimer(basicLogmgr: LogManager):
+    tol = 0.1
+    timer = IntervalTimer("timer")
+    basicLogmgr.add_quantity(timer)
+
+    expected_timer_list = []
+
+    N = 20
+    for i in range(N):
+        good_sleep_time = (random.random()/10 + 0.1)
+        bad_sleep_time = (random.random()/10 + 0.1)
+        expected_timer_list.append(good_sleep_time)
+        sub_timer = timer.get_sub_timer()
+
+        basicLogmgr.tick_before()
+        sub_timer.start()
+        sleep(good_sleep_time)
+        sub_timer.stop()
+        sub_timer.submit()
+        # do something
+        sleep(bad_sleep_time)
+        sleep(bad_sleep_time)
+        basicLogmgr.tick_after()
+
+    val = basicLogmgr.get_expr_dataset("timer")[-1]
+    val_list = [data[1] for data in val]
+    print(val_list)
+    print(expected_timer_list)
+
+    # enforce equality of durations
+    for tup in zip(val_list, expected_timer_list):
+        assert abs(tup[0] - tup[1]) < tol
 
 
 def test_time_and_count_function(basicLogmgr: LogManager):
@@ -740,53 +760,6 @@ def test_time_and_count_function(basicLogmgr: LogManager):
 
     assert abs(timer.elapsed - N * 0.1) < tol
     assert counter.events == N
-
-
-# # TODO currently calls unimplemented function
-# def test_EventCounter(basicLogmgr: LogManager):
-#     # the event counter should keep track of events that occur
-#     # during the timestep
-
-#     counter1 = EventCounter("num_events1")
-#     counter2 = EventCounter("num_events2")
-
-#     basicLogmgr.add_quantity(counter1)
-
-#     N = 21
-#     basicLogmgr.tick_before()
-
-#     for i in range(N):
-#         counter1.add()
-
-#     print(counter1.events)
-#     assert counter1.events == N
-
-#     basicLogmgr.tick_after()
-
-#     # transfer counter1's count to counter2's
-#     basicLogmgr.tick_before()
-
-#     # at the beggining of tick, counter should clear
-#     print(counter1.events)
-#     assert counter1.events == 0
-
-#     for i in range(N):
-#         if i % 3 == 0:
-#             counter1.add()
-
-#     counter2.transfer(counter1)
-
-#     assert counter1.events == 0
-#     assert counter2.events == N
-
-#     for i in range(N):
-#         if i % 3 == 0:
-#             counter2.add()
-
-#     print(counter2.events)
-#     assert counter2.events == 2 * N
-
-#     basicLogmgr.tick_after()
 
 
 def test_joint_dataset(basicLogmgr: LogManager):
@@ -1084,10 +1057,56 @@ def test_GCStats(basicLogmgr: LogManager):
     assert memoryHasChangedGenerations
 
 
+# # TODO currently calls unimplemented function
+# def test_EventCounter(basicLogmgr: LogManager):
+#     # the event counter should keep track of events that occur
+#     # during the timestep
+
+#     counter1 = EventCounter("num_events1")
+#     counter2 = EventCounter("num_events2")
+
+#     basicLogmgr.add_quantity(counter1)
+
+#     N = 21
+#     basicLogmgr.tick_before()
+
+#     for i in range(N):
+#         counter1.add()
+
+#     print(counter1.events)
+#     assert counter1.events == N
+
+#     basicLogmgr.tick_after()
+
+#     # transfer counter1's count to counter2's
+#     basicLogmgr.tick_before()
+
+#     # at the beggining of tick, counter should clear
+#     print(counter1.events)
+#     assert counter1.events == 0
+
+#     for i in range(N):
+#         if i % 3 == 0:
+#             counter1.add()
+
+#     counter2.transfer(counter1)
+
+#     assert counter1.events == 0
+#     assert counter2.events == N
+
+#     for i in range(N):
+#         if i % 3 == 0:
+#             counter2.add()
+
+#     print(counter2.events)
+#     assert counter2.events == 2 * N
+
+#     basicLogmgr.tick_after()
+
+
 # # TODO
 # # currently not raising
 # def test_double_enable_logging(basicLogmgr: LogManager):
-#     # TODO
 #     # default is enabled
 #     with pytest.raises(RuntimeError):
 #         basicLogmgr.capture_logging(True)
@@ -1096,7 +1115,6 @@ def test_GCStats(basicLogmgr: LogManager):
 # # TODO
 # # currently not raising
 # def test_double_disable_logging(basicLogmgr: LogManager):
-#     # TODO
 #     # default is enabled
 #     basicLogmgr.capture_logging(False)
 #     with pytest.raises(RuntimeError):
