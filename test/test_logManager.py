@@ -29,19 +29,6 @@ from logpyle import (
 )
 
 
-# Notes to self
-#
-# 1) Double enable/disable warnings/logging are not equivilent. Logging only
-#       gives a warning for double enable, while warning throws a RuntimeError
-#       for either double enable or double disable.
-#       File as issue in logpyle
-# 2) MultiLogQuantity has two optional parameters, units and descriptions.
-#    these are not truly optional currently as they not initializing them
-#    causes get_expr_dataset to crash
-#    (descriptions seem fine, but units must be specified)
-#
-
-
 @pytest.fixture
 def basicLogmgr():
     import os
@@ -116,7 +103,6 @@ def test_logging_warnings_from_warnings_module(basicLogmgr: LogManager):
 
 def test_logging_warnings_from_logging_module(basicLogmgr: LogManager):
     logger = logging.getLogger(__name__)
-    # logging.basicConfig() # required to log to terminal
 
     first_warning_message = "Not a warning: First warning message!!!"
 
@@ -627,6 +613,7 @@ def test_update_constants(basicLogmgr: LogManager):
     basicLogmgr.tick_after()
 
     assert basicLogmgr.constants["value"] == 81
+
 
 def test_MultiLogQuantity_call_not_implemented(basicLogmgr: LogManager):
     multiLog = MultiLogQuantity(["q_one", "q_two"])
