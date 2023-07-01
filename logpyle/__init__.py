@@ -189,11 +189,11 @@ class MultiLogQuantity:
         self.names = names
 
         if units is None:
-            units = len(names) * [""]
+            units = len(names) * [None]
         self.units = units
 
         if descriptions is None:
-            descriptions = len(names) * [""]
+            descriptions = len(names) * [None]
         self.descriptions = descriptions
 
     @property
