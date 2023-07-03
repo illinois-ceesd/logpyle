@@ -15,6 +15,3 @@ _build/
 
 mylog.dat*
 *.dat
-
-coverage_re/
-.coverage
