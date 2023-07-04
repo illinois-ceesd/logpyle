@@ -165,49 +165,46 @@ def test_accurate_TimestepCounter_quantity(basicLogmgr: LogManager):
     assert basicLogmgr.last_values["t_step_count"] == n1 + n2 - 1
 
 
-def test_accurate_StepToStepDuration_quantity(basicLogmgr: LogManager):
+test_StepToStep_and_TimestepDuration_data = [
+    (TimestepDuration("t_slp")),
+    (StepToStepDuration("t_slp")),
+]
+
+
+@pytest.mark.parametrize("test_timer",
+                         test_StepToStep_and_TimestepDuration_data)
+def test_StepToStep_and_TimestepDuration_quantity(
+        test_timer: any,
+        basicLogmgr: LogManager
+        ):
     tol = 0.005
     minTime = 0.02
 
-    test_timer = StepToStepDuration("t_slp")
     basicLogmgr.add_quantity(test_timer)
 
-    for i in range(20):
-        basicLogmgr.tick_before()
-        # do something ...
-        sleepTime = random.random() / 30 + minTime
-        basicLogmgr.tick_after()
+    N = 20
 
-        sleep(sleepTime)
+    sleep_times = [random.random() / 30 + minTime for i in range(N)]
 
-        basicLogmgr.tick_before()
-        # assert that these quantities only differ by a max of tol
-        # defined above
-        print(sleepTime, test_timer())
-        assert abs(test_timer() - sleepTime) < tol
-        # do something ...
-        basicLogmgr.tick_after()
-
-
-def test_accurate_TimestepDuration_quantity(basicLogmgr: LogManager):
-    tol = 0.005
-    minTime = 0.02
-
-    test_timer = TimestepDuration("t_slp")
-    basicLogmgr.add_quantity(test_timer)
-
-    for i in range(20):
-        sleepTime = random.random() / 30 + minTime
+    for i in range(N):
+        if isinstance(test_timer, StepToStepDuration):
+            sleep(sleep_times[i])
 
         basicLogmgr.tick_before()
-        sleep(sleepTime)
+        if isinstance(test_timer, TimestepDuration):
+            sleep(sleep_times[i])
         basicLogmgr.tick_after()
 
-        actual_time = basicLogmgr.get_expr_dataset("t_slp")[2][-1][1]
-        # assert that these quantities only differ by a max of tol
-        # defined above
-        print(sleepTime, actual_time)
-        assert abs(actual_time - sleepTime) < tol
+    # first value is not defined for StepToStep, so we drop it
+    if isinstance(test_timer, StepToStepDuration):
+        del sleep_times[0]
+
+    actual_times = [tup[1] for tup in basicLogmgr.get_expr_dataset("t_slp")[2]]
+    print(actual_times, sleep_times)
+    # assert that these quantities only differ by a max of tol
+    # defined above
+    for (predicted, actual) in zip(sleep_times, actual_times):
+        assert abs(actual - predicted) < tol
 
 
 def test_accurate_WallTime_quantity(basicLogmgr: LogManager):
@@ -293,10 +290,7 @@ def test_general_quantities(basicLogmgr: LogManager):
     idealQuantitiesAdded.sort()
     actualQuantitiesAdded.sort()
 
-    for i in range(len(idealQuantitiesAdded)):
-        assert idealQuantitiesAdded[i] == actualQuantitiesAdded[i]
-
-    assert len(idealQuantitiesAdded) == len(actualQuantitiesAdded)
+    assert idealQuantitiesAdded == actualQuantitiesAdded
 
 
 def test_simulation_quantities(basicLogmgr: LogManager):
@@ -326,10 +320,7 @@ def test_simulation_quantities(basicLogmgr: LogManager):
     idealQuantitiesAdded.sort()
     actualQuantitiesAdded.sort()
 
-    for i in range(len(idealQuantitiesAdded)):
-        assert idealQuantitiesAdded[i] == actualQuantitiesAdded[i]
-
-    assert len(idealQuantitiesAdded) == len(actualQuantitiesAdded)
+    assert idealQuantitiesAdded == actualQuantitiesAdded
 
 
 def test_nonexisting_table(basicLogmgr: LogManager):
@@ -647,10 +638,6 @@ def test_double_add_quantity(basicLogmgr: LogManager):
         def __call__(self) -> int:
             return 15
 
-    class FifteenStr(LogQuantity):
-        def __call__(self) -> int:
-            return "15.0"
-
     basicLogmgr.add_quantity(Fifteen("fifteen"))
     with pytest.raises(RuntimeError):
         basicLogmgr.add_quantity(Fifteen("fifteen"))
@@ -664,7 +651,7 @@ def test_add_watches(basicLogmgr: LogManager):
             return 15
 
     class FifteenStr(LogQuantity):
-        def __call__(self) -> int:
+        def __call__(self) -> str:
             return "15.0"
 
     basicLogmgr.add_quantity(Fifteen("name1"))
@@ -1016,7 +1003,7 @@ def test_GCStats(basicLogmgr: LogManager):
     gcStats = GCStats()
     basicLogmgr.add_quantity(gcStats)
 
-    outerList = {}
+    outerList = []
 
     last = None
     memoryHasChangedGenerations = False
@@ -1025,7 +1012,7 @@ def test_GCStats(basicLogmgr: LogManager):
         basicLogmgr.tick_before()
 
         soonToBeLostRef = ['garb1', 'garb2', 'garb3'] * istep
-        outerList[istep] = ([soonToBeLostRef])
+        outerList.append(([soonToBeLostRef]))
 
         basicLogmgr.tick_after()
 
