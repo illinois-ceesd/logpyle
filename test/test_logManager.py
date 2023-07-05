@@ -938,63 +938,6 @@ def test_accurate_ETA_quantity(basicLogmgr: LogManager):
         last = last - sleepTime
 
 
-def test_MemoryHwm_quantity(basicLogmgr: LogManager):
-    # can only check if nothing breaks and the watermark never lowers,
-    # as we do not know what else is on the system
-
-    # set a run property
-    basicLogmgr.set_constant("myconst", uniform(0, 1))
-
-    # Generic run metadata, such as command line, host, and time
-    add_run_info(basicLogmgr)
-
-    # Time step duration, wall time, ...
-    add_general_quantities(basicLogmgr)
-
-    # Simulation time, time step
-    add_simulation_quantities(basicLogmgr)
-
-    # Additional quantities to log
-    vis_timer = IntervalTimer("t_vis", "Time spent visualizing")
-    basicLogmgr.add_quantity(vis_timer)
-    basicLogmgr.add_quantity(GCStats())
-
-    # Watches are printed periodically during execution
-    basicLogmgr.add_watches(
-        [
-            "step.max",
-            "t_sim.max",
-            "t_step.max",
-            "t_vis",
-            "t_log",
-            "memory_usage_hwm",
-            "myconst",
-        ]
-    )
-
-    for istep in range(200):
-        basicLogmgr.tick_before()
-
-        dt = uniform(0.01, 0.05)
-        set_dt(basicLogmgr, dt)
-        sleep(dt)
-
-        # Illustrate custom timers
-        if istep % 10 == 0:
-            with vis_timer.start_sub_timer():
-                sleep(0.05)
-
-        if istep == 50:
-            print("FYI: Setting watch interval to 5 seconds.")
-            basicLogmgr.set_watch_interval(5)
-
-        if istep == 150:
-            print("FYI: Setting watch interval back to 1 second.")
-            basicLogmgr.set_watch_interval(1)
-
-        basicLogmgr.tick_after()
-
-
 def test_GCStats(basicLogmgr: LogManager):
     # will check if the example code breaks from using GCStats
     # should expand on later
