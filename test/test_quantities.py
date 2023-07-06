@@ -711,9 +711,11 @@ def test_IntervalTimer_subtimer(basicLogmgr: LogManager):
 def test_accurate_ETA_quantity(basicLogmgr: LogManager):
     # should begin calculation and ensure that the true time is
     # within a tolerance of the estimated time
-    tol = 0.3
+    tol = 0.05
 
-    test_timer = ETA(50, "t_fin")
+    N = 30
+
+    test_timer = ETA(N+2, "t_fin")
     basicLogmgr.add_quantity(test_timer)
 
     sleepTime = 0.1
@@ -728,7 +730,6 @@ def test_accurate_ETA_quantity(basicLogmgr: LogManager):
     sleep(sleepTime)
     basicLogmgr.tick_after()
 
-    N = 30
     last = basicLogmgr.get_expr_dataset("t_fin")[-1][-1][-1]
 
     for i in range(N):
@@ -737,10 +738,8 @@ def test_accurate_ETA_quantity(basicLogmgr: LogManager):
         basicLogmgr.tick_after()
 
         actual_time = basicLogmgr.get_expr_dataset("t_fin")[-1][-1][-1]
+        last = last - sleepTime
         print(last, actual_time)
         # assert that these quantities only
         # differ by a max of tol defined above
-        if i > 5:  # dont expect the first couple to be accurate
-            assert abs(last - actual_time) < tol
-        last = last - sleepTime
-
+        assert abs(last - actual_time) < tol
