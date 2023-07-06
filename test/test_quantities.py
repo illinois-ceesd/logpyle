@@ -708,6 +708,38 @@ def test_IntervalTimer_subtimer(basicLogmgr: LogManager):
         assert abs(tup[0] - tup[1]) < tol
 
 
+def test_IntervalTimer_subtimer_blocking(basicLogmgr: LogManager):
+    tol = 0.1
+    timer = IntervalTimer("timer")
+    basicLogmgr.add_quantity(timer)
+
+    expected_timer_list = []
+
+    N = 20
+    for i in range(N):
+        good_sleep_time = (random.random()/10 + 0.1)
+        bad_sleep_time = (random.random()/10 + 0.1)
+        expected_timer_list.append(good_sleep_time)
+        sub_timer = timer.get_sub_timer()
+
+        basicLogmgr.tick_before()
+        with sub_timer:
+            sleep(good_sleep_time)
+        # do something
+        sleep(bad_sleep_time)
+        sleep(bad_sleep_time)
+        basicLogmgr.tick_after()
+
+    val = basicLogmgr.get_expr_dataset("timer")[-1]
+    val_list = [data[1] for data in val]
+    print(val_list)
+    print(expected_timer_list)
+
+    # enforce equality of durations
+    for tup in zip(val_list, expected_timer_list):
+        assert abs(tup[0] - tup[1]) < tol
+
+
 def test_accurate_ETA_quantity(basicLogmgr: LogManager):
     # should begin calculation and ensure that the true time is
     # within a tolerance of the estimated time
