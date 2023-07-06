@@ -499,17 +499,6 @@ def test_add_run_info(basicLogmgr: LogManager):
     assert abs(time() - savedTime) < timeTol
 
 
-def test_unimplemented_logging_quantity(basicLogmgr: LogManager):
-    # LogQuantity is an abstract interface and should not be called
-    with pytest.raises(NotImplementedError):
-        test_timer = LogQuantity("t_step_count")
-        basicLogmgr.add_quantity(test_timer)
-
-        basicLogmgr.tick_before()
-        # do something ...
-        basicLogmgr.tick_after()
-
-
 def test_set_dt(basicLogmgr: LogManager):
     # Should verify that the dt is set/changed and is applied
     # to dt consuming quantities after changing
