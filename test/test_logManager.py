@@ -28,19 +28,7 @@ from logpyle import (
     time_and_count_function,
 )
 
-
-@pytest.fixture
-def basicLogmgr():
-    import os
-
-    # setup
-    filename = "THIS_LOG_SHOULD_BE_DELETED.sqlite"
-    logmgr = LogManager(filename, "wo")
-    # give obj to test
-    yield logmgr
-    # cleanup object
-    logmgr.close()
-    os.remove(filename)
+from testlib import basicLogmgr
 
 
 def test_start_time_has_past(basicLogmgr: LogManager):
