@@ -4,6 +4,72 @@
     <meta charset="utf-8">
     <link rel="stylesheet" href="https://pyscript.net/latest/pyscript.css" />
     <script defer src="https://pyscript.net/latest/pyscript.js"></script>
+	<style>
+		.dropdown {
+			width: 200px;
+			display: inline-block;
+			background-color: #ddd;
+			border-radius: 2px;
+			box-shadow: 0 0 2px rgb(204, 204, 204);
+			transition: all .5s ease;
+			position: relative;
+			font-size: 14px;
+			color: #474747;
+			height: 100%;
+			text-align: left
+		}
+
+		.dropdown .select {
+			cursor: pointer;
+			display: block;
+			padding: 10px
+		}
+		.dropdown .select > i {
+			font-size: 13px;
+			color: #888;
+			cursor: pointer;
+			transition: all .3s ease-in-out;
+			float: right;
+			line-height: 20px
+		}
+		.dropdown:hover {
+			box-shadow: 0 0 4px rgb(204, 204, 204)
+		}
+		.dropdown:active {
+			background-color: #f8f8f8
+		}
+		.dropdown .dropdown-menu {
+			position: absolute;
+			background-color: #fff;
+			width: 100%;
+			left: 0;
+			margin-top: 1px;
+			box-shadow: 0 1px 2px rgb(204, 204, 204);
+			border-radius: 0 1px 2px 2px;
+
+			display: none;
+			max-height: 300px;
+
+			overflow-y: auto;
+			z-index: 9
+		}
+
+		.dropdown .dropdown-menu li {
+			padding: 10px;
+			transition: all .2s ease-in-out;
+			cursor: pointer
+		}
+		.dropdown .dropdown-menu {
+			padding: 0;
+			list-style: none
+		}
+		.dropdown .dropdown-menu li:hover {
+			background-color: #f2f2f2
+		}
+		.dropdown .dropdown-menu li:active {
+			background-color: #e2e2e2
+		}
+	</style>
   </head>
   <body>
 
@@ -107,6 +173,7 @@ class RunDB:
 
 	def plot_cursor(self, cursor: Cursor, labels: Optional[List[str]] = None,
 					*args: Any, **kwargs: Any) -> None:
+		import matplotlib.pyplot as plt
 		from matplotlib.pyplot import legend, plot, show, savefig
 
 		fig, ax = plt.subplots()
@@ -503,61 +570,18 @@ def make_wrapped_db(filename: str, interactive: bool, mangle: bool) -> RunDB:
 # }}}
 </py-script>
 
-
-	<input type="file" id="myfile" name="myfile">
-	<div id="content"></div>
-
-
-	<div id="output_upload"></div>
-
-	<div id="tables">
-		<ul>
-			<label>
-				<li>
-					<input type="checkbox">
-					table 1
-				</li>
-				<li>
-					<input type="checkbox">
-					table 2
-				</li>
-				<li>
-					<input type="checkbox">
-					table 3
-				</li>
-			</label>
-			<button py-click="simplePlt()" id="get-time" class="py-button">
-				Submit
-			</button>
-		</ul>
+	<div style="display: flex; background-color: lightblue">
+		<div style="margin:10px;padding:10px;">
+			<button py-click="addFileFunc()" id="add-file" class="py-button">Add file</button>
+		</div>
+		<div style="margin:10px;padding:10px;font-weight:bold;">
+			HTMLalizer
+		</div>
 	</div>
 
-    <div id="graph-area"></div>
+	<div id="fileList" style="display:flex;flex-direction:column">
+	</div>
 
-	<py-script>
-		import matplotlib.pyplot as plt
-		import numpy as np
-		def simplePlt():
-
-			from pyscript import Element
-
-			my_div = Element('tables')
-			my_div.clear()
-			# print(my_div.id) # prints 'tables'
-
-			fig, ax = plt.subplots()
-
-			xpoints = np.array([1, 8])
-			ypoints = np.array([3, 10])
-			
-			plt.plot(xpoints, ypoints)
-
-			display(fig, target="graph-area", append=False)
-			# plt.show() 
-	</py-script>
-
-
-	
 	<py-script>
 
 		import asyncio
@@ -566,25 +590,135 @@ def make_wrapped_db(filename: str, interactive: bool, mangle: bool) -> RunDB:
 		import os
 		import sqlite3
 
-		# print('/dev directory contents:')
-		# files = os.listdir('/dev')
-		# for file in files:
-		# 	print(file)
+		class dataFile:
+			def __init__(self, name):
+				self.name = name
+				self.constants = {}
+				self.quantities = {}
 
-		async def process_file(event):
-			fileList = event.target.files.to_py()
+		nextId = 1
 
-			# print(fileList[0].name)
+		#<div id="newFile">
+		#	<div id="constants">
+		#	</div>
+		#	<div id="interactive">
+		#		<div id="menu">
+		#			<div id="input">
+		#			</div>
+		#			<div id="plot">
+		#			</div>
+		#			<div id="table">
+		#			</div>
+		#		</div>
+		#		<div id="output">
+		#		</div>
+		#	</div>
+		#</div>
+		def addFileFunc():
+			global nextId
+			fileList = document.getElementById("fileList")
+			newFile = document.createElement("div")
+			newFile.id = str(nextId)
+			#newFileStylePrefix = "display:flex;flex-direction:column;"
+			newFile.style.display = "flex"
+			newFile.style.flexDirection = "column"
+			if nextId%2 == 0:
+				# silver color
+				newFile.style.backgroundColor = "#C0C0C0"
+			else:
+				# darkgrey color
+				newFile.style.backgroundColor = "#A9A9A9"
+			menu = document.createElement("div")
+			menu.style = "display:flex;flex-direction:column"
+			# menu.style = "margin:5px;padding:5px;"
+			menu.id = "menu" + str(nextId)
+			input = document.createElement("input")
+			input.type = "file"
+			input.id = "file" + str(nextId)
+			output = document.createElement("div")
+			output.id = "output" + str(nextId)
+			constants = document.createElement("div")
+			constants.style = "display:flex;flex-direction:column"
+			constants.id = "constants" + str(nextId)
+			interactive = document.createElement("div")
+			interactive.style = "display:flex;flex-direction:row"
+			interactive.id = "interactive" + str(nextId)
+			menu.appendChild(input)
+			interactive.appendChild(menu)
+			interactive.appendChild(output)
+			newFile.appendChild(constants)
+			newFile.appendChild(interactive)
+			fileList.appendChild(newFile)
 
-			for f in fileList:
-				print(f.name)
-				data = await f.text()
-				document.getElementById("content").innerHTML = data
-		
+			# attach listener to new file input
+			input.addEventListener("change", create_proxy(storeFile), False)
 
-		async def readDb(event):
+			nextId = nextId + 1
+
+
+		async def runPlot(event):
+			id = event.target.param
+			output = document.getElementById("output" + str(id))
+			output.id = "graph-area"
+			runDb = make_wrapped_db(file_dict[id].name, True, True)
+			#plot_q1_text.id = "PlotQ1Text" + str(id)
+			q1 = document.getElementById("plotQ1Text"+str(id)).innerHTML
+			q2 = document.getElementById("plotQ2Text"+str(id)).innerHTML
+			query = "select ${}, ${}".format(q1, q2)
+			cursor = runDb.db.execute(runDb.mangle_sql(query))
+			columnnames = [column[0] for column in cursor.description]
+			runDb.plot_cursor(cursor, labels=columnnames)
+
+			output.id = "output" + str(id)
+
+
+		async def runTable(event):
+			id = event.target.param
+			output = document.getElementById("output" + str(id))
+			output.id = "graph-area"
+			runDb = make_wrapped_db(file_dict[id].name, True, True)
+			query = "select $t_sim, $t_2step"
+			cursor = runDb.db.execute(runDb.mangle_sql("select $t_sim, $t_2step"))
+			columnnames = [column[0] for column in cursor.description]
+			runDb.plot_cursor(cursor, labels=columnnames)
+
+			output.id = "output" + str(id)
+
+
+		def toggle_dropdown(event):
+			dropdownlist = event.target.parentElement.children[1]
+			if dropdownlist.style.display == "none":
+				dropdownlist.style.display = "block"
+			else:
+				dropdownlist.style.display = "none"
+
+		def update_dropdown(event):
+			name = event.target.innerHTML
+			dropdown = event.target.parentElement.parentElement.children[0]
+			dropdown.children[0].innerHTML = name
+			event.target.parentElement.style.display = "none"
+
+		def downloadTable(event):
+			pass
+
+		def printTable(event):
+			pass
+
+		def add_from_dropdown(event):
+			id = event.target.parentElement.parentElement.children[0].param
+			name = event.target.innerHTML
+			new_item = document.createElement("li")
+			new_item.innerHTML = name
+			item_list = document.getElementById("tableList" + str(id))
+			item_list.appendChild(new_item)
+			event.target.parentElement.style.display = "none"
+
+		async def storeFile(event):
+			global file_dict
 			fileList = event.target.files.to_py()
 			from js import document, FileReader, Uint8Array
+			# print(event.target.parentElement.parentElement.id)
+			id = event.target.parentElement.parentElement.parentElement.id
 
 			# write database file
 			for f1 in fileList:
@@ -593,74 +727,180 @@ def make_wrapped_db(filename: str, interactive: bool, mangle: bool) -> RunDB:
 					data = Uint8Array.new(await f1.arrayBuffer())
 					file.write(bytearray(data))
 
-			files = os.listdir('.')
-			for file in files:
-				print(file)
-			
-			# open the database file
 			for f1 in fileList:
-				# print('reading file')
-				# con = sqlite3.connect(f1.name)
-				# cursor = con.cursor()
-				# res = cursor.execute("SELECT name FROM sqlite_master")
-				# print(res.fetchall())
+				file_dict[id] = dataFile(f1.name)
+
+			# extract constants from sqlite file
+			runDb = make_wrapped_db(file_dict[id].name, True, True)
+			cursor = runDb.db.execute("select * from runs")
+			columns = [col[0] for col in cursor.description]
+			vals = list([row for row in cursor][0])
+			for (col, val) in zip(columns, vals):
+				file_dict[id].constants[col] = val
+
+			# extract quantities from sqlite file
+			cursor = runDb.db.execute("select * from quantities order by name")
+			columns = [col[0] for col in cursor.description]
+			for row in cursor:
+				q_id,q_name,q_unit,q_desc,q_rank_agg = row
+				tmp_cur = runDb.db.execute(runDb.mangle_sql("select ${}".format(q_name)))
+				vals = [val for val in tmp_cur]
+				file_dict[id].quantities[q_name] = vals
+
+			# display constants
+			constants = document.getElementById("constants" + str(id))
+			constants.style.padding = "5px"
+			constants.innerHTML = "Constants:"
+			constants_list = document.createElement("ul")
+			constants_list.style.margin = "0px"
+			for k, v in file_dict[id].constants.items():
+				item = document.createElement("li")
+				item.innerHTML = str(k) + ": " + str(v)
+				constants_list.appendChild(item)
+			constants.appendChild(constants_list)
 
 
-				#runDb = make_wrapped_db(f1.name, True, False)
-				#runDb.print_cursor(runDb.q("select * from quantities order by name"))
+			menu_div = document.getElementById("menu"+str(id))
 
-				# runDb = make_wrapped_db(f1.name, True, True)
-				runDb = make_wrapped_db("summary.sqlite", True, True)
-				cursor = runDb.db.execute(runDb.mangle_sql("select $t_sim, $t_2step"))
-				columnnames = [column[0] for column in cursor.description]
-				runDb.plot_cursor(cursor, labels=columnnames)
+			# create plot group
+			plot_div = document.createElement("div")
+			plot_div.style = "display:flex;flex-direction:row"
+			plot_div.style.padding = "10px"
+			plot_button = document.createElement("button")
+			plot_button.addEventListener("click", create_proxy(runPlot))
+			plot_button.innerHTML = "Create Plot"
+			plot_button.style.height = "30px"
+			plot_button.style.padding = "5px"
+			plot_button.param = str(id)
 
-		
+			# create quantity 1 dropdown
+			plot_q1 = document.createElement("div")
+			plot_q1.className = "dropdown"
+			plot_q1_select = document.createElement("div")
+			plot_q1_select.className = "select"
+			plot_q1_select.param = str(id)
+			plot_q1_text = document.createElement("span")
+			plot_q1_text.innerHTML = "Select Q1"
+			plot_q1_text.id = "plotQ1Text" + str(id)
+			plot_q1_i = document.createElement("i")
+			plot_q1_i.className = "fa fa-chevron-left"
+			plot_q1_select.appendChild(plot_q1_text)
+			plot_q1_select.appendChild(plot_q1_i)
+			plot_q1_select.addEventListener("click", create_proxy(toggle_dropdown))
+			plot_q1_list = document.createElement("ul")
+			plot_q1_list.className = "dropdown-menu"
+			plot_q1_list.id = "dropdownlistQ1" + str(id)
+			plot_q1_list.style.display = "none"
+			for quantity in file_dict[id].quantities:
+				item = document.createElement("li")
+				item.innerHTML = quantity
+				item.addEventListener("click", create_proxy(update_dropdown))
+				plot_q1_list.appendChild(item)
+			plot_q1.appendChild(plot_q1_select)
+			plot_q1.appendChild(plot_q1_list)
 
-		async def tableSelecttion():
-			pass
+			# create quantity 2 dropdown
+			plot_q2 = document.createElement("div")
+			plot_q2.className = "dropdown"
+			plot_q2_select = document.createElement("div")
+			plot_q2_select.className = "select"
+			plot_q2_select.param = str(id)
+			plot_q2_text = document.createElement("span")
+			plot_q2_text.innerHTML = "Select Q2"
+			plot_q2_text.id = "plotQ2Text" + str(id)
+			plot_q2_i = document.createElement("i")
+			plot_q2_i.className = "fa fa-chevron-left"
+			plot_q2_select.appendChild(plot_q2_text)
+			plot_q2_select.appendChild(plot_q2_i)
+			plot_q2_select.addEventListener("click", create_proxy(toggle_dropdown))
+			plot_q2_list = document.createElement("ul")
+			plot_q2_list.className = "dropdown-menu"
+			plot_q2_list.id = "dropdownlistQ2" + str(id)
+			plot_q2_list.style.display = "none"
+			for quantity in file_dict[id].quantities:
+				item = document.createElement("li")
+				item.innerHTML = quantity
+				item.addEventListener("click", create_proxy(update_dropdown))
+				plot_q2_list.appendChild(item)
+			plot_q2.appendChild(plot_q2_select)
+			plot_q2.appendChild(plot_q2_list)
+
+			# construct the plot section of the menu
+			plot_div.appendChild(plot_button)
+			plot_div.appendChild(plot_q1)
+			plot_div.appendChild(plot_q2)
+			menu_div.appendChild(plot_div)
+
+			# create table group
+			table_div = document.createElement("div")
+			table_div.style = "display:flex;flex-direction:column"
+			table_div.style.padding = "10px"
+			table_header = document.createElement("div")
+			table_header.style = "display:flex;flex-direction:row"
+			table_list_ele = document.createElement("ul")
+			table_list_ele.id = "tableList" + str(id)
+			table_footer = document.createElement("div")
+			table_footer.style = "display:flex;flex-direction:row"
+
+			# construct table header
+			table_name = document.createElement("div")
+			table_name.innerHTML = "Table"
+			table_name.style.padding = "5px"
+			table_add_quantity = document.createElement("div")
+			table_add_quantity.className = "dropdown"
+			table_select = document.createElement("div")
+			table_select.className = "select"
+			table_select.param = str(id)
+			table_text = document.createElement("span")
+			table_text.innerHTML = "Add quantity to table list"
+			table_i = document.createElement("i")
+			table_i.className = "fa fa-chevron-left"
+			table_select.appendChild(table_text)
+			table_select.appendChild(table_i)
+			table_select.addEventListener("click", create_proxy(toggle_dropdown))
+			table_list = document.createElement("ul")
+			table_list.className = "dropdown-menu"
+			table_list.id = "tableDropdownList" + str(id)
+			table_list.style.display = "none"
+			for quantity in file_dict[id].quantities:
+				item = document.createElement("li")
+				item.innerHTML = quantity
+				item.addEventListener("click", create_proxy(add_from_dropdown))
+				table_list.appendChild(item)
+
+			table_add_quantity.appendChild(table_select)
+			table_add_quantity.appendChild(table_list)
+
+			table_header.appendChild(table_name)
+			table_header.appendChild(table_add_quantity)
 
 
 
-		
-		# Create a Python proxy for the callback function
-		# process_file() is your function to process events from FileReader
-		file_event = create_proxy(readDb)
-			
-		# Set the listener to the callback
-		e = document.getElementById("myfile")
-		e.addEventListener("change", file_event, False)
+			# construct table footer
+			download_table_button = document.createElement("button")
+			download_table_button.addEventListener("click", create_proxy(downloadTable))
+			download_table_button.innerHTML = "Download Table"
+			download_table_button.style.height = "30px"
+			download_table_button.style.padding = "5px"
+			download_table_button.param = str(id)
+			print_table_button = document.createElement("button")
+			print_table_button.addEventListener("click", create_proxy(printTable))
+			print_table_button.innerHTML = "Print Table"
+			print_table_button.style.height = "30px"
+			print_table_button.style.padding = "5px"
+			print_table_button.param = str(id)
+			table_footer.appendChild(download_table_button)
+			table_footer.appendChild(print_table_button)
 
-		# import runalyzer-gather
-		
+			# construct the table section of the menu
+			table_div.appendChild(table_header)
+			table_div.appendChild(table_list_ele)
+			table_div.appendChild(table_footer)
+			menu_div.appendChild(table_div)
 
+
+		file_dict = {}
 
 	</py-script>
-
-
-	<div id="lineplot"></div>
-
-	<py-script output="lineplot">
-import pandas as pd
-import matplotlib.pyplot as plt
-
-from pyodide.http import open_url
-
-url = (
-	"https://raw.githubusercontent.com/Cheukting/pyscript-ice-cream/main/bj-products.csv"
-)
-ice_data = pd.read_csv(open_url(url))
-
-def plot(data):
-	plt.rcParams["figure.figsize"] = (22,20)
-	fig, ax = plt.subplots()
-	bars = ax.barh(data["name"], data["rating"], height=0.7)
-	ax.bar_label(bars)
-	plt.title("Rating of ice cream flavours of your choice")
-	display(fig, target="graph-area", append=False)
-
-#plot(ice_data)
-    </py-script>
-
   </body>
 </html>
