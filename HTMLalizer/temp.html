@@ -1,0 +1,916 @@
+<html>
+  <head>
+    <title>web-interface</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="https://pyscript.net/latest/pyscript.css" />
+    <script defer src="https://pyscript.net/latest/pyscript.js"></script>
+<style>
+.dropdown {
+	width: 200px;
+	display: inline-block;
+	background-color: #ddd;
+	border-radius: 2px;
+	box-shadow: 0 0 2px rgb(204, 204, 204);
+	transition: all .5s ease;
+	position: relative;
+	font-size: 14px;
+	color: #474747;
+	height: 100%;
+	text-align: left
+}
+
+.dropdown .select {
+	cursor: pointer;
+	display: block;
+	padding: 10px
+}
+.dropdown .select > i {
+	font-size: 13px;
+	color: #888;
+	cursor: pointer;
+	transition: all .3s ease-in-out;
+	float: right;
+	line-height: 20px
+}
+.dropdown:hover {
+	box-shadow: 0 0 4px rgb(204, 204, 204)
+}
+.dropdown:active {
+	background-color: #f8f8f8
+}
+.dropdown .dropdown-menu {
+	position: absolute;
+	background-color: #fff;
+	width: 100%;
+	left: 0;
+	margin-top: 1px;
+	box-shadow: 0 1px 2px rgb(204, 204, 204);
+	border-radius: 0 1px 2px 2px;
+
+	display: none;
+	max-height: 300px;
+
+	overflow-y: auto;
+	z-index: 9
+}
+
+.dropdown .dropdown-menu li {
+	padding: 10px;
+	transition: all .2s ease-in-out;
+	cursor: pointer
+}
+.dropdown .dropdown-menu {
+	padding: 0;
+	list-style: none
+}
+.dropdown .dropdown-menu li:hover {
+	background-color: #f2f2f2
+}
+.dropdown .dropdown-menu li:active {
+	background-color: #e2e2e2
+}
+
+
+</style>
+	<style>
+	</style>
+  </head>
+  <body>
+
+    <py-config>
+      packages = [
+	  "matplotlib",
+	  "pandas",
+	  "sqlite3",
+	  "pytools",
+	  ]
+    </py-config>
+
+<py-script>
+import code
+
+try:
+	import readline
+	import rlcompleter  # noqa: F401
+	HAVE_READLINE = True
+except ImportError:
+	HAVE_READLINE = False
+
+
+import logging
+
+logger = logging.getLogger(__name__)
+
+from dataclasses import dataclass
+from itertools import product
+from sqlite3 import Connection, Cursor
+from typing import (Any, Callable, Dict, Generator, List, Optional, Sequence,
+					Set, Tuple, Type, Union)
+
+from pytools import Table
+
+
+@dataclass(frozen=True)
+class PlotStyle:
+	dashes: Tuple[int, ...]
+	color: str
+
+
+PLOT_STYLES = [
+		PlotStyle(dashes=dashes, color=color)
+		for dashes, color in product(
+			[(), (12, 2), (4, 2),  (2, 2), (2, 8)],
+			["blue", "green", "red", "magenta", "cyan"],
+			)]
+
+
+class RunDB:
+	def __init__(self, db: Connection, interactive: bool) -> None:
+		self.db = db
+		self.interactive = interactive
+		self.rank_agg_tables: Set[Tuple[str, Callable[..., Any]]] = set()
+
+	def q(self, qry: str, *extra_args: Any) -> Cursor:
+		return self.db.execute(self.mangle_sql(qry), extra_args)
+
+	def mangle_sql(self, qry: str) -> str:
+		return qry
+
+	def get_rank_agg_table(self, qty: str,
+							rank_aggregator: Callable[..., Any]) -> str:
+		tbl_name = f"rankagg_{rank_aggregator}_{qty}"
+
+		if (qty, rank_aggregator) in self.rank_agg_tables:
+			return tbl_name
+
+		logger.info("Building temporary rank aggregation table {tbl_name}.")
+
+		self.db.execute("create temporary table %s as "
+				"select run_id, step, %s(value) as value "
+				"from %s group by run_id,step" % (
+					tbl_name, rank_aggregator, qty))
+		self.db.execute("create index %s_run_step on %s (run_id,step)"
+				% (tbl_name, tbl_name))
+		self.rank_agg_tables.add((qty, rank_aggregator))
+		return tbl_name
+
+	def scatter_cursor(self, cursor: Cursor, labels: Optional[List[str]] = None,
+						*args: Any, **kwargs: Any) -> None:
+		import matplotlib.pyplot as plt
+
+		data_args = tuple(zip(*list(cursor)))
+		plt.scatter(*(data_args + args), **kwargs)
+
+		if isinstance(labels, list) and len(labels) == 2:
+			plt.xlabel(labels[0])
+			plt.ylabel(labels[1])
+		elif labels is not None:
+			raise TypeError("The 'labels' parameter must be a list with two"
+							"elements.")
+
+		if self.interactive:
+			plt.show()
+
+	def plot_cursor(self, cursor: Cursor, labels: Optional[List[str]] = None,
+					*args: Any, **kwargs: Any) -> None:
+		import matplotlib.pyplot as plt
+		from matplotlib.pyplot import legend, plot, show, savefig
+
+		fig, ax = plt.subplots()
+
+		auto_style = kwargs.pop("auto_style", True)
+
+		if len(cursor.description) == 2:
+			if auto_style:
+				style = PLOT_STYLES[0]
+				kwargs["dashes"] = style.dashes
+				kwargs["color"] = style.color
+
+			x, y = list(zip(*list(cursor)))
+			p = plot(x, y, *args, **kwargs)
+
+			if isinstance(labels, list) and len(labels) == 2:
+				p[0].axes.set_xlabel(labels[0])
+				p[0].axes.set_ylabel(labels[1])
+			elif labels is not None:
+				raise TypeError("The 'labels' parameter must be a list with two"
+								" elements.")
+
+		elif len(cursor.description) > 2:
+			small_legend = kwargs.pop("small_legend", True)
+
+			def format_label(kv_pairs: Sequence[Tuple[str, Any]]) -> str:
+				return " ".join(f"{column}:{value}"
+							for column, value in kv_pairs)
+			format_label = kwargs.pop("format_label", format_label)
+
+			def do_plot(x: List[float], y: List[float],
+						row_rest: Tuple[Any, ...]) -> None:
+				my_kwargs = kwargs.copy()
+				style = PLOT_STYLES[style_idx[0] % len(PLOT_STYLES)]
+				if auto_style:
+					my_kwargs.setdefault("dashes", style.dashes)
+					my_kwargs.setdefault("color", style.color)
+
+				my_kwargs.setdefault("label",
+						format_label(list(zip(
+							(col[0] for col in cursor.description[2:]),
+							row_rest))))
+
+				plot(x, y, *args, hold=True, **my_kwargs)
+				style_idx[0] += 1
+
+			style_idx = [0]
+			for x, y, rest in split_cursor(cursor):
+				do_plot(x, y, rest)  # type: ignore[arg-type]
+
+		else:
+			raise ValueError("invalid number of columns")
+
+		if self.interactive:
+			from pyodide.ffi import to_js
+			from js import document, console, window
+			from os.path import exists
+			import matplotlib.image as mpimg
+			display(fig, target="graph-area", append=False)
+			show()
+
+	def print_cursor(self, cursor: Cursor) -> None:
+		print(table_from_cursor(cursor))
+
+
+def split_cursor(cursor: Cursor) -> Generator[
+		Tuple[List[Any], List[Any], Optional[Tuple[Any, ...]]], None, None]:
+
+	x: List[Any] = []
+	y: List[Any] = []
+	last_rest = None
+	for row in cursor:
+		row_tuple = tuple(row)
+		row_rest = row_tuple[2:]
+
+		if last_rest is None:
+			last_rest = row_rest
+
+		if row_rest != last_rest:
+			yield x, y, last_rest
+			del x[:]
+			del y[:]
+
+			last_rest = row_rest
+
+		x.append(row_tuple[0])
+		y.append(row_tuple[1])
+	if x:
+		yield x, y, last_rest
+
+
+def table_from_cursor(cursor: Cursor) -> Table:
+	tbl = Table()
+	tbl.add_row(tuple([column[0] for column in cursor.description]))
+	for row in cursor:
+		tbl.add_row(row)
+	return tbl
+
+
+class MagicRunDB(RunDB):
+	def mangle_sql(self, qry: str) -> str:
+		up_qry = qry.upper()
+		if "FROM" in up_qry and "$$" not in up_qry:
+			return qry
+
+		magic_columns = set()
+		import re
+
+		# should be: re.Match[Any]
+		def replace_magic_column(match: Any) -> str:
+			qty_name = match.group(1)
+			rank_aggregator = match.group(2)
+
+			if rank_aggregator is not None:
+				rank_aggregator = rank_aggregator[1:]
+				magic_columns.add((qty_name, rank_aggregator))
+				return f"{rank_aggregator}_{qty_name}.value AS {qty_name}"
+			else:
+				magic_columns.add((qty_name, None))
+				return "%s.value AS %s" % (qty_name, qty_name)
+
+		magic_column_re = re.compile(r"\$([a-zA-Z][A-Za-z0-9_]*)(\.[a-z]*)?")
+		qry, _ = magic_column_re.subn(replace_magic_column, qry)
+
+		other_clauses = [  # noqa: F841
+				"UNION",  "INTERSECT", "EXCEPT", "WHERE", "GROUP",
+				"HAVING", "ORDER", "LIMIT", ";"]
+
+		from_clause = "from runs "
+		last_tbl = None
+		for tbl, rank_aggregator in magic_columns:
+			if rank_aggregator is not None:
+				full_tbl = f"{rank_aggregator}_{tbl}"
+				full_tbl_src = "{} as {}".format(
+						self.get_rank_agg_table(tbl, rank_aggregator),
+						full_tbl)
+
+				if last_tbl is not None:
+					addendum = f" and {last_tbl}.step = {full_tbl}.step"
+				else:
+					addendum = ""
+			else:
+				full_tbl = tbl
+				full_tbl_src = tbl
+
+				if last_tbl is not None:
+					addendum = " and {}.step = {}.step and {}.rank={}.rank".format(
+							last_tbl, full_tbl, last_tbl, full_tbl)
+				else:
+					addendum = ""
+
+			from_clause += " inner join {} on ({}.run_id = runs.id{}) ".format(
+					full_tbl_src, full_tbl, addendum)
+			last_tbl = full_tbl
+
+		def get_clause_indices(qry: str) -> Dict[str, int]:
+			other_clauses = ["UNION",  "INTERSECT", "EXCEPT", "WHERE", "GROUP",
+					"HAVING", "ORDER", "LIMIT", ";"]
+
+			result = {}
+			up_qry = qry.upper()
+			for clause in other_clauses:
+				clause_match = re.search(r"\b%s\b" % clause, up_qry)
+				if clause_match is not None:
+					result[clause] = clause_match.start()
+
+			return result
+
+		# add 'from'
+		if "$$" in qry:
+			qry = qry.replace("$$", " %s " % from_clause)
+		else:
+			clause_indices = get_clause_indices(qry)
+
+			if not clause_indices:
+				qry = qry+" "+from_clause
+			else:
+				first_clause_idx = min(clause_indices.values())
+				qry = (
+						qry[:first_clause_idx]
+						+ from_clause
+						+ qry[first_clause_idx:])
+
+		return qry
+
+
+def make_runalyzer_symbols(db: RunDB) \
+		-> Dict[str, Union[RunDB, str, None, Callable[..., Any]]]:
+	return {
+			"__name__": "__console__",
+			"__doc__": None,
+			"db": db,
+			"mangle_sql": db.mangle_sql,
+			"q": db.q,
+			"dbplot": db.plot_cursor,
+			"dbscatter": db.scatter_cursor,
+			"dbprint": db.print_cursor,
+			"split_cursor": split_cursor,
+			"table_from_cursor": table_from_cursor,
+			}
+
+
+class RunalyzerConsole(code.InteractiveConsole):
+	def __init__(self, db: RunDB) -> None:
+		self.db = db
+		code.InteractiveConsole.__init__(self,
+				make_runalyzer_symbols(db))
+
+		try:
+			import numpy  # noqa: F401
+			self.runsource("from numpy import *")
+		except ImportError:
+			pass
+
+		try:
+			import matplotlib.pyplot  # noqa
+			self.runsource("from matplotlib.pyplot import *")
+		except ImportError:
+			pass
+		except RuntimeError:
+			pass
+
+		if HAVE_READLINE:
+			import atexit
+			import os
+
+			histfile = os.path.join(os.environ["HOME"], ".runalyzerhist")
+			if os.access(histfile, os.R_OK):
+				readline.read_history_file(histfile)
+			atexit.register(readline.write_history_file, histfile)
+			readline.parse_and_bind("tab: complete")
+
+		self.last_push_result = False
+
+	def push(self, cmdline: str) -> bool:
+		if cmdline.startswith("."):
+			try:
+				self.execute_magic(cmdline)
+			except Exception:
+				import traceback
+				traceback.print_exc()
+		else:
+			self.last_push_result = code.InteractiveConsole.push(self, cmdline)
+
+		return self.last_push_result
+
+	def execute_magic(self, cmdline: str) -> None:
+		cmd_end = cmdline.find(" ")
+		if cmd_end == -1:
+			cmd = cmdline[1:]
+			args = ""
+		else:
+			cmd = cmdline[1:cmd_end]
+			args = cmdline[cmd_end+1:]
+
+		if cmd == "help":
+			print("""
+Commands:
+	.help        show this help message
+	.q SQL       execute a (potentially mangled) query
+	.constants   show a list of (constant) run properties
+	.quantities  show a list of time-dependent quantities
+	.warnings    show a list of warnings
+	.logging     show a list of logging messages
+
+Plotting:
+	.plot SQL    plot results of (potentially mangled) query.
+				result sets can be (x,y) or (x,y,descr1,descr2,...),
+				in which case a new plot will be started for each
+				tuple (descr1, descr2, ...)
+	.scatter SQL make scatterplot results of (potentially mangled) query.
+				result sets can have between two and four columns
+				for (x,y,size,color).
+
+SQL mangling, if requested ("MagicSQL"):
+	select $quantity where pred(feature)
+
+Custom SQLite aggregates:
+	stddev, var, norm1, norm2
+
+Available Python symbols:
+	db: the SQLite database
+	mangle_sql(query_str): mangle the SQL query string query_str
+	q(query_str): get db cursor for mangled query_str
+	dbplot(cursor): plot result of cursor
+	dbscatter(cursor): make scatterplot result of cursor
+	dbprint(cursor): print result of cursor
+	split_cursor(cursor): x,y,data gather that .plot uses internally
+	table_from_cursor(cursor): Create a printable table from a cursor
+""")
+		elif cmd == "q":
+			self.db.print_cursor(self.db.q(args))
+
+		elif cmd == "runprops" or cmd == "constants":
+			cursor = self.db.db.execute("select * from runs")
+			columns = [column[0] for column in cursor.description]
+			columns.sort()
+			for col in columns:
+				print(col)
+		elif cmd == "quantities":
+			self.db.print_cursor(self.db.q("select * from quantities order by name"))
+		elif cmd == "warnings":
+			self.db.print_cursor(self.db.q("select * from warnings"))
+		elif cmd == "logging":
+			self.db.print_cursor(self.db.q("select * from logging"))
+		elif cmd == "title":
+			from pylab import title
+			title(args)
+		elif cmd == "plot":
+			cursor = self.db.db.execute(self.db.mangle_sql(args))
+			columnnames = [column[0] for column in cursor.description]
+			self.db.plot_cursor(cursor, labels=columnnames)
+		elif cmd == "scatter":
+			cursor = self.db.db.execute(self.db.mangle_sql(args))
+			columnnames = [column[0] for column in cursor.description]
+			self.db.scatter_cursor(cursor, labels=columnnames)
+		else:
+			print("invalid magic command")
+
+
+
+from pytools import VarianceAggregator  # noqa: E402
+
+
+class Variance(VarianceAggregator):
+	def __init__(self) -> None:
+		VarianceAggregator.__init__(self,  # type: ignore[no-untyped-call]
+									entire_pop=True)
+
+
+class StdDeviation(Variance):
+	def finalize(self) -> Optional[float]:
+		result = Variance.finalize(self)  # type: ignore[no-untyped-call]
+
+		if result is None:
+			return None
+		else:
+			from math import sqrt
+			return sqrt(result)
+
+
+class Norm1:
+	def __init__(self) -> None:
+		self.abs_sum = 0.0
+
+	def step(self, value: float) -> None:
+		self.abs_sum += abs(value)
+
+	def finalize(self) -> float:
+		return self.abs_sum
+
+
+class Norm2:
+	def __init__(self) -> None:
+		self.square_sum = 0.0
+
+	def step(self, value: float) -> None:
+		self.square_sum += value**2
+
+	def finalize(self) -> float:
+		from math import sqrt
+		return sqrt(self.square_sum)
+
+
+def my_sprintf(format: str, arg: str) -> str:
+	return format % arg
+
+
+
+
+def make_wrapped_db(filename: str, interactive: bool, mangle: bool) -> RunDB:
+	import sqlite3
+	db = sqlite3.connect(filename)
+	db.create_aggregate("stddev", 1, StdDeviation)  # type: ignore[arg-type]
+	db.create_aggregate("var", 1, Variance)
+	db.create_aggregate("norm1", 1, Norm1)  # type: ignore[arg-type]
+	db.create_aggregate("norm2", 1, Norm2)  # type: ignore[arg-type]
+
+	db.create_function("sprintf", 2, my_sprintf)
+	from math import pow, sqrt
+	db.create_function("sqrt", 1, sqrt)
+	db.create_function("pow", 2, pow)
+
+	if mangle:
+		db_wrap_class: Type[RunDB] = MagicRunDB
+	else:
+		db_wrap_class = RunDB
+
+	return db_wrap_class(db, interactive=interactive)
+
+
+
+</py-script>
+
+<py-script>
+import asyncio
+from js import document
+from pyscript import Element
+from pyodide.ffi import create_proxy
+import os
+import sqlite3
+
+
+class dataFile:
+    def __init__(self, name):
+        self.name = name
+        self.constants = {}
+        self.quantities = {}
+
+
+nextId = 1
+
+fileDiv = """
+<div id="newFile{0}">
+    <div id="constants{0}">
+    </div>
+    <div id="interactive{0}">
+        <div id="menu{0}">
+            <div id="input{0}">
+            </div>
+            <div id="plot{0}">
+            </div>
+            <div id="table{0}">
+            </div>
+        </div>
+        <div id="output{0}">
+        </div>
+    </div>
+</div>
+"""
+
+
+def addFileFunc():
+    global nextId
+    fileList = document.getElementById("fileList")
+    newFile = document.createElement("div")
+    newFile.id = str(nextId)
+    newFile.style.display = "flex"
+    newFile.style.flexDirection = "column"
+    if nextId % 2 == 0:
+        # silver color
+        newFile.style.backgroundColor = "#C0C0C0"
+    else:
+        # darkgrey color
+        newFile.style.backgroundColor = "#A9A9A9"
+    menu = document.createElement("div")
+    menu.style = "display:flex;flex-direction:column"
+    menu.id = "menu" + str(nextId)
+    input = document.createElement("input")
+    input.type = "file"
+    input.id = "file" + str(nextId)
+    output = document.createElement("div")
+    output.id = "output" + str(nextId)
+    constants = document.createElement("div")
+    constants.style = "display:flex;flex-direction:column"
+    constants.id = "constants" + str(nextId)
+    interactive = document.createElement("div")
+    interactive.style = "display:flex;flex-direction:row"
+    interactive.id = "interactive" + str(nextId)
+    menu.appendChild(input)
+    interactive.appendChild(menu)
+    interactive.appendChild(output)
+    newFile.appendChild(constants)
+    newFile.appendChild(interactive)
+    fileList.appendChild(newFile)
+
+    # attach listener to new file input
+    input.addEventListener("change", create_proxy(storeFile), False)
+
+    nextId = nextId + 1
+
+
+async def runPlot(event):
+    id = event.target.param
+    output = document.getElementById("output" + str(id))
+    output.id = "graph-area"
+    runDb = make_wrapped_db(file_dict[id].name, True, True)
+    q1 = document.getElementById("plotQ1Text"+str(id)).innerHTML
+    q2 = document.getElementById("plotQ2Text"+str(id)).innerHTML
+    query = "select ${}, ${}".format(q1, q2)
+    cursor = runDb.db.execute(runDb.mangle_sql(query))
+    columnnames = [column[0] for column in cursor.description]
+    runDb.plot_cursor(cursor, labels=columnnames)
+
+    output.id = "output" + str(id)
+
+
+async def runTable(event):
+    id = event.target.param
+    output = document.getElementById("output" + str(id))
+    output.id = "graph-area"
+    runDb = make_wrapped_db(file_dict[id].name, True, True)
+    query = "select $t_sim, $t_2step"
+    cursor = runDb.db.execute(runDb.mangle_sql(query))
+    columnnames = [column[0] for column in cursor.description]
+    runDb.plot_cursor(cursor, labels=columnnames)
+
+    output.id = "output" + str(id)
+
+
+def toggle_dropdown(event):
+    dropdownlist = event.target.parentElement.children[1]
+    if dropdownlist.style.display == "none":
+        dropdownlist.style.display = "block"
+    else:
+        dropdownlist.style.display = "none"
+
+
+def update_dropdown(event):
+    name = event.target.innerHTML
+    dropdown = event.target.parentElement.parentElement.children[0]
+    dropdown.children[0].innerHTML = name
+    event.target.parentElement.style.display = "none"
+
+
+def downloadTable(event):
+    pass
+
+
+def printTable(event):
+    pass
+
+
+def add_from_dropdown(event):
+    id = event.target.parentElement.parentElement.children[0].param
+    name = event.target.innerHTML
+    new_item = document.createElement("li")
+    new_item.innerHTML = name
+    item_list = document.getElementById("tableList" + str(id))
+    item_list.appendChild(new_item)
+    event.target.parentElement.style.display = "none"
+
+
+async def storeFile(event):
+    global file_dict
+    fileList = event.target.files.to_py()
+    from js import document, Uint8Array
+    id = event.target.parentElement.parentElement.parentElement.id
+
+    # write database file
+    for f1 in fileList:
+        open(f1.name, 'x')  # ensure that file has not yet been created
+        with open(f1.name, 'wb') as file:
+            data = Uint8Array.new(await f1.arrayBuffer())
+            file.write(bytearray(data))
+
+    for f1 in fileList:
+        file_dict[id] = dataFile(f1.name)
+
+    # extract constants from sqlite file
+    runDb = make_wrapped_db(file_dict[id].name, True, True)
+    cursor = runDb.db.execute("select * from runs")
+    columns = [col[0] for col in cursor.description]
+    vals = list([row for row in cursor][0])
+    for (col, val) in zip(columns, vals):
+        file_dict[id].constants[col] = val
+
+    # extract quantities from sqlite file
+    cursor = runDb.db.execute("select * from quantities order by name")
+    columns = [col[0] for col in cursor.description]
+    for row in cursor:
+        q_id, q_name, q_unit, q_desc, q_rank_agg = row
+        tmp_cur = runDb.db.execute(runDb.mangle_sql(
+            "select ${}".format(q_name)))
+        vals = [val for val in tmp_cur]
+        file_dict[id].quantities[q_name] = vals
+
+    # display constants
+    constants = document.getElementById("constants" + str(id))
+    constants.style.padding = "5px"
+    constants.innerHTML = "Constants:"
+    constants_list = document.createElement("ul")
+    constants_list.style.margin = "0px"
+    for k, v in file_dict[id].constants.items():
+        item = document.createElement("li")
+        item.innerHTML = str(k) + ": " + str(v)
+        constants_list.appendChild(item)
+    constants.appendChild(constants_list)
+
+    menu_div = document.getElementById("menu"+str(id))
+
+    # create plot group
+    plot_div = document.createElement("div")
+    plot_div.style = "display:flex;flex-direction:row"
+    plot_div.style.padding = "10px"
+    plot_button = document.createElement("button")
+    plot_button.addEventListener("click", create_proxy(runPlot))
+    plot_button.innerHTML = "Create Plot"
+    plot_button.style.height = "30px"
+    plot_button.style.padding = "5px"
+    plot_button.param = str(id)
+
+    # create quantity 1 dropdown
+    plot_q1 = document.createElement("div")
+    plot_q1.className = "dropdown"
+    plot_q1_select = document.createElement("div")
+    plot_q1_select.className = "select"
+    plot_q1_select.param = str(id)
+    plot_q1_text = document.createElement("span")
+    plot_q1_text.innerHTML = "Select Q1"
+    plot_q1_text.id = "plotQ1Text" + str(id)
+    plot_q1_i = document.createElement("i")
+    plot_q1_i.className = "fa fa-chevron-left"
+    plot_q1_select.appendChild(plot_q1_text)
+    plot_q1_select.appendChild(plot_q1_i)
+    plot_q1_select.addEventListener("click", create_proxy(toggle_dropdown))
+    plot_q1_list = document.createElement("ul")
+    plot_q1_list.className = "dropdown-menu"
+    plot_q1_list.id = "dropdownlistQ1" + str(id)
+    plot_q1_list.style.display = "none"
+    for quantity in file_dict[id].quantities:
+        item = document.createElement("li")
+        item.innerHTML = quantity
+        item.addEventListener("click", create_proxy(update_dropdown))
+        plot_q1_list.appendChild(item)
+    plot_q1.appendChild(plot_q1_select)
+    plot_q1.appendChild(plot_q1_list)
+
+    # create quantity 2 dropdown
+    plot_q2 = document.createElement("div")
+    plot_q2.className = "dropdown"
+    plot_q2_select = document.createElement("div")
+    plot_q2_select.className = "select"
+    plot_q2_select.param = str(id)
+    plot_q2_text = document.createElement("span")
+    plot_q2_text.innerHTML = "Select Q2"
+    plot_q2_text.id = "plotQ2Text" + str(id)
+    plot_q2_i = document.createElement("i")
+    plot_q2_i.className = "fa fa-chevron-left"
+    plot_q2_select.appendChild(plot_q2_text)
+    plot_q2_select.appendChild(plot_q2_i)
+    plot_q2_select.addEventListener("click", create_proxy(toggle_dropdown))
+    plot_q2_list = document.createElement("ul")
+    plot_q2_list.className = "dropdown-menu"
+    plot_q2_list.id = "dropdownlistQ2" + str(id)
+    plot_q2_list.style.display = "none"
+    for quantity in file_dict[id].quantities:
+        item = document.createElement("li")
+        item.innerHTML = quantity
+        item.addEventListener("click", create_proxy(update_dropdown))
+        plot_q2_list.appendChild(item)
+    plot_q2.appendChild(plot_q2_select)
+    plot_q2.appendChild(plot_q2_list)
+
+    # construct the plot section of the menu
+    plot_div.appendChild(plot_button)
+    plot_div.appendChild(plot_q1)
+    plot_div.appendChild(plot_q2)
+    menu_div.appendChild(plot_div)
+
+    # create table group
+    table_div = document.createElement("div")
+    table_div.style = "display:flex;flex-direction:column"
+    table_div.style.padding = "10px"
+    table_header = document.createElement("div")
+    table_header.style = "display:flex;flex-direction:row"
+    table_list_ele = document.createElement("ul")
+    table_list_ele.id = "tableList" + str(id)
+    table_footer = document.createElement("div")
+    table_footer.style = "display:flex;flex-direction:row"
+
+    # construct table header
+    table_name = document.createElement("div")
+    table_name.innerHTML = "Table"
+    table_name.style.padding = "5px"
+    table_add_quantity = document.createElement("div")
+    table_add_quantity.className = "dropdown"
+    table_select = document.createElement("div")
+    table_select.className = "select"
+    table_select.param = str(id)
+    table_text = document.createElement("span")
+    table_text.innerHTML = "Add quantity to table list"
+    table_i = document.createElement("i")
+    table_i.className = "fa fa-chevron-left"
+    table_select.appendChild(table_text)
+    table_select.appendChild(table_i)
+    table_select.addEventListener("click", create_proxy(toggle_dropdown))
+    table_list = document.createElement("ul")
+    table_list.className = "dropdown-menu"
+    table_list.id = "tableDropdownList" + str(id)
+    table_list.style.display = "none"
+    for quantity in file_dict[id].quantities:
+        item = document.createElement("li")
+        item.innerHTML = quantity
+        item.addEventListener("click", create_proxy(add_from_dropdown))
+        table_list.appendChild(item)
+
+    table_add_quantity.appendChild(table_select)
+    table_add_quantity.appendChild(table_list)
+
+    table_header.appendChild(table_name)
+    table_header.appendChild(table_add_quantity)
+
+    # construct table footer
+    download_table_button = document.createElement("button")
+    download_table_button.addEventListener("click",
+                                           create_proxy(downloadTable))
+    download_table_button.innerHTML = "Download Table"
+    download_table_button.style.height = "30px"
+    download_table_button.style.padding = "5px"
+    download_table_button.param = str(id)
+    print_table_button = document.createElement("button")
+    print_table_button.addEventListener("click", create_proxy(printTable))
+    print_table_button.innerHTML = "Print Table"
+    print_table_button.style.height = "30px"
+    print_table_button.style.padding = "5px"
+    print_table_button.param = str(id)
+    table_footer.appendChild(download_table_button)
+    table_footer.appendChild(print_table_button)
+
+    # construct the table section of the menu
+    table_div.appendChild(table_header)
+    table_div.appendChild(table_list_ele)
+    table_div.appendChild(table_footer)
+    menu_div.appendChild(table_div)
+
+
+file_dict = {}
+
+# el = document.getElementById("fileList")
+# el.innerHTML += fileDiv.format(str(5))
+# print(el.innerHTML)
+
+
+</py-script>
+
+	<div style="display: flex; background-color: lightblue">
+		<div style="margin:10px;padding:10px;">
+			<button py-click="addFileFunc()" id="add-file" class="py-button">Add file</button>
+		</div>
+		<div style="margin:10px;padding:10px;font-weight:bold;">
+			HTMLalizer
+		</div>
+	</div>
+
+	<div id="fileList" style="display:flex;flex-direction:column">
+	</div>
+
+  </body>
+</html>

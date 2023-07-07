@@ -1,0 +1,45 @@
+<html>
+  <head>
+    <title>web-interface</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="https://pyscript.net/latest/pyscript.css" />
+    <script defer src="https://pyscript.net/latest/pyscript.js"></script>
+<style>
+{{ cssFile }}
+</style>
+	<style>
+	</style>
+  </head>
+  <body>
+
+    <py-config>
+      packages = [
+	  "matplotlib",
+	  "pandas",
+	  "sqlite3",
+	  "pytools",
+	  ]
+    </py-config>
+
+<py-script>
+{{ runalyzerFile }}
+</py-script>
+
+<py-script>
+{{ pythonFile }}
+</py-script>
+
+	<div style="display: flex; background-color: lightblue">
+		<div style="margin:10px;padding:10px;">
+			<button py-click="addFileFunc()" id="add-file" class="py-button">Add file</button>
+		</div>
+		<div style="margin:10px;padding:10px;font-weight:bold;">
+			HTMLalizer
+		</div>
+	</div>
+
+	<div id="fileList" style="display:flex;flex-direction:column">
+	</div>
+
+  </body>
+</html>
