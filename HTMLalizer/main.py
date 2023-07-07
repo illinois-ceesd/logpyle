@@ -1,5 +1,5 @@
 import asyncio
-from js import document
+from js import document, DOMParser
 from pyscript import Element
 from pyodide.ffi import create_proxy
 import os
@@ -15,62 +15,31 @@ class dataFile:
 
 nextId = 1
 
+# this HTML string was imported from newFile.html
 fileDiv = """
-<div id="newFile{0}">
-    <div id="constants{0}">
-    </div>
-    <div id="interactive{0}">
-        <div id="menu{0}">
-            <div id="input{0}">
-            </div>
-            <div id="plot{0}">
-            </div>
-            <div id="table{0}">
-            </div>
-        </div>
-        <div id="output{0}">
-        </div>
-    </div>
-</div>
+{{ newFileHTML }}
 """
 
 
 def addFileFunc():
     global nextId
+
     fileList = document.getElementById("fileList")
-    newFile = document.createElement("div")
-    newFile.id = str(nextId)
-    newFile.style.display = "flex"
-    newFile.style.flexDirection = "column"
+    parser = DOMParser.new()
+    html = parser.parseFromString(fileDiv.format(str(nextId)), 'text/html')
+    fileList.appendChild(html.body)
+
+    newFile = document.getElementById(str(nextId))
     if nextId % 2 == 0:
         # silver color
         newFile.style.backgroundColor = "#C0C0C0"
     else:
         # darkgrey color
         newFile.style.backgroundColor = "#A9A9A9"
-    menu = document.createElement("div")
-    menu.style = "display:flex;flex-direction:column"
-    menu.id = "menu" + str(nextId)
-    input = document.createElement("input")
-    input.type = "file"
-    input.id = "file" + str(nextId)
-    output = document.createElement("div")
-    output.id = "output" + str(nextId)
-    constants = document.createElement("div")
-    constants.style = "display:flex;flex-direction:column"
-    constants.id = "constants" + str(nextId)
-    interactive = document.createElement("div")
-    interactive.style = "display:flex;flex-direction:row"
-    interactive.id = "interactive" + str(nextId)
-    menu.appendChild(input)
-    interactive.appendChild(menu)
-    interactive.appendChild(output)
-    newFile.appendChild(constants)
-    newFile.appendChild(interactive)
-    fileList.appendChild(newFile)
 
     # attach listener to new file input
-    input.addEventListener("change", create_proxy(storeFile), False)
+    input = document.getElementById("file" + str(nextId))
+    input.addEventListener("change", create_proxy(storeFile))
 
     nextId = nextId + 1
 
@@ -171,158 +140,56 @@ async def storeFile(event):
         file_dict[id].quantities[q_name] = vals
 
     # display constants
-    constants = document.getElementById("constants" + str(id))
-    constants.style.padding = "5px"
-    constants.innerHTML = "Constants:"
-    constants_list = document.createElement("ul")
-    constants_list.style.margin = "0px"
+    constants_list = document.getElementById("constantsList" + str(id))
     for k, v in file_dict[id].constants.items():
         item = document.createElement("li")
         item.innerHTML = str(k) + ": " + str(v)
         constants_list.appendChild(item)
-    constants.appendChild(constants_list)
-
-    menu_div = document.getElementById("menu"+str(id))
 
     # create plot group
-    plot_div = document.createElement("div")
-    plot_div.style = "display:flex;flex-direction:row"
-    plot_div.style.padding = "10px"
-    plot_button = document.createElement("button")
+    plot_button = document.getElementById("plotButton" + str(id))
     plot_button.addEventListener("click", create_proxy(runPlot))
-    plot_button.innerHTML = "Create Plot"
-    plot_button.style.height = "30px"
-    plot_button.style.padding = "5px"
     plot_button.param = str(id)
 
     # create quantity 1 dropdown
-    plot_q1 = document.createElement("div")
-    plot_q1.className = "dropdown"
-    plot_q1_select = document.createElement("div")
-    plot_q1_select.className = "select"
-    plot_q1_select.param = str(id)
-    plot_q1_text = document.createElement("span")
-    plot_q1_text.innerHTML = "Select Q1"
-    plot_q1_text.id = "plotQ1Text" + str(id)
-    plot_q1_i = document.createElement("i")
-    plot_q1_i.className = "fa fa-chevron-left"
-    plot_q1_select.appendChild(plot_q1_text)
-    plot_q1_select.appendChild(plot_q1_i)
+    plot_q1_select = document.getElementById("plotQ1Select" + str(id))
     plot_q1_select.addEventListener("click", create_proxy(toggle_dropdown))
-    plot_q1_list = document.createElement("ul")
-    plot_q1_list.className = "dropdown-menu"
-    plot_q1_list.id = "dropdownlistQ1" + str(id)
-    plot_q1_list.style.display = "none"
+    plot_q1_list = document.getElementById("dropdownlistQ1"+str(id))
     for quantity in file_dict[id].quantities:
         item = document.createElement("li")
         item.innerHTML = quantity
         item.addEventListener("click", create_proxy(update_dropdown))
         plot_q1_list.appendChild(item)
-    plot_q1.appendChild(plot_q1_select)
-    plot_q1.appendChild(plot_q1_list)
 
     # create quantity 2 dropdown
-    plot_q2 = document.createElement("div")
-    plot_q2.className = "dropdown"
-    plot_q2_select = document.createElement("div")
-    plot_q2_select.className = "select"
-    plot_q2_select.param = str(id)
-    plot_q2_text = document.createElement("span")
-    plot_q2_text.innerHTML = "Select Q2"
-    plot_q2_text.id = "plotQ2Text" + str(id)
-    plot_q2_i = document.createElement("i")
-    plot_q2_i.className = "fa fa-chevron-left"
-    plot_q2_select.appendChild(plot_q2_text)
-    plot_q2_select.appendChild(plot_q2_i)
+    plot_q2_select = document.getElementById("plotQ2Select" + str(id))
     plot_q2_select.addEventListener("click", create_proxy(toggle_dropdown))
-    plot_q2_list = document.createElement("ul")
-    plot_q2_list.className = "dropdown-menu"
-    plot_q2_list.id = "dropdownlistQ2" + str(id)
-    plot_q2_list.style.display = "none"
+    plot_q2_list = document.getElementById("dropdownlistQ2"+str(id))
     for quantity in file_dict[id].quantities:
         item = document.createElement("li")
         item.innerHTML = quantity
         item.addEventListener("click", create_proxy(update_dropdown))
         plot_q2_list.appendChild(item)
-    plot_q2.appendChild(plot_q2_select)
-    plot_q2.appendChild(plot_q2_list)
-
-    # construct the plot section of the menu
-    plot_div.appendChild(plot_button)
-    plot_div.appendChild(plot_q1)
-    plot_div.appendChild(plot_q2)
-    menu_div.appendChild(plot_div)
-
-    # create table group
-    table_div = document.createElement("div")
-    table_div.style = "display:flex;flex-direction:column"
-    table_div.style.padding = "10px"
-    table_header = document.createElement("div")
-    table_header.style = "display:flex;flex-direction:row"
-    table_list_ele = document.createElement("ul")
-    table_list_ele.id = "tableList" + str(id)
-    table_footer = document.createElement("div")
-    table_footer.style = "display:flex;flex-direction:row"
 
     # construct table header
-    table_name = document.createElement("div")
-    table_name.innerHTML = "Table"
-    table_name.style.padding = "5px"
-    table_add_quantity = document.createElement("div")
-    table_add_quantity.className = "dropdown"
-    table_select = document.createElement("div")
-    table_select.className = "select"
+    table_select = document.getElementById("tableSelect" + str(id))
     table_select.param = str(id)
-    table_text = document.createElement("span")
-    table_text.innerHTML = "Add quantity to table list"
-    table_i = document.createElement("i")
-    table_i.className = "fa fa-chevron-left"
-    table_select.appendChild(table_text)
-    table_select.appendChild(table_i)
     table_select.addEventListener("click", create_proxy(toggle_dropdown))
-    table_list = document.createElement("ul")
-    table_list.className = "dropdown-menu"
-    table_list.id = "tableDropdownList" + str(id)
-    table_list.style.display = "none"
+    table_list = document.getElementById("tableDropdownList" + str(id))
     for quantity in file_dict[id].quantities:
         item = document.createElement("li")
         item.innerHTML = quantity
         item.addEventListener("click", create_proxy(add_from_dropdown))
         table_list.appendChild(item)
 
-    table_add_quantity.appendChild(table_select)
-    table_add_quantity.appendChild(table_list)
-
-    table_header.appendChild(table_name)
-    table_header.appendChild(table_add_quantity)
-
     # construct table footer
-    download_table_button = document.createElement("button")
+    download_table_button = document.getElementById("tableDownloadButton" + str(id))
     download_table_button.addEventListener("click",
                                            create_proxy(downloadTable))
-    download_table_button.innerHTML = "Download Table"
-    download_table_button.style.height = "30px"
-    download_table_button.style.padding = "5px"
     download_table_button.param = str(id)
-    print_table_button = document.createElement("button")
+    print_table_button = document.getElementById("tablePrintButton" + str(id))
     print_table_button.addEventListener("click", create_proxy(printTable))
-    print_table_button.innerHTML = "Print Table"
-    print_table_button.style.height = "30px"
-    print_table_button.style.padding = "5px"
     print_table_button.param = str(id)
-    table_footer.appendChild(download_table_button)
-    table_footer.appendChild(print_table_button)
-
-    # construct the table section of the menu
-    table_div.appendChild(table_header)
-    table_div.appendChild(table_list_ele)
-    table_div.appendChild(table_footer)
-    menu_div.appendChild(table_div)
 
 
 file_dict = {}
-
-# el = document.getElementById("fileList")
-# el.innerHTML += fileDiv.format(str(5))
-# print(el.innerHTML)
-

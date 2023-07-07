@@ -1,0 +1,68 @@
+<div class="newFile" id="{0}" style="display:flex;flex-direction:column">
+    <div id="constants{0}" style="display:flex;flex-direction:column;margin:0px">
+        Constants:
+        <ul id="constantsList{0}">
+        </ul>
+    </div>
+    <div id="interactive{0}" style="display:flex;flex-direction:row">
+        <div id="menu{0}" style="display:flex;flex-direction:column">
+            <input id="file{0}" type="file">
+
+            <div id="plot{0}" style="display:flex;flex-direction:row;padding=10px">
+				<button id="plotButton{0}" style="height:30px;padding:5px" param="{0}">
+                    Create Plot
+                </button>
+				<div class="dropdown" id="plotQ1{0}">
+					<div class="select" id="plotQ1Select{0}" param="{0}">
+						<span id="plotQ1Text{0}">Select Q1</span>
+						<i class="fa fa-chevron-left"></i>
+                    </div>
+					<ul class="dropdown-menu" id="dropdownlistQ1{0}" style="display:none">
+
+					</ul>
+                </div>
+				<div class="dropdown" id="plotQ2{0}">
+					<div class="select" id="plotQ2Select{0}" param="{0}">
+						<span id="plotQ2Text{0}">Select Q2</span>
+						<i class="fa fa-chevron-left"></i>
+                    </div>
+					<ul class="dropdown-menu" id="dropdownlistQ2{0}" style="display:none">
+
+					</ul>
+                </div>
+            </div>
+
+            <div id="table{0}" style="display:flex;flex-direction:column;padding:10px">
+				<div id="tableHeader{0}" style="display:flex;flex-direction:row">
+					<div style="padding:5px">
+						Table
+					</div>
+					<div class="dropdown">
+						<div class="select" id="tableSelect{0}" param="{0}">
+							<span id="plotQ1Text{0}">Add quantity to table list</span>
+							<i class="fa fa-chevron-left"></i>
+						</div>
+						<ul class="dropdown-menu" id="tableDropdownList{0}" style="display:none">
+
+						</ul>
+					</div>
+				</div>
+				<ul id="tableList{0}" style="margin:0px">
+
+				</ul>
+				<div id="tableFooter{0}" style="display:flex;flex-direction:row">
+					<button id="tableDownloadButton{0}" style="height:30px;padding:5px">
+						Download Table
+					</button>
+					<button id="tablePrintButton{0}" style="height:30px;padding:5px">
+						Print Table
+					</button>
+
+				</div>
+            </div>
+        </div>
+        <div id="output{0}">
+        </div>
+    </div>
+</div>
+
