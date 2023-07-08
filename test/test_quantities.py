@@ -17,19 +17,7 @@ from logpyle import (
     PostLogQuantity,
     MultiLogQuantity,
     MultiPostLogQuantity,
-    DtConsumer,
 )
-
-# notes to self
-# 1) might be benificial to warn user if they attempt to name a quantity
-#       begining with a number. SQLite doesnt like that very much
-# 2) Certain quantities modify their values on call as opposed to on tick.
-#       (PushLogQuantity, IntervalTimer,
-#       TimestepCounter, TimestepDuration, InitTime, ETA)
-# 3) TimestepCounter states that it counts the number of LogManager ticks, but
-#       it actually counts the number of times tick_before was called
-# 4) It seems as if None is always casted to be nonexistent in the database
-
 
 # (name, value, unit, description, callFunc)
 test_LogQuantity_types = [
@@ -61,33 +49,17 @@ test_LogQuantity_types = [
             None,
             lambda x: x+1
          ),
-        # blueprint
-        # (
-        #     "Quantity_name",
-        #     1,
-        #     "1",
-        #     "Q init to 1",
-        #     lambda x: x+1
-        #  ),
-        # currently does not handle values of None cleanly
-        # (
-        #     "Quantity_name",
-        #     None,
-        #     "1",
-        #     "Q init to 1",
-        #     lambda x: x
-        #  ),
         ]
 
 
 @pytest.fixture(params=test_LogQuantity_types)
 def customLogQuantity(request):
-    name, value, unit, description, callFunc = request.param
+    q_name, value, unit, description, callFunc = request.param
 
     class TestLogQuantity(LogQuantity):
-        def __init__(self, name, parameter) -> None:
-            super().__init__(name, unit, description)
-            setattr(self, name, parameter)
+        def __init__(self, q_name, parameter) -> None:
+            super().__init__(q_name, unit, description)
+            setattr(self, q_name, parameter)
             self.func = callFunc
 
         def __call__(self):
@@ -96,11 +68,11 @@ def customLogQuantity(request):
 
             # update value every time quantity is called
             new_val = self.func(value)
-            setattr(self, name, new_val)
+            setattr(self, q_name, new_val)
 
             return new_val
 
-    obj = TestLogQuantity(name, value)
+    obj = TestLogQuantity(q_name, value)
 
     yield obj
 
@@ -123,7 +95,6 @@ def test_LogQuantity(basicLogmgr, customLogQuantity):
         predicted_list.append(next)
 
     for i in range(N):
-        # assert
         pre_val = getattr(customLogQuantity, customLogQuantity.name)
         assert pre_val == predicted_list[i]
 
@@ -162,12 +133,12 @@ def test_LogQuantity_unimplemented(basicLogmgr: LogManager):
 
 @pytest.fixture(params=test_LogQuantity_types)
 def customPostLogQuantity(request):
-    name, value, unit, description, callFunc = request.param
+    q_name, value, unit, description, callFunc = request.param
 
     class TestPostLogQuantity(PostLogQuantity):
-        def __init__(self, name, parameter) -> None:
-            super().__init__(name, unit, description)
-            setattr(self, name, parameter)
+        def __init__(self, q_name, parameter) -> None:
+            super().__init__(q_name, unit, description)
+            setattr(self, q_name, parameter)
             self.func = callFunc
 
         def __call__(self):
@@ -176,11 +147,11 @@ def customPostLogQuantity(request):
 
             # update value every time quantity is called
             new_val = self.func(value)
-            setattr(self, name, new_val)
+            setattr(self, q_name, new_val)
 
             return new_val
 
-    obj = TestPostLogQuantity(name, value)
+    obj = TestPostLogQuantity(q_name, value)
 
     yield obj
 
@@ -203,7 +174,6 @@ def test_PostLogQuantity(basicLogmgr, customPostLogQuantity):
         predicted_list.append(next)
 
     for i in range(N):
-        # assert
         pre_val = getattr(customPostLogQuantity, customPostLogQuantity.name)
         assert pre_val == predicted_list[i]
 
@@ -281,29 +251,6 @@ test_MultiLogQuantity_types = [
             None,
             lambda x, y: [x+1, y+1]
          ),
-        # blueprint
-        # (
-        #     ["Quantity_1", "Quantity_2"],
-        #     [1, 2],
-        #     ["1", "1"],
-        #     ["Q init to 1", "Q init to 2"],
-        #     lambda x, y: [x+1, y+1]
-        #  ),
-        # currently does not handle values of None cleanly
-        # (
-        #     ["Quantity_1", "Quantity_2"],
-        #     [None, 2],
-        #     ["1", "1"],
-        #     ["Q init to 1", "Q init to 2"],
-        #     lambda x, y: [x, y+1]
-        #  ),
-        # (
-        #     ["Quantity_1", "Quantity_2"],
-        #     [1, None],
-        #     ["1", "1"],
-        #     ["Q init to 1", "Q init to 2"],
-        #     lambda x, y: [x+1, y]
-        #  ),
         ]
 
 
@@ -354,7 +301,6 @@ def test_MultiLogQuantity(basicLogmgr, customMultiLogQuantity):
         predicted_list.append(next)
 
     for i in range(N):
-        # assert
         pre_vals = []
         for name in customMultiLogQuantity.names:
             pre_vals.append(getattr(customMultiLogQuantity, name))
@@ -453,7 +399,6 @@ def test_MultiPostLogQuantity(basicLogmgr, customMultiPostLogQuantity):
         predicted_list.append(next)
 
     for i in range(N):
-        # assert
         pre_vals = []
         for name in customMultiPostLogQuantity.names:
             pre_vals.append(getattr(customMultiPostLogQuantity, name))
