@@ -11,36 +11,15 @@ from logpyle import (
     add_general_quantities,
     add_simulation_quantities,
     set_dt,
-    GCStats,
     LogManager,
     IntervalTimer,
     PushLogQuantity,
-    TimestepDuration,
-    StepToStepDuration,
-    TimestepCounter,
-    WallTime,
     LogQuantity,
-    CallableLogQuantityAdapter,
-    MultiLogQuantity,
-    DtConsumer,
-    ETA,
     EventCounter,
     time_and_count_function,
 )
 
-
-@pytest.fixture
-def basicLogmgr():
-    import os
-
-    # setup
-    filename = "THIS_LOG_SHOULD_BE_DELETED.sqlite"
-    logmgr = LogManager(filename, "wo")
-    # give obj to test
-    yield logmgr
-    # cleanup object
-    logmgr.close()
-    os.remove(filename)
+from testlib import basicLogmgr
 
 
 def test_start_time_has_past(basicLogmgr: LogManager):
@@ -143,122 +122,6 @@ def test_logging_warnings_from_logging_module(basicLogmgr: LogManager):
     # ensure the second warning has been saved correctly
     assert data[1][message_ind] == second_warning_message
     assert data[1][step_ind] == 1
-
-
-def test_accurate_TimestepCounter_quantity(basicLogmgr: LogManager):
-    test_timer = TimestepCounter("t_step_count")
-    basicLogmgr.add_quantity(test_timer)
-
-    n1 = 200
-    n2 = 120
-
-    for i in range(n1):
-        basicLogmgr.tick_before()
-        # do something ...
-        basicLogmgr.tick_after()
-    assert basicLogmgr.last_values["t_step_count"] == n1 - 1
-
-    for i in range(n2):
-        basicLogmgr.tick_before()
-        # do something ...
-        basicLogmgr.tick_after()
-    assert basicLogmgr.last_values["t_step_count"] == n1 + n2 - 1
-
-
-test_StepToStep_and_TimestepDuration_data = [
-    (TimestepDuration("t_slp")),
-    (StepToStepDuration("t_slp")),
-]
-
-
-@pytest.mark.parametrize("test_timer",
-                         test_StepToStep_and_TimestepDuration_data)
-def test_StepToStep_and_TimestepDuration_quantity(
-        test_timer: any,
-        basicLogmgr: LogManager
-        ):
-    tol = 0.005
-    minTime = 0.02
-
-    basicLogmgr.add_quantity(test_timer)
-
-    N = 20
-
-    sleep_times = [random.random() / 30 + minTime for i in range(N)]
-
-    for i in range(N):
-        if isinstance(test_timer, StepToStepDuration):
-            sleep(sleep_times[i])
-
-        basicLogmgr.tick_before()
-        if isinstance(test_timer, TimestepDuration):
-            sleep(sleep_times[i])
-        basicLogmgr.tick_after()
-
-    # first value is not defined for StepToStep, so we drop it
-    if isinstance(test_timer, StepToStepDuration):
-        del sleep_times[0]
-
-    actual_times = [tup[1] for tup in basicLogmgr.get_expr_dataset("t_slp")[2]]
-    print(actual_times, sleep_times)
-    # assert that these quantities only differ by a max of tol
-    # defined above
-    for (predicted, actual) in zip(sleep_times, actual_times):
-        assert abs(actual - predicted) < tol
-
-
-def test_accurate_WallTime_quantity(basicLogmgr: LogManager):
-    tol = 0.1
-    minTime = 0.02
-
-    N = 20
-
-    test_timer = WallTime("t_total")
-    startTime = time_monotonic()
-
-    basicLogmgr.add_quantity(test_timer)
-    for i in range(N):
-        sleepBeforeTime = random.random() / 30 + minTime
-        sleepDuringTime = random.random() / 30 + minTime
-
-        sleep(sleepBeforeTime)
-
-        basicLogmgr.tick_before()
-        sleep(sleepDuringTime)
-        basicLogmgr.tick_after()
-
-        now = time_monotonic()
-        totalTime = now - startTime
-        actual_time = basicLogmgr.get_expr_dataset("t_total")[-1][-1][-1]
-        print(totalTime, actual_time)
-        # assert that these quantities only differ by a max of tol
-        # defined above
-        assert abs(totalTime - actual_time) < tol
-
-
-def test_basic_Push_Log_quantity(basicLogmgr: LogManager):
-    pushQuantity = PushLogQuantity("pusher")
-    basicLogmgr.add_quantity(pushQuantity)
-
-    for i in range(20):
-        pushQuantity.push_value(i)
-        basicLogmgr.tick_before()
-        # do something ...
-        basicLogmgr.tick_after()
-        print(basicLogmgr.get_expr_dataset("pusher"))
-        assert basicLogmgr.get_expr_dataset("pusher")[-1][-1][-1] == i
-
-
-def test_double_push_Push_Log_quantity(basicLogmgr: LogManager):
-    pushQuantity = PushLogQuantity("pusher")
-    basicLogmgr.add_quantity(pushQuantity)
-
-    firstVal = 25
-    secondVal = 36
-
-    pushQuantity.push_value(firstVal)
-    with pytest.raises(RuntimeError):
-        pushQuantity.push_value(secondVal)
 
 
 def test_general_quantities(basicLogmgr: LogManager):
@@ -511,17 +374,6 @@ def test_add_run_info(basicLogmgr: LogManager):
     assert abs(time() - savedTime) < timeTol
 
 
-def test_unimplemented_logging_quantity(basicLogmgr: LogManager):
-    # LogQuantity is an abstract interface and should not be called
-    with pytest.raises(NotImplementedError):
-        test_timer = LogQuantity("t_step_count")
-        basicLogmgr.add_quantity(test_timer)
-
-        basicLogmgr.tick_before()
-        # do something ...
-        basicLogmgr.tick_after()
-
-
 def test_set_dt(basicLogmgr: LogManager):
     # Should verify that the dt is set/changed and is applied
     # to dt consuming quantities after changing
@@ -558,59 +410,6 @@ def test_set_dt(basicLogmgr: LogManager):
             print(q_dt)
             assert q_dt is not None
             assert q_dt == 0.02
-
-
-def test_CallableLogQuantity(basicLogmgr: LogManager):
-    global counter
-    counter = 0
-
-    def calledFunc() -> float:
-        global counter
-        counter += 1
-        return random.random()
-
-    callable = CallableLogQuantityAdapter(calledFunc, "caller")
-    basicLogmgr.add_quantity(callable)
-
-    N = 50
-    for i in range(N):
-        basicLogmgr.tick_before()
-        # do something ...
-        basicLogmgr.tick_after()
-
-    print(counter)
-    assert counter == N
-
-
-def test_update_constants(basicLogmgr: LogManager):
-    basicLogmgr.set_constant("value", 27)
-
-    assert basicLogmgr.constants["value"] == 27
-
-    basicLogmgr.tick_before()
-    # do something ...
-    assert basicLogmgr.constants["value"] == 27
-    basicLogmgr.tick_after()
-
-    assert basicLogmgr.constants["value"] == 27
-
-    basicLogmgr.set_constant("value", 81)
-
-    assert basicLogmgr.constants["value"] == 81
-
-    basicLogmgr.tick_before()
-    # do something ...
-    assert basicLogmgr.constants["value"] == 81
-    basicLogmgr.tick_after()
-
-    assert basicLogmgr.constants["value"] == 81
-
-
-def test_MultiLogQuantity_call_not_implemented(basicLogmgr: LogManager):
-    multiLog = MultiLogQuantity(["q_one", "q_two"])
-    basicLogmgr.add_quantity(multiLog)
-    with pytest.raises(NotImplementedError):
-        multiLog()
 
 
 def test_double_enable_warnings(basicLogmgr: LogManager):
@@ -674,40 +473,6 @@ def test_add_watches(basicLogmgr: LogManager):
     expected.sort()
     print(actualWatches, expected)
     assert actualWatches == expected
-
-
-def test_IntervalTimer_subtimer(basicLogmgr: LogManager):
-    tol = 0.1
-    timer = IntervalTimer("timer")
-    basicLogmgr.add_quantity(timer)
-
-    expected_timer_list = []
-
-    N = 20
-    for i in range(N):
-        good_sleep_time = (random.random()/10 + 0.1)
-        bad_sleep_time = (random.random()/10 + 0.1)
-        expected_timer_list.append(good_sleep_time)
-        sub_timer = timer.get_sub_timer()
-
-        basicLogmgr.tick_before()
-        sub_timer.start()
-        sleep(good_sleep_time)
-        sub_timer.stop()
-        sub_timer.submit()
-        # do something
-        sleep(bad_sleep_time)
-        sleep(bad_sleep_time)
-        basicLogmgr.tick_after()
-
-    val = basicLogmgr.get_expr_dataset("timer")[-1]
-    val_list = [data[1] for data in val]
-    print(val_list)
-    print(expected_timer_list)
-
-    # enforce equality of durations
-    for tup in zip(val_list, expected_timer_list):
-        assert abs(tup[0] - tup[1]) < tol
 
 
 def test_time_and_count_function(basicLogmgr: LogManager):
@@ -896,82 +661,6 @@ def test_single_rank_aggregator(basicLogmgr, agg, data, expected):
     result = basicLogmgr.get_expr_dataset("value." + agg)
     print(result)
     assert result[-1][-1][-1] == expected
-
-
-# -------------------- Time Intensive Tests --------------------
-
-
-def test_accurate_ETA_quantity(basicLogmgr: LogManager):
-    # should begin calculation and ensure that the true time is
-    # within a tolerance of the estimated time
-    tol = 0.3
-
-    test_timer = ETA(50, "t_fin")
-    basicLogmgr.add_quantity(test_timer)
-
-    sleepTime = 0.1
-
-    # add first tick
-    basicLogmgr.tick_before()
-    sleep(sleepTime)
-    basicLogmgr.tick_after()
-
-    # add second tick
-    basicLogmgr.tick_before()
-    sleep(sleepTime)
-    basicLogmgr.tick_after()
-
-    N = 30
-    last = basicLogmgr.get_expr_dataset("t_fin")[-1][-1][-1]
-
-    for i in range(N):
-        basicLogmgr.tick_before()
-        sleep(sleepTime)
-        basicLogmgr.tick_after()
-
-        actual_time = basicLogmgr.get_expr_dataset("t_fin")[-1][-1][-1]
-        print(last, actual_time)
-        # assert that these quantities only
-        # differ by a max of tol defined above
-        if i > 5:  # dont expect the first couple to be accurate
-            assert abs(last - actual_time) < tol
-        last = last - sleepTime
-
-
-def test_GCStats(basicLogmgr: LogManager):
-    # will check if the example code breaks from using GCStats
-    # should expand on later
-    # currently ensures that after some time, GC from generation 1
-    # eventually goes into generation 2
-    gcStats = GCStats()
-    basicLogmgr.add_quantity(gcStats)
-
-    outerList = []
-
-    last = None
-    memoryHasChangedGenerations = False
-
-    for istep in range(1000):
-        basicLogmgr.tick_before()
-
-        soonToBeLostRef = ['garb1', 'garb2', 'garb3'] * istep
-        outerList.append(([soonToBeLostRef]))
-
-        basicLogmgr.tick_after()
-
-        sleep(0.02)
-
-        cur = gcStats()
-        # [enabled, # in generation1,  # in generation2, # in generation3,
-        #  gen1 collections, gen1 collected, gen1 uncollected,
-        #  gen2 collections, gen2 collected, gen2 uncollected,
-        #  gen3 collections, gen3 collected, gen3 uncollected]
-        print(cur)
-        if last is not None and cur[2] > last[2]:
-            memoryHasChangedGenerations = True
-        last = cur
-
-    assert memoryHasChangedGenerations
 
 
 # # TODO currently calls unimplemented function
