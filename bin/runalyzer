@@ -26,15 +26,15 @@ def main() -> None:
     do_mangle = not args.nomangle
 
     if args.scriptfile:
-        db = make_wrapped_db(args.dbfile, mangle=do_mangle, interactive=False)
+        db = make_wrapped_db([args.dbfile], mangle=do_mangle, interactive=False)
         exec(compile(open(args.scriptfile).read(), args.scriptfile, "exec"),
                 make_runalyzer_symbols(db))
     elif args.commands:
-        db = make_wrapped_db(args.dbfile, mangle=do_mangle, interactive=False)
+        db = make_wrapped_db([args.dbfile], mangle=do_mangle, interactive=False)
         exec(compile(args.commands, "--commands", "exec"),
                 make_runalyzer_symbols(db))
     else:
-        db = make_wrapped_db(args.dbfile, mangle=do_mangle, interactive=True)
+        db = make_wrapped_db([args.dbfile], mangle=do_mangle, interactive=True)
         from logpyle.runalyzer import RunalyzerConsole
         cons = RunalyzerConsole(db)
         cons.interact("Runalyzer running on Python %s\n"

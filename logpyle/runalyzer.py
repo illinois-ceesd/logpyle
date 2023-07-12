@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 
 import code
+import sqlite3
 
 try:
     import readline
@@ -453,12 +454,49 @@ def my_sprintf(format: str, arg: str) -> str:
 
 # }}}
 
+def auto_gather(filenames: List[str]) -> sqlite3.Connection:
+    # allow for creating ungathered files.
+    # Check if database has been gathered, if not, create one in memory
+
+    # check if single db file has been gathered
+    db = sqlite3.connect(filenames[0])
+    cur = db.cursor()
+    # res = cur.execute("SELECT sql FROM sqlite_schema")
+    res = [row for row in cur.execute("""
+                        SELECT name
+                        FROM sqlite_master
+                        WHERE type='table' AND name='runs'
+                                      """)]
+    gathered = len(res) == 1
+    print(gathered)
+    if gathered:
+        # gathered files will only have one file
+        return sqlite3.connect(filenames[0])
+    else:
+        from logpyle.runalyzer_gather import (FeatureGatherer,
+                                              gather_multi_file,
+                                              make_name_map, scan)
+        from os.path import exists
+        infiles = [f for f in filenames if exists(f)]
+        # list of run features as {name: sql_type}
+        fg = FeatureGatherer(None, None)
+        features, dbname_to_run_id = scan(fg, infiles)
+
+        fmap = make_name_map(None)
+        qmap = make_name_map(None)
+
+        # print(outfile, infiles, fmap, qmap, fg, features, dbname_to_run_id)
+        return gather_multi_file(":memory:", infiles, fmap, qmap, fg, features,
+                                 dbname_to_run_id, True)
+
+
+
 
 # {{{ main program
 
-def make_wrapped_db(filename: str, interactive: bool, mangle: bool) -> RunDB:
+def make_wrapped_db(filenames: List[str], interactive: bool, mangle: bool) -> RunDB:
     import sqlite3
-    db = sqlite3.connect(filename)
+    db = auto_gather(filenames)
     db.create_aggregate("stddev", 1, StdDeviation)  # type: ignore[arg-type]
     db.create_aggregate("var", 1, Variance)
     db.create_aggregate("norm1", 1, Norm1)  # type: ignore[arg-type]
