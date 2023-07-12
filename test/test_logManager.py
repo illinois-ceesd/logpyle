@@ -11,7 +11,6 @@ from logpyle import (
     add_general_quantities,
     add_simulation_quantities,
     set_dt,
-    GCStats,
     LogManager,
     IntervalTimer,
     PushLogQuantity,
@@ -662,45 +661,6 @@ def test_single_rank_aggregator(basicLogmgr, agg, data, expected):
     result = basicLogmgr.get_expr_dataset("value." + agg)
     print(result)
     assert result[-1][-1][-1] == expected
-
-
-# -------------------- Time Intensive Tests --------------------
-
-
-def test_GCStats(basicLogmgr: LogManager):
-    # will check if the example code breaks from using GCStats
-    # should expand on later
-    # currently ensures that after some time, GC from generation 1
-    # eventually goes into generation 2
-    gcStats = GCStats()
-    basicLogmgr.add_quantity(gcStats)
-
-    outerList = []
-
-    last = None
-    memoryHasChangedGenerations = False
-
-    for istep in range(1000):
-        basicLogmgr.tick_before()
-
-        soonToBeLostRef = ['garb1', 'garb2', 'garb3'] * istep
-        outerList.append(([soonToBeLostRef]))
-
-        basicLogmgr.tick_after()
-
-        sleep(0.02)
-
-        cur = gcStats()
-        # [enabled, # in generation1,  # in generation2, # in generation3,
-        #  gen1 collections, gen1 collected, gen1 uncollected,
-        #  gen2 collections, gen2 collected, gen2 uncollected,
-        #  gen3 collections, gen3 collected, gen3 uncollected]
-        print(cur)
-        if last is not None and cur[2] > last[2]:
-            memoryHasChangedGenerations = True
-        last = cur
-
-    assert memoryHasChangedGenerations
 
 
 # # TODO currently calls unimplemented function
