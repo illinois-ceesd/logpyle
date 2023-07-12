@@ -172,8 +172,8 @@ class MultiLogQuantity:
     sort_weight = 0
 
     def __init__(self, names: List[str],
-                 units: Optional[Sequence[Optional[str]]] = None,
-                 descriptions: Optional[Sequence[Optional[str]]] = None) -> None:
+                 units: Optional[List[Optional[str]]] = None,
+                 descriptions: Optional[List[Optional[str]]] = None) -> None:
         """Create a new quantity.
 
         Parameters
@@ -190,12 +190,14 @@ class MultiLogQuantity:
         self.names = names
 
         if units is None:
-            units = len(names) * [None]
-        self.units = units
+            self.units = cast(list[Optional[str]], len(names) * [None])
+        else:
+            self.units = units
 
         if descriptions is None:
-            descriptions = len(names) * [None]
-        self.descriptions = descriptions
+            self.descriptions = cast(list[Optional[str]], len(names) * [None])
+        else:
+            self.descriptions = descriptions
 
     @property
     def default_aggregators(self) -> List[None]:
@@ -1698,7 +1700,8 @@ class GCStats(MultiPostLogQuantity):
 
         assert len(names) == len(units) == len(descriptions) == 13
 
-        super().__init__(names, units, descriptions)
+        super().__init__(names, cast(List[Optional[str]], units),
+                         cast(List[Optional[str]], descriptions))
 
     def __call__(self) -> Iterable[Optional[float]]:
         import gc
