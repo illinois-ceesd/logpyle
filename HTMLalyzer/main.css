@@ -63,3 +63,13 @@
 	background-color: #e2e2e2
 }
 
+.quantitiesTable {
+	border: 1px solid;
+}
+.quantitiesTable tr {
+	border: 1px solid;
+}
+.quantitiesTable tr td {
+	border: 1px solid;
+}
+

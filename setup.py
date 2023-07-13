@@ -49,6 +49,7 @@ setup(name="logpyle",
           "bin/logtool",
           "bin/runalyzer-gather",
           "bin/runalyzer",
+          "bin/htmlalyzer"
       ],
 
       author="Andreas Kloeckner",
