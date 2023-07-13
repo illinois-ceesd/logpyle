@@ -12,9 +12,12 @@ def main() -> None:
             help="disable mangling of SQL queries")
     parser.add_argument("-c", "--commands", action="store",
             help="commands to execute")
-    parser.add_argument("dbfile", help="database file to read")
-    parser.add_argument("scriptfile", nargs="?", help="script file to read")
+    parser.add_argument("dbfiles", nargs='+', type=str,
+                        help="database file to read")
+    parser.add_argument("--script", type=str,
+                        help="script file to read")
     args = parser.parse_args()
+
 
     from logpyle.runalyzer import make_runalyzer_symbols, make_wrapped_db
 
@@ -25,16 +28,16 @@ def main() -> None:
 
     do_mangle = not args.nomangle
 
-    if args.scriptfile:
-        db = make_wrapped_db([args.dbfile], mangle=do_mangle, interactive=False)
-        exec(compile(open(args.scriptfile).read(), args.scriptfile, "exec"),
+    if args.script:
+        db = make_wrapped_db(args.dbfiles, mangle=do_mangle, interactive=False)
+        exec(compile(open(args.script).read(), args.script, "exec"),
                 make_runalyzer_symbols(db))
     elif args.commands:
-        db = make_wrapped_db([args.dbfile], mangle=do_mangle, interactive=False)
+        db = make_wrapped_db(args.dbfiles, mangle=do_mangle, interactive=False)
         exec(compile(args.commands, "--commands", "exec"),
                 make_runalyzer_symbols(db))
     else:
-        db = make_wrapped_db([args.dbfile], mangle=do_mangle, interactive=True)
+        db = make_wrapped_db(args.dbfiles, mangle=do_mangle, interactive=True)
         from logpyle.runalyzer import RunalyzerConsole
         cons = RunalyzerConsole(db)
         cons.interact("Runalyzer running on Python %s\n"

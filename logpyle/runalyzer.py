@@ -461,14 +461,15 @@ def auto_gather(filenames: List[str]) -> sqlite3.Connection:
     # check if single db file has been gathered
     db = sqlite3.connect(filenames[0])
     cur = db.cursor()
-    # res = cur.execute("SELECT sql FROM sqlite_schema")
+
+    # get a list of tables with the name of 'runs'
     res = [row for row in cur.execute("""
                         SELECT name
                         FROM sqlite_master
                         WHERE type='table' AND name='runs'
                                       """)]
+    # there exists a table with the name of 'runs'
     gathered = len(res) == 1
-    print(gathered)
     if gathered:
         # gathered files will only have one file
         return sqlite3.connect(filenames[0])
@@ -479,16 +480,16 @@ def auto_gather(filenames: List[str]) -> sqlite3.Connection:
         from os.path import exists
         infiles = [f for f in filenames if exists(f)]
         # list of run features as {name: sql_type}
-        fg = FeatureGatherer(None, None)
+        fg = FeatureGatherer(False, None)
         features, dbname_to_run_id = scan(fg, infiles)
 
-        fmap = make_name_map(None)
-        qmap = make_name_map(None)
+        fmap = make_name_map("")
+        qmap = make_name_map("")
 
-        # print(outfile, infiles, fmap, qmap, fg, features, dbname_to_run_id)
-        return gather_multi_file(":memory:", infiles, fmap, qmap, fg, features,
+        connection = gather_multi_file(":memory:", infiles, fmap, qmap, fg, features,
                                  dbname_to_run_id, True)
-
+        assert type(connection) is sqlite3.Connection
+        return connection
 
 
 
