@@ -45,6 +45,7 @@ def addFileFunc():
 
 
 async def runPlot(event):
+    # TODO rework to go through all tds for its id checking if it begins with radio
     id = event.target.param
     output = document.getElementById("output" + str(id))
     output.id = "graph-area"
