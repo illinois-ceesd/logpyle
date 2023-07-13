@@ -5,12 +5,18 @@
         </ul>
     </div>
     <div id="quantities{0}" style="display:flex;flex-direction:column;margin:0px">
-        <table class="quantitiesTable" id="quantitiesTable{0}">
-			<tr style="border:2px solid;">
-				<td>Quantity</td>
-				<td>Units</td>
-				<td>Description</td>
-			</tr>
+		<table class="quantitiesTable" id="quantitiesTable{0}">
+			<thead>
+				<tr class="quantitiesTr">
+					<td class="quantitiesTr">Quantity</td>
+					<td class="quantitiesTr">Units</td>
+					<td class="quantitiesTr">Description</td>
+					<td class="quantitiesTr">ID</td>
+					<td class="quantitiesTr">Aggregation Rank</td>
+				</tr>
+			</thead>
+			<tbody>
+			</tbody>
         </table>
     </div>
     <div id="interactive{0}" style="display:flex;flex-direction:row">
@@ -21,24 +27,9 @@
 				<button id="plotButton{0}" style="height:30px;padding:5px" param="{0}">
                     Create Plot
                 </button>
-				<div class="dropdown" id="plotQ1{0}">
-					<div class="select" id="plotQ1Select{0}" param="{0}">
-						<span id="plotQ1Text{0}">Select Q1</span>
-						<i class="fa fa-chevron-left"></i>
-                    </div>
-					<ul class="dropdown-menu" id="dropdownlistQ1{0}" style="display:none">
-
-					</ul>
-                </div>
-				<div class="dropdown" id="plotQ2{0}">
-					<div class="select" id="plotQ2Select{0}" param="{0}">
-						<span id="plotQ2Text{0}">Select Q2</span>
-						<i class="fa fa-chevron-left"></i>
-                    </div>
-					<ul class="dropdown-menu" id="dropdownlistQ2{0}" style="display:none">
-
-					</ul>
-                </div>
+				<button id="addLineButton{0}" style="height:30px;padding:5px" param="{0}">
+					Add Line to Plot
+                </button>
             </div>
 
             <div id="table{0}" style="display:flex;flex-direction:column;padding:10px">

@@ -66,10 +66,15 @@
 .quantitiesTable {
 	border: 1px solid;
 }
-.quantitiesTable tr {
+.quantitiesTr {
 	border: 1px solid;
 }
-.quantitiesTable tr td {
+.quantitiesTd {
 	border: 1px solid;
+}
+
+.radioDiv {
+	display:flex;
+	flex-direction:row;
 }
 
