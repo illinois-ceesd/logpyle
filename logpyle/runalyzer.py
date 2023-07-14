@@ -458,25 +458,35 @@ def auto_gather(filenames: List[str]) -> sqlite3.Connection:
     # allow for creating ungathered files.
     # Check if database has been gathered, if not, create one in memory
 
-    # check if single db file has been gathered
-    db = sqlite3.connect(filenames[0])
-    cur = db.cursor()
+    # until no files have been checked, assume none have been gathered
+    gathered = False
+    # check if any of the provided files have been gathered
+    for f in filenames:
+        db = sqlite3.connect(f)
+        cur = db.cursor()
 
-    # get a list of tables with the name of 'runs'
-    res = [row for row in cur.execute("""
-                        SELECT name
-                        FROM sqlite_master
-                        WHERE type='table' AND name='runs'
-                                      """)]
-    # there exists a table with the name of 'runs'
-    gathered = len(res) == 1
+        # get a list of tables with the name of 'runs'
+        res = [row for row in cur.execute("""
+                            SELECT name
+                            FROM sqlite_master
+                            WHERE type='table' AND name='runs'
+                                          """)]
+        # there exists a table with the name of 'runs'
+        if len(res) == 1:
+            gathered = True
+
+
     if gathered:
-        # gathered files will only have one file
+        # gathered files should only have one file
+        if len(filenames) > 1:
+            raise Exception("Runalyzing multiple gathered files is not supported!!!")
+
         return sqlite3.connect(filenames[0])
     else:
         from logpyle.runalyzer_gather import (FeatureGatherer,
                                               gather_multi_file,
                                               make_name_map, scan)
+        print("Creating an in memory database from provided files")
         from os.path import exists
         infiles = [f for f in filenames if exists(f)]
         # list of run features as {name: sql_type}
