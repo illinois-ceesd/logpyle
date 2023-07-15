@@ -70,8 +70,15 @@
 	background-color: #e2e2e2
 }
 
+.quantitiesDiv {
+	max-height: 150px;
+	width: fit-content;
+	overflow: auto;
+	margin-top: 20px;
+}
 .quantitiesTable {
 	border: 1px solid;
+	width: fit-content;
 }
 .quantitiesTr {
 	border: 1px solid;
@@ -590,7 +597,10 @@ from pyscript import Element
 from pyodide.ffi import create_proxy
 import os
 import sqlite3
+import micropip
 
+async def customImports():
+    await micropip.install('logpyle', deps=False, keep_going=True)
 
 class dataFile:
     def __init__(self, name):
@@ -609,7 +619,7 @@ fileDiv = """
         <ul id="constantsList{0}">
         </ul>
     </div>
-    <div id="quantities{0}" style="display:flex;flex-direction:column;margin:0px">
+    <div class="quantitiesDiv " id="quantities{0}" style="margin:0px">
 		<table class="quantitiesTable" id="quantitiesTable{0}">
 			<thead>
 				<tr class="quantitiesTr">
@@ -699,6 +709,7 @@ def addFileFunc():
 
 
 async def runPlot(event):
+    # TODO rework to go through all tds for its id checking if it begins with radio
     id = event.target.param
     output = document.getElementById("output" + str(id))
     output.id = "graph-area"
@@ -925,6 +936,7 @@ async def storeFile(event):
 
 
 file_dict = {}
+asyncio.ensure_future(customImports())
 </py-script>
 
 	<div style="display: flex; background-color: lightblue">

@@ -63,8 +63,15 @@
 	background-color: #e2e2e2
 }
 
+.quantitiesDiv {
+	max-height: 150px;
+	width: fit-content;
+	overflow: auto;
+	margin-top: 20px;
+}
 .quantitiesTable {
 	border: 1px solid;
+	width: fit-content;
 }
 .quantitiesTr {
 	border: 1px solid;

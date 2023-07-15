@@ -4,7 +4,10 @@ from pyscript import Element
 from pyodide.ffi import create_proxy
 import os
 import sqlite3
+import micropip
 
+async def customImports():
+    await micropip.install('logpyle', deps=False, keep_going=True)
 
 class dataFile:
     def __init__(self, name):
@@ -272,3 +275,4 @@ async def storeFile(event):
 
 
 file_dict = {}
+asyncio.ensure_future(customImports())

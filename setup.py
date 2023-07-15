@@ -49,10 +49,11 @@ setup(name="logpyle",
           "bin/logtool",
           "bin/runalyzer-gather",
           "bin/runalyzer",
+          "bin/htmlalyzer",
       ],
 
       author="Andreas Kloeckner",
       url="https://github.com/illinois-ceesd/logpyle",
       author_email="inform@tiker.net",
       license="MIT",
-      packages=["logpyle"])
+      packages=["logpyle", "HTMLalyzer"])
