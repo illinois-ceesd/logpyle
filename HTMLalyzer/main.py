@@ -7,7 +7,7 @@ import sqlite3
 import micropip
 
 async def customImports():
-    await micropip.install('logpyle', deps=False, keep_going=True)
+    pass
 
 class dataFile:
     def __init__(self, name):
@@ -182,11 +182,27 @@ async def storeFile(event):
                                             'rank_agg': q_rank_agg}
 
     # display constants
-    constants_list = document.getElementById("constantsList" + str(id))
-    for k, v in file_dict[id].constants.items():
-        item = document.createElement("li")
-        item.innerHTML = str(k) + ": " + str(v)
-        constants_list.appendChild(item)
+    constantsTable = document.getElementById("constantsTable" + str(id))
+    for key, value in file_dict[id].constants.items():
+        # item = document.createElement("li")
+        # item.innerHTML = str(k) + ": " + str(v)
+        # constants_list.appendChild(item)
+
+        row = document.createElement('tr')
+        row.className = "constantsTr"
+
+        quantity_ele = document.createElement('td')
+        quantity_ele.className = "constantsTd"
+        quantity_ele.innerHTML = key
+        row.appendChild(quantity_ele)
+
+        units_ele = document.createElement('td')
+        units_ele.className = "constantsTd"
+        units_ele.innerHTML = value
+        row.appendChild(units_ele)
+
+        # append the row to the body of the table
+        constantsTable.children[1].appendChild(row)
 
     # display quantities
     quantitiesTable = document.getElementById("quantitiesTable" + str(id))

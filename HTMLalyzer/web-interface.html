@@ -70,6 +70,27 @@
 	background-color: #e2e2e2
 }
 
+.constantsDiv {
+	max-height: 150px;
+	width: fit-content;
+	overflow: auto;
+	margin-top: 20px;
+}
+.constantsTable {
+	border: 1px solid;
+	width: fit-content;
+}
+.constantsTable thead th{
+	position: sticky;
+	top: 0px;
+	background-color: #D0D0D0;
+}
+.constantsTr {
+	border: 1px solid;
+}
+.constantsTd {
+	border: 1px solid;
+}
 .quantitiesDiv {
 	max-height: 150px;
 	width: fit-content;
@@ -79,6 +100,11 @@
 .quantitiesTable {
 	border: 1px solid;
 	width: fit-content;
+}
+.quantitiesTable thead th{
+	position: sticky;
+	top: 0px;
+	background-color: #D0D0D0;
 }
 .quantitiesTr {
 	border: 1px solid;
@@ -600,7 +626,7 @@ import sqlite3
 import micropip
 
 async def customImports():
-    await micropip.install('logpyle', deps=False, keep_going=True)
+    pass
 
 class dataFile:
     def __init__(self, name):
@@ -614,20 +640,32 @@ nextId = 1
 # this HTML string was imported from newFile.html
 fileDiv = """
 <div class="newFile" id="{0}" style="display:flex;flex-direction:column">
-    <div id="constants{0}" style="display:flex;flex-direction:column;margin:0px">
-        Constants:
-        <ul id="constantsList{0}">
-        </ul>
+    <!-- <div id="constants{0}" style="display:flex;flex-direction:column;margin:0px"> -->
+    <!--     Constants: -->
+    <!--     <ul id="constantsList{0}"> -->
+    <!--     </ul> -->
+    <!-- </div> -->
+    <div class="constantsDiv " id="constants{0}" style="margin:0px">
+		<table class="constantsTable" id="constantsTable{0}">
+			<thead>
+				<tr class="constantsTr">
+					<th class="constantsTr">Constant</th>
+					<th class="constantsTr">Value</th>
+				</tr>
+			</thead>
+			<tbody>
+			</tbody>
+        </table>
     </div>
     <div class="quantitiesDiv " id="quantities{0}" style="margin:0px">
 		<table class="quantitiesTable" id="quantitiesTable{0}">
 			<thead>
 				<tr class="quantitiesTr">
-					<td class="quantitiesTr">Quantity</td>
-					<td class="quantitiesTr">Units</td>
-					<td class="quantitiesTr">Description</td>
-					<td class="quantitiesTr">ID</td>
-					<td class="quantitiesTr">Aggregation Rank</td>
+					<th class="quantitiesTr">Quantity</th>
+					<th class="quantitiesTr">Units</th>
+					<th class="quantitiesTr">Description</th>
+					<th class="quantitiesTr">ID</th>
+					<th class="quantitiesTr">Aggregation Rank</th>
 				</tr>
 			</thead>
 			<tbody>
@@ -843,11 +881,27 @@ async def storeFile(event):
                                             'rank_agg': q_rank_agg}
 
     # display constants
-    constants_list = document.getElementById("constantsList" + str(id))
-    for k, v in file_dict[id].constants.items():
-        item = document.createElement("li")
-        item.innerHTML = str(k) + ": " + str(v)
-        constants_list.appendChild(item)
+    constantsTable = document.getElementById("constantsTable" + str(id))
+    for key, value in file_dict[id].constants.items():
+        # item = document.createElement("li")
+        # item.innerHTML = str(k) + ": " + str(v)
+        # constants_list.appendChild(item)
+
+        row = document.createElement('tr')
+        row.className = "constantsTr"
+
+        quantity_ele = document.createElement('td')
+        quantity_ele.className = "constantsTd"
+        quantity_ele.innerHTML = key
+        row.appendChild(quantity_ele)
+
+        units_ele = document.createElement('td')
+        units_ele.className = "constantsTd"
+        units_ele.innerHTML = value
+        row.appendChild(units_ele)
+
+        # append the row to the body of the table
+        constantsTable.children[1].appendChild(row)
 
     # display quantities
     quantitiesTable = document.getElementById("quantitiesTable" + str(id))

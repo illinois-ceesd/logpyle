@@ -63,6 +63,27 @@
 	background-color: #e2e2e2
 }
 
+.constantsDiv {
+	max-height: 150px;
+	width: fit-content;
+	overflow: auto;
+	margin-top: 20px;
+}
+.constantsTable {
+	border: 1px solid;
+	width: fit-content;
+}
+.constantsTable thead th{
+	position: sticky;
+	top: 0px;
+	background-color: #D0D0D0;
+}
+.constantsTr {
+	border: 1px solid;
+}
+.constantsTd {
+	border: 1px solid;
+}
 .quantitiesDiv {
 	max-height: 150px;
 	width: fit-content;
@@ -72,6 +93,11 @@
 .quantitiesTable {
 	border: 1px solid;
 	width: fit-content;
+}
+.quantitiesTable thead th{
+	position: sticky;
+	top: 0px;
+	background-color: #D0D0D0;
 }
 .quantitiesTr {
 	border: 1px solid;
