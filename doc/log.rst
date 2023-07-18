@@ -20,13 +20,24 @@ given as "watches" are also periodically logged to the console.
 To analyze this data, we need some tools that are distributed as part of this
 package.
 
-To prepare this data set for analysis, run ``runalyzer-gather`` as a script::
+You may use ``runalyzer`` to analyze the summary file::
+
+    $ runalyzer summary.sqlite
+    Runalyzer running on Python 3.8.5 (default, Aug  2 2020, 15:09:07)
+    [GCC 10.2.0]
+    Run .help to see help for 'magic' commands
+    >>>
+
+``runalyzer`` accepts multiple input files. Behind the scenes, these files are
+gathered into a single database for analysis.
+You can optionally do this manually by running ``runalyzer-gather``
+as a script::
 
     $ runalyzer-gather summary.sqlite log.sqlite
     Scanning...          [########################################] ETA ?
     Importing...         [########################################] ETA ?
 
-This step may look unnecessary here, but it serves two important functions:
+Specifying multiple data files serves two important functions:
 
 - If you would like to compare data from multiple runs, you can simply
   add data files from multiple runs and analyze them side-by-side.
@@ -34,14 +45,7 @@ This step may look unnecessary here, but it serves two important functions:
   multiple ranks to be gathered in a single file for centralized analysis.
 - As well as, naturally, any combination of the above.
 
-After this, you may use ``runalyzer`` (also in  this package) to analyze
-the summary file::
 
-    $ runalyzer summary.sqlite
-    Runalyzer running on Python 3.8.5 (default, Aug  2 2020, 15:09:07)
-    [GCC 10.2.0]
-    Run .help to see help for 'magic' commands
-    >>>
 
 This is a normal Python console, but it has a few extra tricks up its
 sleeve. ``.help`` gives an overview. Here, we'll focus on demonstrating
