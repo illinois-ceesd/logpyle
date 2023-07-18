@@ -172,8 +172,8 @@ class MultiLogQuantity:
     sort_weight = 0
 
     def __init__(self, names: List[str],
-                 units: Optional[List[Optional[str]]] = None,
-                 descriptions: Optional[List[Optional[str]]] = None) -> None:
+                 units: Optional[Sequence[Optional[str]]] = None,
+                 descriptions: Optional[Sequence[Optional[str]]] = None) -> None:
         """Create a new quantity.
 
         Parameters
@@ -190,12 +190,12 @@ class MultiLogQuantity:
         self.names = names
 
         if units is None:
-            self.units = cast(list[Optional[str]], len(names) * [None])
+            self.units: Sequence[Optional[str]] = len(names) * [None]
         else:
             self.units = units
 
         if descriptions is None:
-            self.descriptions = cast(list[Optional[str]], len(names) * [None])
+            self.descriptions: Sequence[Optional[str]] = len(names) * [None]
         else:
             self.descriptions = descriptions
 
