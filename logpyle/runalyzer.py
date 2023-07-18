@@ -454,6 +454,7 @@ def my_sprintf(format: str, arg: str) -> str:
 
 # }}}
 
+
 def auto_gather(filenames: List[str]) -> sqlite3.Connection:
     # allow for creating ungathered files.
     # Check if database has been gathered, if not, create one in memory
@@ -466,15 +467,14 @@ def auto_gather(filenames: List[str]) -> sqlite3.Connection:
         cur = db.cursor()
 
         # get a list of tables with the name of 'runs'
-        res = [row for row in cur.execute("""
+        res = list(cur.execute("""
                             SELECT name
                             FROM sqlite_master
                             WHERE type='table' AND name='runs'
-                                          """)]
+                                          """))
         # there exists a table with the name of 'runs'
         if len(res) == 1:
             gathered = True
-
 
     if gathered:
         # gathered files should only have one file
@@ -484,8 +484,8 @@ def auto_gather(filenames: List[str]) -> sqlite3.Connection:
         return sqlite3.connect(filenames[0])
     else:
         from logpyle.runalyzer_gather import (FeatureGatherer,
-                                              gather_multi_file,
-                                              make_name_map, scan)
+                                              gather_multi_file, make_name_map,
+                                              scan)
         print("Creating an in memory database from provided files")
         from os.path import exists
         infiles = [f for f in filenames if exists(f)]
@@ -502,11 +502,9 @@ def auto_gather(filenames: List[str]) -> sqlite3.Connection:
         return connection
 
 
-
 # {{{ main program
 
 def make_wrapped_db(filenames: List[str], interactive: bool, mangle: bool) -> RunDB:
-    import sqlite3
     db = auto_gather(filenames)
     db.create_aggregate("stddev", 1, StdDeviation)  # type: ignore[arg-type]
     db.create_aggregate("var", 1, Variance)
