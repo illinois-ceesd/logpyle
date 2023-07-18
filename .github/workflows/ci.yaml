@@ -113,7 +113,8 @@ jobs:
             export OMPI_MCA_rmaps_base_oversubscribe=1
             export RDMAV_FORK_SAFE=1
 
-            ls | grep -P "mpi-log(.*).sqlite" | xargs -d"\n" rm
+            find . -name "mpi-log*.sqlite" -delete
+
 
             mpirun -n 4 python -m mpi4py examples/log-mpi.py
 
