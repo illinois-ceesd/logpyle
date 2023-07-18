@@ -91,6 +91,7 @@ jobs:
         - name: Run and test example without gathering
           run: |
             set -x
+            rm mpi-log*.sqlite
             python examples/log.py
             runalyzer -m mpi-log*.sqlite -c 'dbplot(q("select $t_sim, $t_step"))'
 
@@ -112,6 +113,8 @@ jobs:
             # Allow oversubscription of ranks to cores with Open MPI
             export OMPI_MCA_rmaps_base_oversubscribe=1
             export RDMAV_FORK_SAFE=1
+
+            rm mpi-log*.sqlite
 
             mpirun -n 4 python -m mpi4py examples/log-mpi.py
 
