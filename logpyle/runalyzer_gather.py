@@ -345,3 +345,4 @@ def gather_multi_file(outfile: str, infiles: List[str], fmap: Dict[str, str],
         return db_conn
     else:
         db_conn.close()
+        return None
