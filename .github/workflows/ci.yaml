@@ -88,6 +88,49 @@ jobs:
             ## Check that t_init is within [0, 20], and that there is only one value
             runalyzer -m summary.sqlite -c 'assert all([0 < r[0] < 20 for r in q("select $t_init.max")])'
             runalyzer -m summary.sqlite -c 'assert len([r[0] for r in q("select $t_init.max")]) == 1'
+        - name: Run and test example without gathering
+          run: |
+            set -x
+            python examples/log.py
+            runalyzer -m mpi-log*.sqlite -c 'dbplot(q("select $t_sim, $t_step"))'
+
+            # Perform some simple tests on the output file
+
+            ## Check for warnings and logging
+            runalyzer mpi-log*.sqlite  -c 'db.print_cursor(db.q("select * from warnings"))'
+            runalyzer mpi-log*.sqlite  -c 'db.print_cursor(db.q("select * from warnings"))' | grep Oof
+            runalyzer mpi-log*.sqlite  -c 'db.print_cursor(db.q("select * from logging"))'
+            runalyzer mpi-log*.sqlite  -c 'db.print_cursor(db.q("select * from logging"))' | grep WARNING
+
+            ## Check that t_log is within [0, 1]
+            runalyzer -m mpi-log*.sqlite -c 'assert all([0 < r[0] < 1 for r in q("select $t_log.max")])'
+
+            ## Check that t_init is within [0, 20], and that there is only one value
+            runalyzer -m mpi-log*.sqlite -c 'assert all([0 < r[0] < 20 for r in q("select $t_init.max")])'
+            runalyzer -m mpi-log*.sqlite -c 'assert len([r[0] for r in q("select $t_init.max")]) == 1'
+
+            # Allow oversubscription of ranks to cores with Open MPI
+            export OMPI_MCA_rmaps_base_oversubscribe=1
+            export RDMAV_FORK_SAFE=1
+
+            mpirun -n 4 python -m mpi4py examples/log-mpi.py
+
+            runalyzer -m mpi-log*.sqlite -c 'dbplot(q("select $t_sim.max, $t_step.max"))'
+
+            # Perform some simple tests on the output file
+
+            ## Check for warnings and logging
+            runalyzer mpi-log*.sqlite  -c 'db.print_cursor(db.q("select * from warnings"))'
+            runalyzer mpi-log*.sqlite  -c 'db.print_cursor(db.q("select * from warnings"))' | grep Oof
+            runalyzer mpi-log*.sqlite  -c 'db.print_cursor(db.q("select * from logging"))'
+            runalyzer mpi-log*.sqlite  -c 'db.print_cursor(db.q("select * from logging"))' | grep WARNING
+
+            ## Check that t_log is within [0, 1]
+            runalyzer -m mpi-log*.sqlite -c 'assert all([0 < r[0] < 1 for r in q("select $t_log.max")])'
+
+            ## Check that t_init is within [0, 20], and that there is only one value
+            runalyzer -m mpi-log*.sqlite -c 'assert all([0 < r[0] < 20 for r in q("select $t_init.max")])'
+            runalyzer -m mpi-log*.sqlite -c 'assert len([r[0] for r in q("select $t_init.max")]) == 1'
 
     docs:
         name: Documentation
@@ -119,7 +162,7 @@ jobs:
                 curl -L -O -k https://gitlab.tiker.net/inducer/ci-support/raw/main/prepare-and-run-mypy.sh
                 export EXTRA_INSTALL="pytools numpy types-psutil"
                 . ./prepare-and-run-mypy.sh python3
-                
+
     pytest:
         name: Pytest
         runs-on: ubuntu-latest
