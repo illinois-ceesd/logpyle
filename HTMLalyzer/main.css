@@ -68,6 +68,8 @@
 	width: fit-content;
 	overflow: auto;
 	margin-top: 20px;
+	padding: 5px;
+	padding-top: 0px;
 }
 .constantsTable {
 	border: 1px solid;
@@ -89,6 +91,8 @@
 	width: fit-content;
 	overflow: auto;
 	margin-top: 20px;
+	padding: 5px;
+	padding-top: 0px;
 }
 .quantitiesTable {
 	border: 1px solid;

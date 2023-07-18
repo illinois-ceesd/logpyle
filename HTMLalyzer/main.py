@@ -49,12 +49,14 @@ def addFileFunc():
 
 async def runPlot(event):
     # TODO rework to go through all tds for its id checking if it begins with radio
-    id = event.target.param
+    id = event.target.getAttribute("param")
     output = document.getElementById("output" + str(id))
     output.id = "graph-area"
     runDb = make_wrapped_db(file_dict[id].name, True, True)
-    q1 = document.getElementById("plotQ1Text"+str(id)).innerHTML
-    q2 = document.getElementById("plotQ2Text"+str(id)).innerHTML
+    q1 = document.getElementById("quantity1_" + str(id)).value
+    q2 = document.getElementById("quantity2_" + str(id)).value
+    # q1 = document.getElementById("plotQ1Text"+str(id)).innerHTML
+    # q2 = document.getElementById("plotQ2Text"+str(id)).innerHTML
     query = "select ${}, ${}".format(q1, q2)
     cursor = runDb.db.execute(runDb.mangle_sql(query))
     columnnames = [column[0] for column in cursor.description]
@@ -62,8 +64,19 @@ async def runPlot(event):
 
     output.id = "output" + str(id)
 
+async def addTableList(event):
+    id = event.target.getAttribute("param")
+    quantity = document.getElementById("tableQuantitySelect" + str(id)).value
+    table_list = document.getElementById("tableList" + str(id))
+    item = document.createElement("li")
+    item.textContent = str(quantity)
+    item.val = str(quantity)
+    table_list.appendChild(item)
+
+
 async def addLine(event):
     id = event.target.param1
+    id = event.target.getAttribute("param1")
     i = event.target.param2
     event.target.param2 = event.target.param2 + 1
     quantitiesTable = document.getElementById("quantitiesTable" + str(id))
@@ -111,21 +124,6 @@ async def runTable(event):
     output.id = "output" + str(id)
 
 
-# def toggle_dropdown(event):
-#     dropdownlist = event.target.parentElement.children[1]
-#     if dropdownlist.style.display == "none":
-#         dropdownlist.style.display = "block"
-#     else:
-#         dropdownlist.style.display = "none"
-
-
-# def update_dropdown(event):
-#     name = event.target.innerHTML
-#     dropdown = event.target.parentElement.parentElement.children[0]
-#     dropdown.children[0].innerHTML = name
-#     event.target.parentElement.style.display = "none"
-
-
 def downloadTable(event):
     pass
 
@@ -133,15 +131,6 @@ def downloadTable(event):
 def printTable(event):
     pass
 
-
-def add_from_dropdown(event):
-    id = event.target.parentElement.parentElement.children[0].param
-    name = event.target.innerHTML
-    new_item = document.createElement("li")
-    new_item.innerHTML = name
-    item_list = document.getElementById("tableList" + str(id))
-    item_list.appendChild(new_item)
-    event.target.parentElement.style.display = "none"
 
 
 async def storeFile(event):
@@ -152,7 +141,6 @@ async def storeFile(event):
 
     # write database file
     for f1 in fileList:
-        open(f1.name, 'x')  # ensure that file has not yet been created
         with open(f1.name, 'wb') as file:
             data = Uint8Array.new(await f1.arrayBuffer())
             file.write(bytearray(data))
@@ -242,52 +230,49 @@ async def storeFile(event):
     # create plot group
     plot_button = document.getElementById("plotButton" + str(id))
     plot_button.addEventListener("click", create_proxy(runPlot))
-    plot_button.param = str(id)
-    add_line_button = document.getElementById("addLineButton" + str(id))
-    add_line_button.addEventListener("click", create_proxy(addLine))
-    add_line_button.param1 = str(id)
-    add_line_button.param2 = 1
 
+    # add quantites to quantity 1 dropdown
+    plot_q1_select = document.getElementById("quantity1_" + str(id))
+    for quantity in file_dict[id].quantities:
+        item = document.createElement("option")
+        item.innerHTML = quantity
+        item.value = quantity
+        plot_q1_select.appendChild(item)
 
-    # # create quantity 1 dropdown
-    # plot_q1_select = document.getElementById("plotQ1Select" + str(id))
-    # plot_q1_select.addEventListener("click", create_proxy(toggle_dropdown))
-    # plot_q1_list = document.getElementById("dropdownlistQ1"+str(id))
-    # for quantity in file_dict[id].quantities:
-    #     item = document.createElement("li")
-    #     item.innerHTML = quantity
-    #     item.addEventListener("click", create_proxy(update_dropdown))
-    #     plot_q1_list.appendChild(item)
+    # add quantites to quantity 2 dropdown
+    plot_q2_select = document.getElementById("quantity2_" + str(id))
+    for quantity in file_dict[id].quantities:
+        item = document.createElement("option")
+        item.innerHTML = quantity
+        item.value = quantity
+        plot_q2_select.appendChild(item)
 
-    # # create quantity 2 dropdown
-    # plot_q2_select = document.getElementById("plotQ2Select" + str(id))
-    # plot_q2_select.addEventListener("click", create_proxy(toggle_dropdown))
-    # plot_q2_list = document.getElementById("dropdownlistQ2"+str(id))
-    # for quantity in file_dict[id].quantities:
-    #     item = document.createElement("li")
-    #     item.innerHTML = quantity
-    #     item.addEventListener("click", create_proxy(update_dropdown))
-    #     plot_q2_list.appendChild(item)
 
     # construct table header
-    # table_select = document.getElementById("tableSelect" + str(id))
-    # table_select.param = str(id)
-    # table_select.addEventListener("click", create_proxy(toggle_dropdown))
-    # table_list = document.getElementById("tableDropdownList" + str(id))
-    # for quantity in file_dict[id].quantities:
-    #     item = document.createElement("li")
-    #     item.innerHTML = quantity
-    #     item.addEventListener("click", create_proxy(add_from_dropdown))
-    #     table_list.appendChild(item)
+    table_button = document.getElementById("tableButton" + str(id))
+    table_button.addEventListener("click", create_proxy(addTableList))
+
+    # add quantites to table dropdown
+    table_select = document.getElementById("tableQuantitySelect" + str(id))
+    for quantity in file_dict[id].quantities:
+        item = document.createElement("option")
+        item.innerHTML = quantity
+        item.value = quantity
+        table_select.appendChild(item)
+
+
+
 
     # construct table footer
     download_table_button = document.getElementById("tableDownloadButton" + str(id))
     download_table_button.addEventListener("click",
                                            create_proxy(downloadTable))
-    download_table_button.param = str(id)
     print_table_button = document.getElementById("tablePrintButton" + str(id))
     print_table_button.addEventListener("click", create_proxy(printTable))
-    print_table_button.param = str(id)
+
+    add_line_button = document.getElementById("addLineButton" + str(id))
+    add_line_button.addEventListener("click", create_proxy(addLine))
+    add_line_button.param2 = 1
 
 
 file_dict = {}

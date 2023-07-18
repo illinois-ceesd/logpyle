@@ -1,10 +1,5 @@
 <div class="newFile" id="{0}" style="display:flex;flex-direction:column">
-    <!-- <div id="constants{0}" style="display:flex;flex-direction:column;margin:0px"> -->
-    <!--     Constants: -->
-    <!--     <ul id="constantsList{0}"> -->
-    <!--     </ul> -->
-    <!-- </div> -->
-    <div class="constantsDiv " id="constants{0}" style="margin:0px">
+    <div class="constantsDiv " id="constants{0}">
 		<table class="constantsTable" id="constantsTable{0}">
 			<thead>
 				<tr class="constantsTr">
@@ -16,7 +11,7 @@
 			</tbody>
         </table>
     </div>
-    <div class="quantitiesDiv " id="quantities{0}" style="margin:0px">
+    <div class="quantitiesDiv " id="quantities{0}">
 		<table class="quantitiesTable" id="quantitiesTable{0}">
 			<thead>
 				<tr class="quantitiesTr">
@@ -33,41 +28,54 @@
     </div>
     <div id="interactive{0}" style="display:flex;flex-direction:row">
         <div id="menu{0}" style="display:flex;flex-direction:column">
-            <input id="file{0}" type="file">
+            <input id="file{0}" type="file" style="margin:5px;padding=5px;">
 
-            <div id="plot{0}" style="display:flex;flex-direction:row;padding=10px">
+            <div id="plot{0}" style="display:flex;flex-direction:column;margin:5px;padding=5px;background-color:#C0C0C0">
 				<button id="plotButton{0}" style="height:30px;padding:5px" param="{0}">
                     Create Plot
                 </button>
-				<button id="addLineButton{0}" style="height:30px;padding:5px" param="{0}">
-					Add Line to Plot
-                </button>
-            </div>
 
-            <div id="table{0}" style="display:flex;flex-direction:column;padding:10px">
-				<div id="tableHeader{0}" style="display:flex;flex-direction:row">
-					<div style="padding:5px">
-						Table
-					</div>
-					<div class="dropdown">
-						<div class="select" id="tableSelect{0}" param="{0}">
-							<span id="plotQ1Text{0}">Add quantity to table list</span>
-							<i class="fa fa-chevron-left"></i>
-						</div>
-						<ul class="dropdown-menu" id="tableDropdownList{0}" style="display:none">
-
-						</ul>
+				<div>
+					<label for="quantity1{0}">X-axis Quantity:</label>
+					<div id="xQuantity">
+						<select name="quantity1{0}" id="quantity1_{0}">
+						</select>
 					</div>
 				</div>
-				<ul id="tableList{0}" style="margin:0px">
 
-				</ul>
+				<div>
+					<label for="quantity2{0}">Y-axis Quantities:</label>
+					<div>
+						<select name="quantity2{0}" id="quantity2_{0}">
+						</select>
+					</div>
+				</div>
+            </div>
+
+            <div id="table{0}" style="display:flex;flex-direction:column;margin:5px;padding:5px;background-color:#C0C0C0">
+				<div id="tableHeader{0}" style="display:flex;flex-direction:row">
+
+					<label for="tableQuantitySelect{0}">Table Quantity:</label>
+					<select name="tableQuantitySelect{0}" id="tableQuantitySelect{0}">
+					</select>
+
+					<button id="tableButton{0}" style="height:30px;padding:5px" param="{0}">
+						Add to list
+					</button>
+
+				</div>
+				<ol id="tableList{0}" style="margin-top:0px">
+
+				</ol>
 				<div id="tableFooter{0}" style="display:flex;flex-direction:row">
-					<button id="tableDownloadButton{0}" style="height:30px;padding:5px">
+					<button id="tableDownloadButton{0}" style="height:30px;padding:5px" param="{0}">
 						Download Table
 					</button>
-					<button id="tablePrintButton{0}" style="height:30px;padding:5px">
+					<button id="tablePrintButton{0}" style="height:30px;padding:5px" param="{0}">
 						Print Table
+					</button>
+					<button id="addLineButton{0}" style="height:30px;padding:5px" param1="{0}">
+						Add Line to Plot
 					</button>
 
 				</div>

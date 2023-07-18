@@ -75,6 +75,8 @@
 	width: fit-content;
 	overflow: auto;
 	margin-top: 20px;
+	padding: 5px;
+	padding-top: 0px;
 }
 .constantsTable {
 	border: 1px solid;
@@ -96,6 +98,8 @@
 	width: fit-content;
 	overflow: auto;
 	margin-top: 20px;
+	padding: 5px;
+	padding-top: 0px;
 }
 .quantitiesTable {
 	border: 1px solid;
@@ -640,12 +644,7 @@ nextId = 1
 # this HTML string was imported from newFile.html
 fileDiv = """
 <div class="newFile" id="{0}" style="display:flex;flex-direction:column">
-    <!-- <div id="constants{0}" style="display:flex;flex-direction:column;margin:0px"> -->
-    <!--     Constants: -->
-    <!--     <ul id="constantsList{0}"> -->
-    <!--     </ul> -->
-    <!-- </div> -->
-    <div class="constantsDiv " id="constants{0}" style="margin:0px">
+    <div class="constantsDiv " id="constants{0}">
 		<table class="constantsTable" id="constantsTable{0}">
 			<thead>
 				<tr class="constantsTr">
@@ -657,7 +656,7 @@ fileDiv = """
 			</tbody>
         </table>
     </div>
-    <div class="quantitiesDiv " id="quantities{0}" style="margin:0px">
+    <div class="quantitiesDiv " id="quantities{0}">
 		<table class="quantitiesTable" id="quantitiesTable{0}">
 			<thead>
 				<tr class="quantitiesTr">
@@ -674,41 +673,54 @@ fileDiv = """
     </div>
     <div id="interactive{0}" style="display:flex;flex-direction:row">
         <div id="menu{0}" style="display:flex;flex-direction:column">
-            <input id="file{0}" type="file">
+            <input id="file{0}" type="file" style="margin:5px;padding=5px;">
 
-            <div id="plot{0}" style="display:flex;flex-direction:row;padding=10px">
+            <div id="plot{0}" style="display:flex;flex-direction:column;margin:5px;padding=5px;background-color:#C0C0C0">
 				<button id="plotButton{0}" style="height:30px;padding:5px" param="{0}">
                     Create Plot
                 </button>
-				<button id="addLineButton{0}" style="height:30px;padding:5px" param="{0}">
-					Add Line to Plot
-                </button>
-            </div>
 
-            <div id="table{0}" style="display:flex;flex-direction:column;padding:10px">
-				<div id="tableHeader{0}" style="display:flex;flex-direction:row">
-					<div style="padding:5px">
-						Table
-					</div>
-					<div class="dropdown">
-						<div class="select" id="tableSelect{0}" param="{0}">
-							<span id="plotQ1Text{0}">Add quantity to table list</span>
-							<i class="fa fa-chevron-left"></i>
-						</div>
-						<ul class="dropdown-menu" id="tableDropdownList{0}" style="display:none">
-
-						</ul>
+				<div>
+					<label for="quantity1{0}">X-axis Quantity:</label>
+					<div id="xQuantity">
+						<select name="quantity1{0}" id="quantity1_{0}">
+						</select>
 					</div>
 				</div>
-				<ul id="tableList{0}" style="margin:0px">
 
-				</ul>
+				<div>
+					<label for="quantity2{0}">Y-axis Quantities:</label>
+					<div>
+						<select name="quantity2{0}" id="quantity2_{0}">
+						</select>
+					</div>
+				</div>
+            </div>
+
+            <div id="table{0}" style="display:flex;flex-direction:column;margin:5px;padding:5px;background-color:#C0C0C0">
+				<div id="tableHeader{0}" style="display:flex;flex-direction:row">
+
+					<label for="tableQuantitySelect{0}">Table Quantity:</label>
+					<select name="tableQuantitySelect{0}" id="tableQuantitySelect{0}">
+					</select>
+
+					<button id="tableButton{0}" style="height:30px;padding:5px" param="{0}">
+						Add to list
+					</button>
+
+				</div>
+				<ol id="tableList{0}" style="margin-top:0px">
+
+				</ol>
 				<div id="tableFooter{0}" style="display:flex;flex-direction:row">
-					<button id="tableDownloadButton{0}" style="height:30px;padding:5px">
+					<button id="tableDownloadButton{0}" style="height:30px;padding:5px" param="{0}">
 						Download Table
 					</button>
-					<button id="tablePrintButton{0}" style="height:30px;padding:5px">
+					<button id="tablePrintButton{0}" style="height:30px;padding:5px" param="{0}">
 						Print Table
+					</button>
+					<button id="addLineButton{0}" style="height:30px;padding:5px" param1="{0}">
+						Add Line to Plot
 					</button>
 
 				</div>
@@ -748,12 +760,14 @@ def addFileFunc():
 
 async def runPlot(event):
     # TODO rework to go through all tds for its id checking if it begins with radio
-    id = event.target.param
+    id = event.target.getAttribute("param")
     output = document.getElementById("output" + str(id))
     output.id = "graph-area"
     runDb = make_wrapped_db(file_dict[id].name, True, True)
-    q1 = document.getElementById("plotQ1Text"+str(id)).innerHTML
-    q2 = document.getElementById("plotQ2Text"+str(id)).innerHTML
+    q1 = document.getElementById("quantity1_" + str(id)).value
+    q2 = document.getElementById("quantity2_" + str(id)).value
+    # q1 = document.getElementById("plotQ1Text"+str(id)).innerHTML
+    # q2 = document.getElementById("plotQ2Text"+str(id)).innerHTML
     query = "select ${}, ${}".format(q1, q2)
     cursor = runDb.db.execute(runDb.mangle_sql(query))
     columnnames = [column[0] for column in cursor.description]
@@ -761,8 +775,19 @@ async def runPlot(event):
 
     output.id = "output" + str(id)
 
+async def addTableList(event):
+    id = event.target.getAttribute("param")
+    quantity = document.getElementById("tableQuantitySelect" + str(id)).value
+    table_list = document.getElementById("tableList" + str(id))
+    item = document.createElement("li")
+    item.textContent = str(quantity)
+    item.val = str(quantity)
+    table_list.appendChild(item)
+
+
 async def addLine(event):
     id = event.target.param1
+    id = event.target.getAttribute("param1")
     i = event.target.param2
     event.target.param2 = event.target.param2 + 1
     quantitiesTable = document.getElementById("quantitiesTable" + str(id))
@@ -810,21 +835,6 @@ async def runTable(event):
     output.id = "output" + str(id)
 
 
-# def toggle_dropdown(event):
-#     dropdownlist = event.target.parentElement.children[1]
-#     if dropdownlist.style.display == "none":
-#         dropdownlist.style.display = "block"
-#     else:
-#         dropdownlist.style.display = "none"
-
-
-# def update_dropdown(event):
-#     name = event.target.innerHTML
-#     dropdown = event.target.parentElement.parentElement.children[0]
-#     dropdown.children[0].innerHTML = name
-#     event.target.parentElement.style.display = "none"
-
-
 def downloadTable(event):
     pass
 
@@ -832,15 +842,6 @@ def downloadTable(event):
 def printTable(event):
     pass
 
-
-def add_from_dropdown(event):
-    id = event.target.parentElement.parentElement.children[0].param
-    name = event.target.innerHTML
-    new_item = document.createElement("li")
-    new_item.innerHTML = name
-    item_list = document.getElementById("tableList" + str(id))
-    item_list.appendChild(new_item)
-    event.target.parentElement.style.display = "none"
 
 
 async def storeFile(event):
@@ -851,7 +852,7 @@ async def storeFile(event):
 
     # write database file
     for f1 in fileList:
-        open(f1.name, 'x')  # ensure that file has not yet been created
+        # open(f1.name, 'x')  # ensure that file has not yet been created
         with open(f1.name, 'wb') as file:
             data = Uint8Array.new(await f1.arrayBuffer())
             file.write(bytearray(data))
@@ -941,52 +942,49 @@ async def storeFile(event):
     # create plot group
     plot_button = document.getElementById("plotButton" + str(id))
     plot_button.addEventListener("click", create_proxy(runPlot))
-    plot_button.param = str(id)
-    add_line_button = document.getElementById("addLineButton" + str(id))
-    add_line_button.addEventListener("click", create_proxy(addLine))
-    add_line_button.param1 = str(id)
-    add_line_button.param2 = 1
 
+    # add quantites to quantity 1 dropdown
+    plot_q1_select = document.getElementById("quantity1_" + str(id))
+    for quantity in file_dict[id].quantities:
+        item = document.createElement("option")
+        item.innerHTML = quantity
+        item.value = quantity
+        plot_q1_select.appendChild(item)
 
-    # # create quantity 1 dropdown
-    # plot_q1_select = document.getElementById("plotQ1Select" + str(id))
-    # plot_q1_select.addEventListener("click", create_proxy(toggle_dropdown))
-    # plot_q1_list = document.getElementById("dropdownlistQ1"+str(id))
-    # for quantity in file_dict[id].quantities:
-    #     item = document.createElement("li")
-    #     item.innerHTML = quantity
-    #     item.addEventListener("click", create_proxy(update_dropdown))
-    #     plot_q1_list.appendChild(item)
+    # add quantites to quantity 2 dropdown
+    plot_q2_select = document.getElementById("quantity2_" + str(id))
+    for quantity in file_dict[id].quantities:
+        item = document.createElement("option")
+        item.innerHTML = quantity
+        item.value = quantity
+        plot_q2_select.appendChild(item)
 
-    # # create quantity 2 dropdown
-    # plot_q2_select = document.getElementById("plotQ2Select" + str(id))
-    # plot_q2_select.addEventListener("click", create_proxy(toggle_dropdown))
-    # plot_q2_list = document.getElementById("dropdownlistQ2"+str(id))
-    # for quantity in file_dict[id].quantities:
-    #     item = document.createElement("li")
-    #     item.innerHTML = quantity
-    #     item.addEventListener("click", create_proxy(update_dropdown))
-    #     plot_q2_list.appendChild(item)
 
     # construct table header
-    # table_select = document.getElementById("tableSelect" + str(id))
-    # table_select.param = str(id)
-    # table_select.addEventListener("click", create_proxy(toggle_dropdown))
-    # table_list = document.getElementById("tableDropdownList" + str(id))
-    # for quantity in file_dict[id].quantities:
-    #     item = document.createElement("li")
-    #     item.innerHTML = quantity
-    #     item.addEventListener("click", create_proxy(add_from_dropdown))
-    #     table_list.appendChild(item)
+    table_button = document.getElementById("tableButton" + str(id))
+    table_button.addEventListener("click", create_proxy(addTableList))
+
+    # add quantites to table dropdown
+    table_select = document.getElementById("tableQuantitySelect" + str(id))
+    for quantity in file_dict[id].quantities:
+        item = document.createElement("option")
+        item.innerHTML = quantity
+        item.value = quantity
+        table_select.appendChild(item)
+
+
+
 
     # construct table footer
     download_table_button = document.getElementById("tableDownloadButton" + str(id))
     download_table_button.addEventListener("click",
                                            create_proxy(downloadTable))
-    download_table_button.param = str(id)
     print_table_button = document.getElementById("tablePrintButton" + str(id))
     print_table_button.addEventListener("click", create_proxy(printTable))
-    print_table_button.param = str(id)
+
+    add_line_button = document.getElementById("addLineButton" + str(id))
+    add_line_button.addEventListener("click", create_proxy(addLine))
+    add_line_button.param2 = 1
 
 
 file_dict = {}
