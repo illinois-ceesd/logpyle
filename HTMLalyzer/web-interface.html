@@ -626,8 +626,11 @@ fileDiv = """
 				<div>
 					<label for="quantity2{0}">Y-axis Quantities:</label>
 					<div id="yQuantities{0}" style="display:flex;flex-direction:column;margin:5px;padding=5px;">
-						<select name="quantity2{0}" id="quantity2_{0}">
-						</select>
+						<div>
+							<select name="quantity2{0}" id="quantity2_{0}">
+							</select>
+							<input type="color" id="head" name="head" value="#e66465">
+						</div>
 					</div>
 				</div>
 				<button id="addLineButton{0}" style="height:30px;margin:5px;padding:5px" param1="{0}">
@@ -694,15 +697,13 @@ def addFileFunc():
 
 
 async def runPlot(event):
-    # TODO rework to go through all tds for its id checking if it begins with radio
+    # TODO loop over all y-axis quantities and create multiple lines
     id = event.target.getAttribute("param")
     output = document.getElementById("output" + str(id))
     output.id = "graph-area"
     runDb = make_wrapped_db(file_dict[id].name, True, True)
     q1 = document.getElementById("quantity1_" + str(id)).value
     q2 = document.getElementById("quantity2_" + str(id)).value
-    # q1 = document.getElementById("plotQ1Text"+str(id)).innerHTML
-    # q2 = document.getElementById("plotQ2Text"+str(id)).innerHTML
     query = "select ${}, ${}".format(q1, q2)
     cursor = runDb.db.execute(runDb.mangle_sql(query))
     columnnames = [column[0] for column in cursor.description]
@@ -717,6 +718,10 @@ async def addTableList(event):
     item = document.createElement("li")
     item.textContent = str(quantity)
     item.val = str(quantity)
+    del_button = document.createElement("button")
+    del_button.style.float = "right"
+    del_button.innerHTML = "delete"
+    item.appendChild(del_button)
     table_list.appendChild(item)
 
 
@@ -726,44 +731,26 @@ async def addLine(event):
     event.target.param2 = event.target.param2 + 1
     y_quantities = document.getElementById("yQuantities" + str(id))
 
+    y_div = document.createElement("div")
     y_select = document.createElement("select")
+    y_color = document.createElement("input")
+
+    y_color.setAttribute("type", "color")
 
     for quantity in file_dict[id].quantities:
         item = document.createElement("option")
         item.innerHTML = quantity
         item.value = quantity
-        y_select .appendChild(item)
+        y_select.appendChild(item)
 
-    y_quantities.appendChild(y_select)
+    y_div.appendChild(y_select)
+    y_div.appendChild(y_color)
 
-    # # add header
-    # header = document.createElement("td")
-    # header.innerHTML = "line " + str(i) + " (x,y)"
-    # header.className = "quantitiesTd"
-    # quantitiesTable.children[0].children[0].appendChild(header)
+    y_quantities.appendChild(y_div)
 
-    # # add body
-    # for row in quantitiesTable.children[1].children:
-    #     div = document.createElement("td")
-    #     div.className = "quantitiesTd"
-
-    #     radio_x = document.createElement("input")
-    #     radio_x.style.width = "50%"
-    #     # radio file#, line#
-    #     radio_x.name = "radio_f{0}_l{1}x".format(str(id),str(i))
-    #     radio_x.type = "radio"
-
-    #     radio_y = document.createElement("input")
-    #     radio_y.style.width = "50%"
-    #     # radio file#, line#
-    #     radio_y.name = "radio_f{0}_l{1}y".format(str(id),str(i))
-    #     radio_y.type = "radio"
-
-    #     div.appendChild(radio_x)
-    #     div.appendChild(radio_y)
-    #     row.appendChild(div)
-
+async def removeTableEle(event):
     pass
+
 
 
 async def runTable(event):
