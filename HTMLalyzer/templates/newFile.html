@@ -37,7 +37,7 @@
 
 				<div>
 					<label for="quantity1{0}">X-axis Quantity:</label>
-					<div id="xQuantity">
+					<div id="xQuantity{0}" style="display:flex;flex-direction:column;margin:5px;padding=5px;">
 						<select name="quantity1{0}" id="quantity1_{0}">
 						</select>
 					</div>
@@ -45,11 +45,14 @@
 
 				<div>
 					<label for="quantity2{0}">Y-axis Quantities:</label>
-					<div>
+					<div id="yQuantities{0}" style="display:flex;flex-direction:column;margin:5px;padding=5px;">
 						<select name="quantity2{0}" id="quantity2_{0}">
 						</select>
 					</div>
 				</div>
+				<button id="addLineButton{0}" style="height:30px;margin:5px;padding:5px" param1="{0}">
+					Add Line to Plot
+				</button>
             </div>
 
             <div id="table{0}" style="display:flex;flex-direction:column;margin:5px;padding:5px;background-color:#C0C0C0">
@@ -74,14 +77,11 @@
 					<button id="tablePrintButton{0}" style="height:30px;padding:5px" param="{0}">
 						Print Table
 					</button>
-					<button id="addLineButton{0}" style="height:30px;padding:5px" param1="{0}">
-						Add Line to Plot
-					</button>
 
 				</div>
             </div>
         </div>
-        <div id="output{0}">
+        <div id="output{0}" style="margin:5px;">
         </div>
     </div>
 </div>

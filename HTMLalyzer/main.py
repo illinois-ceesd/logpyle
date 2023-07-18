@@ -34,11 +34,11 @@ def addFileFunc():
 
     newFile = document.getElementById(str(nextId))
     if nextId % 2 == 0:
-        # silver color
-        newFile.style.backgroundColor = "#C0C0C0"
+        # grey minus some green
+        newFile.style.backgroundColor = "#B0A8B0"
     else:
-        # darkgrey color
-        newFile.style.backgroundColor = "#A9A9A9"
+        # grey minus some blue
+        newFile.style.backgroundColor = "#B0B0A8"
 
     # attach listener to new file input
     input = document.getElementById("file" + str(nextId))
@@ -75,38 +75,47 @@ async def addTableList(event):
 
 
 async def addLine(event):
-    id = event.target.param1
     id = event.target.getAttribute("param1")
     i = event.target.param2
     event.target.param2 = event.target.param2 + 1
-    quantitiesTable = document.getElementById("quantitiesTable" + str(id))
+    y_quantities = document.getElementById("yQuantities" + str(id))
 
-    # add header
-    header = document.createElement("td")
-    header.innerHTML = "line " + str(i) + " (x,y)"
-    header.className = "quantitiesTd"
-    quantitiesTable.children[0].children[0].appendChild(header)
+    y_select = document.createElement("select")
 
-    # add body
-    for row in quantitiesTable.children[1].children:
-        div = document.createElement("td")
-        div.className = "quantitiesTd"
+    for quantity in file_dict[id].quantities:
+        item = document.createElement("option")
+        item.innerHTML = quantity
+        item.value = quantity
+        y_select .appendChild(item)
 
-        radio_x = document.createElement("input")
-        radio_x.style.width = "50%"
-        # radio file#, line#
-        radio_x.name = "radio_f{0}_l{1}x".format(str(id),str(i))
-        radio_x.type = "radio"
+    y_quantities.appendChild(y_select)
 
-        radio_y = document.createElement("input")
-        radio_y.style.width = "50%"
-        # radio file#, line#
-        radio_y.name = "radio_f{0}_l{1}y".format(str(id),str(i))
-        radio_y.type = "radio"
+    # # add header
+    # header = document.createElement("td")
+    # header.innerHTML = "line " + str(i) + " (x,y)"
+    # header.className = "quantitiesTd"
+    # quantitiesTable.children[0].children[0].appendChild(header)
 
-        div.appendChild(radio_x)
-        div.appendChild(radio_y)
-        row.appendChild(div)
+    # # add body
+    # for row in quantitiesTable.children[1].children:
+    #     div = document.createElement("td")
+    #     div.className = "quantitiesTd"
+
+    #     radio_x = document.createElement("input")
+    #     radio_x.style.width = "50%"
+    #     # radio file#, line#
+    #     radio_x.name = "radio_f{0}_l{1}x".format(str(id),str(i))
+    #     radio_x.type = "radio"
+
+    #     radio_y = document.createElement("input")
+    #     radio_y.style.width = "50%"
+    #     # radio file#, line#
+    #     radio_y.name = "radio_f{0}_l{1}y".format(str(id),str(i))
+    #     radio_y.type = "radio"
+
+    #     div.appendChild(radio_x)
+    #     div.appendChild(radio_y)
+    #     row.appendChild(div)
 
     pass
 
@@ -247,6 +256,11 @@ async def storeFile(event):
         item.value = quantity
         plot_q2_select.appendChild(item)
 
+    # construct plot footer
+    add_line_button = document.getElementById("addLineButton" + str(id))
+    add_line_button.addEventListener("click", create_proxy(addLine))
+    add_line_button.param2 = 1
+
 
     # construct table header
     table_button = document.getElementById("tableButton" + str(id))
@@ -270,9 +284,6 @@ async def storeFile(event):
     print_table_button = document.getElementById("tablePrintButton" + str(id))
     print_table_button.addEventListener("click", create_proxy(printTable))
 
-    add_line_button = document.getElementById("addLineButton" + str(id))
-    add_line_button.addEventListener("click", create_proxy(addLine))
-    add_line_button.param2 = 1
 
 
 file_dict = {}
