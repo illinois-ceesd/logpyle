@@ -237,14 +237,13 @@ test_MultiLogQuantity_types = [
             ["Q init to 1", None],
             lambda x, y: [x+1, y+1]
          ),
-        # fix for null units not yet implemented
-        # (
-        #     ["Quantity_1", "Quantity_2"],
-        #     [1, 2],
-        #     None,
-        #     ["Q init to 1", "Q init to 2"],
-        #     lambda x, y: [x+1, y+1]
-        #  ),
+        (
+            ["Quantity_1", "Quantity_2"],
+            [1, 2],
+            None,
+            ["Q init to 1", "Q init to 2"],
+            lambda x, y: [x+1, y+1]
+         ),
         (
             ["Quantity_1", "Quantity_2"],
             [1, 2],
