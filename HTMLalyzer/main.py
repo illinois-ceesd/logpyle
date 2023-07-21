@@ -1,4 +1,6 @@
 import asyncio
+import json
+import js
 from js import document, DOMParser
 from pyscript import Element
 from pyodide.ffi import create_proxy
@@ -62,16 +64,60 @@ async def runPlot(event):
 
     output.id = "output" + str(id)
 
+async def runChart(event):
+    id = event.target.getAttribute("param")
+    x_quantity: str = document.getElementById("quantity1_" + str(id)).value
+    x = file_dict[id].quantities[x_quantity]
+    x_vals = x["vals"]
+    x_vals = [ ele[0] for ele in x_vals]
+    # x_vals = [1,2]
+
+    y_vals = {}
+    y_quantities_div = document.getElementById("yQuantities" + str(id))
+    for y_quantity_div in y_quantities_div.children:
+        y_values_elements = y_quantity_div.children
+        y_name = y_values_elements[0].value
+        color = y_values_elements[1].value
+
+        y_ele = file_dict[id].quantities[y_name]
+
+        y_val = y_ele["vals"]
+        y_val = [ ele[0] for ele in y_val]
+
+        units = y_ele["units"]
+
+        y_vals[y_name] = {}
+        y_vals[y_name]['vals'] = y_val
+        y_vals[y_name]['color'] = color
+        y_vals[y_name]['units'] = units
+
+
+    # y_vals = {"lol": [0.005,0.015], "lol2": [0.002,0.007]}
+    js.chartsOutputGraph(
+            id,
+            json.dumps(x_vals),
+            json.dumps(y_vals),
+            )
+
+        # file_dict[id].quantities[q_name] = {'vals':vals, 'id': q_id,
+        #                                     'units':q_unit, 'desc':q_desc,
+        #                                     'rank_agg': q_rank_agg}
+
+
 async def addTableList(event):
     id = event.target.getAttribute("param")
     quantity = document.getElementById("tableQuantitySelect" + str(id)).value
     table_list = document.getElementById("tableList" + str(id))
     item = document.createElement("li")
-    item.textContent = str(quantity)
-    item.val = str(quantity)
+    text = document.createElement("span")
+    text.innerHTML = str(quantity)
+    item.setAttribute("val", str(quantity))
+    item.style = "margin:2px;"
     del_button = document.createElement("button")
     del_button.style.float = "right"
     del_button.innerHTML = "delete"
+    del_button.addEventListener("click", create_proxy(removeTableEle))
+    item.appendChild(text)
     item.appendChild(del_button)
     table_list.appendChild(item)
 
@@ -86,7 +132,9 @@ async def addLine(event):
     y_select = document.createElement("select")
     y_color = document.createElement("input")
 
+    y_div.setAttribute("style", "white-space:nowrap")
     y_color.setAttribute("type", "color")
+
 
     for quantity in file_dict[id].quantities:
         item = document.createElement("option")
@@ -100,11 +148,12 @@ async def addLine(event):
     y_quantities.appendChild(y_div)
 
 async def removeTableEle(event):
-    pass
-
+    event.target.parentElement.remove()
 
 
 async def runTable(event):
+    import matplotlib.pyplot as plt
+    global fig
     id = event.target.param
     output = document.getElementById("output" + str(id))
     output.id = "graph-area"
@@ -130,7 +179,7 @@ async def storeFile(event):
     global file_dict
     fileList = event.target.files.to_py()
     from js import document, Uint8Array
-    id = event.target.parentElement.parentElement.parentElement.id
+    id = event.target.parentElement.parentElement.id
 
     # write database file
     for f1 in fileList:
@@ -223,7 +272,8 @@ async def storeFile(event):
     # create plot group
     plot_button = document.getElementById("plotButton" + str(id))
     plot_button.addEventListener("click", create_proxy(runPlot))
-
+    chart_button = document.getElementById("chartsButton" + str(id))
+    chart_button .addEventListener("click", create_proxy(runChart))
     # add quantites to quantity 1 dropdown
     plot_q1_select = document.getElementById("quantity1_" + str(id))
     for quantity in file_dict[id].quantities:

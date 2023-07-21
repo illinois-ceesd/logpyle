@@ -14,12 +14,14 @@ def setup():
     mainPy = Environment().from_string(mainPy)
     mainPy = mainPy.render(newFileHTML=newFileHTML)
     mainCSS = open(path+"/main.css", "r").read()
+    mainJs = open(path+"/main.js", "r").read()
     runalyzerFile = open(path+"/modifiedRunalyzer.py", "r").read()
 
     content = template.render(
             cssFile=mainCSS,
             pythonFile=mainPy,
             runalyzerFile=runalyzerFile,
+            jsFile=mainJs,
             )
 
     filename = "web-interface.html"

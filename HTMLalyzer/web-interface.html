@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <link rel="stylesheet" href="https://pyscript.net/latest/pyscript.css" />
     <script defer src="https://pyscript.net/latest/pyscript.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.min.js"></script>
 <style>
 .constantsDiv {
 	max-height: 150px;
@@ -12,6 +13,7 @@
 	margin-top: 20px;
 	padding: 5px;
 	padding-top: 0px;
+	max-width: 100%;
 }
 .constantsTable {
 	border: 1px solid;
@@ -27,6 +29,8 @@
 }
 .constantsTd {
 	border: 1px solid;
+	white-space: nowrap;
+	text-align: left;
 }
 .quantitiesDiv {
 	max-height: 150px;
@@ -59,10 +63,74 @@
 
 
 </style>
-	<style>
-	</style>
   </head>
   <body>
+
+<script>
+// expect to be called from python
+async function chartsOutputGraph(id, x, ys, colors) {
+	id = JSON.parse(id);
+	x = JSON.parse(x);
+	ys = JSON.parse(ys);
+
+	// resize canvas before drawing to it
+	let canvas = document.getElementById("chart" + id);
+	canvas.style.width='100%';
+	canvas.style.height='100%';
+	canvas.width  = canvas.offsetWidth;
+	canvas.height = canvas.offsetHeight;
+
+	let datasets = [];
+	let scales = {};
+	// add ys to dataset
+	let i = 0;
+	for (const [key, value] of Object.entries(ys)) {
+		// colors = ys["colors"]
+		// y_vals = ys["vals"]
+		datasets.push({
+			data: value["vals"],
+			label: key + " (" + value["units"] + ")",
+			borderColor: value["color"],
+			// yAxisID: key,
+		});
+		scales[key] = {
+			type: "linear",
+			display: true,
+			grid: {
+				drawOnChartArea: false, // only want the grid lines for one axis to show up
+			},
+
+		}
+	}
+
+	// create chart pointing to the file's chart canvas
+	new Chart(document.getElementById("chart"+id), {
+		type: 'line',
+		data: {
+			labels: x,
+			datasets: datasets
+		},
+
+		options: {
+			responsive: true,
+			plugins: {
+				legend: {
+					position: 'top',
+				},
+				title: {
+					display: true,
+					text: 'Chart.js Line Chart'
+				}
+			}
+		},
+
+	});
+
+
+
+}
+
+</script>
 
     <py-config>
       packages = [
@@ -163,7 +231,7 @@ class RunDB:
 		import matplotlib.pyplot as plt
 		from matplotlib.pyplot import legend, plot, show, savefig
 
-		fig, ax = plt.subplots()
+		fig, _ = plt.subplots()
 
 		auto_style = kwargs.pop("auto_style", True)
 
@@ -557,6 +625,8 @@ def make_wrapped_db(filename: str, interactive: bool, mangle: bool) -> RunDB:
 
 <py-script>
 import asyncio
+import json
+import js
 from js import document, DOMParser
 from pyscript import Element
 from pyodide.ffi import create_proxy
@@ -579,12 +649,18 @@ nextId = 1
 # this HTML string was imported from newFile.html
 fileDiv = """
 <div class="newFile" id="{0}" style="display:flex;flex-direction:column">
+	<div class="inputFileDiv">
+		<label for="file{0}">Choose a Logpyle sqlite file to analyze:</label>
+		<br>
+		<input id="file{0}" name="file{0}" type="file" style="margin:5px;padding=5px;">
+	</div>
+
     <div class="constantsDiv " id="constants{0}">
 		<table class="constantsTable" id="constantsTable{0}">
 			<thead>
 				<tr class="constantsTr">
-					<th class="constantsTr">Constant</th>
-					<th class="constantsTr">Value</th>
+					<th class="constantsTd">Constant</th>
+					<th class="constantsTd">Value</th>
 				</tr>
 			</thead>
 			<tbody>
@@ -608,17 +684,18 @@ fileDiv = """
     </div>
     <div id="interactive{0}" style="display:flex;flex-direction:row">
         <div id="menu{0}" style="display:flex;flex-direction:column">
-            <input id="file{0}" type="file" style="margin:5px;padding=5px;">
-
             <div id="plot{0}" style="display:flex;flex-direction:column;margin:5px;padding=5px;background-color:#C0C0C0">
 				<button id="plotButton{0}" style="height:30px;padding:5px" param="{0}">
-                    Create Plot
+                    Create Plot (Runalyzer)
+                </button>
+				<button id="chartsButton{0}" style="height:30px;padding:5px" param="{0}">
+                    Create Chart
                 </button>
 
 				<div>
 					<label for="quantity1{0}">X-axis Quantity:</label>
 					<div id="xQuantity{0}" style="display:flex;flex-direction:column;margin:5px;padding=5px;">
-						<select name="quantity1{0}" id="quantity1_{0}">
+						<select name="quantity1_{0}" id="quantity1_{0}">
 						</select>
 					</div>
 				</div>
@@ -626,10 +703,10 @@ fileDiv = """
 				<div>
 					<label for="quantity2{0}">Y-axis Quantities:</label>
 					<div id="yQuantities{0}" style="display:flex;flex-direction:column;margin:5px;padding=5px;">
-						<div>
-							<select name="quantity2{0}" id="quantity2_{0}">
+						<div style="white-space:nowrap">
+							<select name="quantity2{0}" id="quantity2_{0}" name="q2">
 							</select>
-							<input type="color" id="head" name="head" value="#e66465">
+							<input type="color">
 						</div>
 					</div>
 				</div>
@@ -639,13 +716,13 @@ fileDiv = """
             </div>
 
             <div id="table{0}" style="display:flex;flex-direction:column;margin:5px;padding:5px;background-color:#C0C0C0">
-				<div id="tableHeader{0}" style="display:flex;flex-direction:row">
+				<div id="tableHeader{0}" style="white-space:nowrap">
 
 					<label for="tableQuantitySelect{0}">Table Quantity:</label>
 					<select name="tableQuantitySelect{0}" id="tableQuantitySelect{0}">
 					</select>
 
-					<button id="tableButton{0}" style="height:30px;padding:5px" param="{0}">
+					<button id="tableButton{0}" style="height:30px;padding:5px;width:fit-content;" param="{0}">
 						Add to list
 					</button>
 
@@ -657,15 +734,17 @@ fileDiv = """
 					<button id="tableDownloadButton{0}" style="height:30px;padding:5px" param="{0}">
 						Download Table
 					</button>
-					<button id="tablePrintButton{0}" style="height:30px;padding:5px" param="{0}">
+					<button id="tablePrintButton{0}" style="height:30px;padding:5px;width:fit-content;" param="{0}">
 						Print Table
 					</button>
 
 				</div>
             </div>
         </div>
-        <div id="output{0}" style="margin:5px;">
-        </div>
+        <div id="output{0}" style="margin:5px;"></div>
+		<div style="flex-basis:100%">
+			<canvas id="chart{0}"></canvas>
+		</div>
     </div>
 </div>
 
@@ -711,16 +790,60 @@ async def runPlot(event):
 
     output.id = "output" + str(id)
 
+async def runChart(event):
+    id = event.target.getAttribute("param")
+    x_quantity: str = document.getElementById("quantity1_" + str(id)).value
+    x = file_dict[id].quantities[x_quantity]
+    x_vals = x["vals"]
+    x_vals = [ ele[0] for ele in x_vals]
+    # x_vals = [1,2]
+
+    y_vals = {}
+    y_quantities_div = document.getElementById("yQuantities" + str(id))
+    for y_quantity_div in y_quantities_div.children:
+        y_values_elements = y_quantity_div.children
+        y_name = y_values_elements[0].value
+        color = y_values_elements[1].value
+
+        y_ele = file_dict[id].quantities[y_name]
+
+        y_val = y_ele["vals"]
+        y_val = [ ele[0] for ele in y_val]
+
+        units = y_ele["units"]
+
+        y_vals[y_name] = {}
+        y_vals[y_name]['vals'] = y_val
+        y_vals[y_name]['color'] = color
+        y_vals[y_name]['units'] = units
+
+
+    # y_vals = {"lol": [0.005,0.015], "lol2": [0.002,0.007]}
+    js.chartsOutputGraph(
+            id,
+            json.dumps(x_vals),
+            json.dumps(y_vals),
+            )
+
+        # file_dict[id].quantities[q_name] = {'vals':vals, 'id': q_id,
+        #                                     'units':q_unit, 'desc':q_desc,
+        #                                     'rank_agg': q_rank_agg}
+
+
 async def addTableList(event):
     id = event.target.getAttribute("param")
     quantity = document.getElementById("tableQuantitySelect" + str(id)).value
     table_list = document.getElementById("tableList" + str(id))
     item = document.createElement("li")
-    item.textContent = str(quantity)
-    item.val = str(quantity)
+    text = document.createElement("span")
+    text.innerHTML = str(quantity)
+    item.setAttribute("val", str(quantity))
+    item.style = "margin:2px;"
     del_button = document.createElement("button")
     del_button.style.float = "right"
     del_button.innerHTML = "delete"
+    del_button.addEventListener("click", create_proxy(removeTableEle))
+    item.appendChild(text)
     item.appendChild(del_button)
     table_list.appendChild(item)
 
@@ -735,7 +858,9 @@ async def addLine(event):
     y_select = document.createElement("select")
     y_color = document.createElement("input")
 
+    y_div.setAttribute("style", "white-space:nowrap")
     y_color.setAttribute("type", "color")
+
 
     for quantity in file_dict[id].quantities:
         item = document.createElement("option")
@@ -749,11 +874,12 @@ async def addLine(event):
     y_quantities.appendChild(y_div)
 
 async def removeTableEle(event):
-    pass
-
+    event.target.parentElement.remove()
 
 
 async def runTable(event):
+    import matplotlib.pyplot as plt
+    global fig
     id = event.target.param
     output = document.getElementById("output" + str(id))
     output.id = "graph-area"
@@ -779,7 +905,7 @@ async def storeFile(event):
     global file_dict
     fileList = event.target.files.to_py()
     from js import document, Uint8Array
-    id = event.target.parentElement.parentElement.parentElement.id
+    id = event.target.parentElement.parentElement.id
 
     # write database file
     for f1 in fileList:
@@ -872,7 +998,8 @@ async def storeFile(event):
     # create plot group
     plot_button = document.getElementById("plotButton" + str(id))
     plot_button.addEventListener("click", create_proxy(runPlot))
-
+    chart_button = document.getElementById("chartsButton" + str(id))
+    chart_button .addEventListener("click", create_proxy(runChart))
     # add quantites to quantity 1 dropdown
     plot_q1_select = document.getElementById("quantity1_" + str(id))
     for quantity in file_dict[id].quantities:

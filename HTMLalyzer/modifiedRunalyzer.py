@@ -87,7 +87,7 @@ class RunDB:
 		import matplotlib.pyplot as plt
 		from matplotlib.pyplot import legend, plot, show, savefig
 
-		fig = plt.subplots()
+		fig, _ = plt.subplots()
 
 		auto_style = kwargs.pop("auto_style", True)
 

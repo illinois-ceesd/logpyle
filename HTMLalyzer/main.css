@@ -5,6 +5,7 @@
 	margin-top: 20px;
 	padding: 5px;
 	padding-top: 0px;
+	max-width: 100%;
 }
 .constantsTable {
 	border: 1px solid;
@@ -20,6 +21,8 @@
 }
 .constantsTd {
 	border: 1px solid;
+	white-space: nowrap;
+	text-align: left;
 }
 .quantitiesDiv {
 	max-height: 150px;
