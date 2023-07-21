@@ -502,6 +502,8 @@ def test_time_and_count_function(basicLogmgr: LogManager):
 
 
 def test_joint_dataset(basicLogmgr: LogManager):
+    pytest.importorskip("psutil")
+
     add_general_quantities(basicLogmgr)
     basicLogmgr.tick_before()
     basicLogmgr.tick_after()
@@ -611,6 +613,8 @@ def test_write_datafile(basicLogmgr: LogManager):
 
 
 def test_plot_matplotlib(basicLogmgr: LogManager):
+    pytest.importorskip("matplotlib")
+
     add_general_quantities(basicLogmgr)
 
     N = 20
