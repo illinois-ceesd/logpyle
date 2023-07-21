@@ -83,7 +83,6 @@ async function chartsOutputGraph(id, x, ys, colors) {
 	let datasets = [];
 	let scales = {};
 	// add ys to dataset
-	let i = 0;
 	for (const [key, value] of Object.entries(ys)) {
 		// colors = ys["colors"]
 		// y_vals = ys["vals"]
@@ -93,14 +92,14 @@ async function chartsOutputGraph(id, x, ys, colors) {
 			borderColor: value["color"],
 			// yAxisID: key,
 		});
-		scales[key] = {
-			type: "linear",
-			display: true,
-			grid: {
-				drawOnChartArea: false, // only want the grid lines for one axis to show up
-			},
+		// scales[key] = {
+		// 	type: "linear",
+		// 	display: true,
+		// 	grid: {
+		// 		drawOnChartArea: false, // only want the grid lines for one axis to show up
+		// 	},
 
-		}
+		// }
 	}
 
 	// create chart pointing to the file's chart canvas
@@ -129,6 +128,23 @@ async function chartsOutputGraph(id, x, ys, colors) {
 
 
 }
+
+
+async function download(filename, contents) {
+  var element = document.createElement('a');
+  element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(contents));
+  element.setAttribute('download', filename);
+
+  element.style.display = 'none';
+  document.body.appendChild(element);
+
+  element.click();
+
+  document.body.removeChild(element);
+}
+
+
+
 
 </script>
 
@@ -879,8 +895,7 @@ async def removeTableEle(event):
 
 async def runTable(event):
     import matplotlib.pyplot as plt
-    global fig
-    id = event.target.param
+    id = event.target.getAttribute("param")
     output = document.getElementById("output" + str(id))
     output.id = "graph-area"
     runDb = make_wrapped_db(file_dict[id].name, True, True)
@@ -893,6 +908,33 @@ async def runTable(event):
 
 
 def downloadTable(event):
+    id = event.target.getAttribute("param")
+
+    names = []
+    table_list = document.getElementById("tableList" + str(id))
+    for li in table_list.children:
+        names.append(li.children[0].innerHTML)
+
+    quantities = {}
+    for name in names:
+        vals = file_dict[id].quantities[name]["vals"]
+        vals  = [ ele[0] for ele in vals ]
+        quantities[name] = vals
+
+
+
+
+    title = "# " + " vs. ".join(quantities.keys())
+
+    body = ""
+    items = list(quantities.values())
+    for line_num in range(len(items[0])):
+        cur_vals = [ str(ele[line_num]) for ele in items]
+        line = "\t".join(cur_vals) + "\n"
+        body += line
+
+    js.download("output.txt", title + "\n" + body)
+
     pass
 
 

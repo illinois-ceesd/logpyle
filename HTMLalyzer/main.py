@@ -153,8 +153,7 @@ async def removeTableEle(event):
 
 async def runTable(event):
     import matplotlib.pyplot as plt
-    global fig
-    id = event.target.param
+    id = event.target.getAttribute("param")
     output = document.getElementById("output" + str(id))
     output.id = "graph-area"
     runDb = make_wrapped_db(file_dict[id].name, True, True)
@@ -167,6 +166,33 @@ async def runTable(event):
 
 
 def downloadTable(event):
+    id = event.target.getAttribute("param")
+
+    names = []
+    table_list = document.getElementById("tableList" + str(id))
+    for li in table_list.children:
+        names.append(li.children[0].innerHTML)
+
+    quantities = {}
+    for name in names:
+        vals = file_dict[id].quantities[name]["vals"]
+        vals  = [ ele[0] for ele in vals ]
+        quantities[name] = vals
+
+
+
+
+    title = "# " + " vs. ".join(quantities.keys())
+
+    body = ""
+    items = list(quantities.values())
+    for line_num in range(len(items[0])):
+        cur_vals = [ str(ele[line_num]) for ele in items]
+        line = "\t".join(cur_vals) + "\n"
+        body += line
+
+    js.download("output.txt", title + "\n" + body)
+
     pass
 
 
