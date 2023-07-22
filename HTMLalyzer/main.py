@@ -294,8 +294,8 @@ async def storeFile(event):
 
 
     # create plot group
-    plot_button = document.getElementById("plotButton" + str(id))
-    plot_button.addEventListener("click", create_proxy(runPlot))
+    # plot_button = document.getElementById("plotButton" + str(id))
+    # plot_button.addEventListener("click", create_proxy(runPlot))
     chart_button = document.getElementById("chartsButton" + str(id))
     chart_button .addEventListener("click", create_proxy(runChart))
     # add quantites to quantity 1 dropdown
@@ -305,6 +305,8 @@ async def storeFile(event):
         item.innerHTML = quantity
         item.value = quantity
         plot_q1_select.appendChild(item)
+        if quantity == "step":
+            plot_q1_select.value = quantity
 
     # add quantites to quantity 2 dropdown
     plot_q2_select = document.getElementById("quantity2_" + str(id))
