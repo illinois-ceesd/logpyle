@@ -6,31 +6,22 @@ async function chartsOutputGraph(id, x, ys, colors) {
 
 	// resize canvas before drawing to it
 	let canvas = document.getElementById("chart" + id);
+	canvas.width = "300px"
+	canvas.height = "150px"
+
 	canvas.style.width='100%';
 	canvas.style.height='100%';
 	canvas.width  = canvas.offsetWidth;
 	canvas.height = canvas.offsetHeight;
 
 	let datasets = [];
-	let scales = {};
 	// add ys to dataset
 	for (const [key, value] of Object.entries(ys)) {
-		// colors = ys["colors"]
-		// y_vals = ys["vals"]
 		datasets.push({
 			data: value["vals"],
 			label: key + " (" + value["units"] + ")",
 			borderColor: value["color"],
-			// yAxisID: key,
 		});
-		// scales[key] = {
-		// 	type: "linear",
-		// 	display: true,
-		// 	grid: {
-		// 		drawOnChartArea: false, // only want the grid lines for one axis to show up
-		// 	},
-
-		// }
 	}
 
 	// create chart pointing to the file's chart canvas

@@ -4,8 +4,6 @@ import js
 from js import document, DOMParser
 from pyscript import Element
 from pyodide.ffi import create_proxy
-import os
-import sqlite3
 import micropip
 
 async def customImports():
