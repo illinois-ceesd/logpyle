@@ -4,10 +4,14 @@ async function chartsOutputGraph(id, x, ys, colors) {
 	x = JSON.parse(x);
 	ys = JSON.parse(ys);
 
-	// resize canvas before drawing to it
+	// rebuild canvas before drawing to it
 	let canvas = document.getElementById("chart" + id);
-	canvas.width = "300px"
-	canvas.height = "150px"
+	let canvas_parent = canvas.parentElement;
+	let new_canvas = document.createElement("canvas")
+	new_canvas.id = "chart" + id
+
+	canvas.remove();
+	canvas_parent.appendChild(new_canvas);
 
 	canvas.style.width='100%';
 	canvas.style.height='100%';
