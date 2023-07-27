@@ -502,8 +502,6 @@ def test_time_and_count_function(basicLogmgr: LogManager):
 
 
 def test_joint_dataset(basicLogmgr: LogManager):
-    pytest.importorskip("psutil")
-
     add_general_quantities(basicLogmgr)
     basicLogmgr.tick_before()
     basicLogmgr.tick_after()
@@ -513,13 +511,11 @@ def test_joint_dataset(basicLogmgr: LogManager):
         "t_step",
         ("cpu time", Variable("s"), "t_wall"),
         "memory_usage_hwm",
-        "t_init",
     ]
     quantityNames = [
         "t_step",
         "cpu time",
         "memory_usage_hwm",
-        "t_init",
     ]
     dataset = basicLogmgr.get_joint_dataset(idealQuantitiesAdded)
 
