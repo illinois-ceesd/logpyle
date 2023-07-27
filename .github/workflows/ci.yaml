@@ -65,7 +65,7 @@ jobs:
             runalyzer -m summary.sqlite -c 'assert len([r[0] for r in q("select $t_init.max")]) == 1'
 
             ## Check that gathered and auto-gathered are equivilant
-            q1=$(runalyzer summaryy.sqlite -c 'db.print_cursor(db.q("select $t_init.max"))')
+            q1=$(runalyzer summary.sqlite -c 'db.print_cursor(db.q("select $t_init.max"))')
             q2=$(runalyzer log.sqlite -c 'db.print_cursor(db.q("select $t_init.max"))')
             if [[ $q2 == *"$q1"* ]]; then echo "t_init values match"; else exit 125; fi
 
