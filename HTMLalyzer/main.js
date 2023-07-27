@@ -21,32 +21,32 @@ async function chartsOutputGraph(id, x, ys, colors) {
 	let datasets = [];
 	// add ys to dataset
 	for (const [key, value] of Object.entries(ys)) {
+		dataPairs = [];
+		Object.entries(value["vals"]).forEach( (ele , index) => {
+			dataPairs.push({x: x[index], y: ele[1]})
+		} )
+
 		datasets.push({
-			data: value["vals"],
+			data: dataPairs,
 			label: key + " (" + value["units"] + ")",
 			borderColor: value["color"],
 		});
 	}
 
+	console.log(datasets)
+
 	// create chart pointing to the file's chart canvas
 	new Chart(document.getElementById("chart"+id), {
-		type: 'line',
+		type: 'scatter',
 		data: {
-			labels: x,
 			datasets: datasets
 		},
 
 		options: {
-			responsive: true,
-			plugins: {
-				legend: {
-					position: 'top',
-				},
-				title: {
-					display: true,
-					text: 'Chart.js Line Chart'
-				}
-			}
+			scales: {
+				type: 'linear',
+				position: 'bottom'
+			},
 		},
 
 	});

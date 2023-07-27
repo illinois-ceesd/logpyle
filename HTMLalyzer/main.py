@@ -48,7 +48,6 @@ def addFileFunc():
 
 
 async def runPlot(event):
-    # TODO loop over all y-axis quantities and create multiple lines
     id = event.target.getAttribute("param")
     output = document.getElementById("output" + str(id))
     output.id = "graph-area"
