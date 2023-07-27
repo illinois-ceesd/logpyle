@@ -13,7 +13,7 @@ def main() -> None:
     parser.add_argument("-c", "--commands", action="store",
             help="commands to execute")
     parser.add_argument("dbfiles", nargs="+", type=str,
-                        help="database file to read")
+                        help="database file(s) to read")
     parser.add_argument("--script", type=str,
                         help="script file to read")
     args = parser.parse_args()

@@ -20,9 +20,9 @@ given as "watches" are also periodically logged to the console.
 To analyze this data, we need some tools that are distributed as part of this
 package.
 
-You may use ``runalyzer`` to analyze the summary file::
+You may use ``runalyzer`` to analyze the log file::
 
-    $ runalyzer summary.sqlite
+    $ runalyzer log.sqlite
     Runalyzer running on Python 3.8.5 (default, Aug  2 2020, 15:09:07)
     [GCC 10.2.0]
     Run .help to see help for 'magic' commands
