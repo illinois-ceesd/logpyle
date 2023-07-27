@@ -498,7 +498,8 @@ def auto_gather(filenames: List[str]) -> sqlite3.Connection:
 
         connection = gather_multi_file(":memory:", infiles, fmap, qmap, fg, features,
                                  dbname_to_run_id, True)
-        assert type(connection) is sqlite3.Connection
+        assert connection
+
         return connection
 
 
