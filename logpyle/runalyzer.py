@@ -46,6 +46,8 @@ class RunDB:
 
     def __del__(self) -> None:
         self.db.close()
+        self.db.close()
+        print("db was closed twice")
 
     def q(self, qry: str, *extra_args: Any) -> Cursor:
         return self.db.execute(self.mangle_sql(qry), extra_args)
@@ -485,23 +487,24 @@ def auto_gather(filenames: List[str]) -> sqlite3.Connection:
             raise Exception("Runalyzing multiple gathered files is not supported!!!")
 
         return sqlite3.connect(filenames[0])
-    else:
-        from logpyle.runalyzer_gather import (FeatureGatherer,
-                                              gather_multi_file, make_name_map,
-                                              scan)
-        print("Creating an in memory database from provided files")
-        from os.path import exists
-        infiles = [f for f in filenames if exists(f)]
-        # list of run features as {name: sql_type}
-        fg = FeatureGatherer(False, None)
-        features, dbname_to_run_id = scan(fg, infiles)
 
-        fmap = make_name_map("")
-        qmap = make_name_map("")
+    # create in memory database of files to be gathered
+    from logpyle.runalyzer_gather import (FeatureGatherer,
+                                          gather_multi_file, make_name_map,
+                                          scan)
+    print("Creating an in memory database from provided files")
+    from os.path import exists
+    infiles = [f for f in filenames if exists(f)]
+    # list of run features as {name: sql_type}
+    fg = FeatureGatherer(False, None)
+    features, dbname_to_run_id = scan(fg, infiles)
 
-        connection = gather_multi_file(":memory:", infiles, fmap, qmap, fg, features,
-                                 dbname_to_run_id)
-        return connection
+    fmap = make_name_map("")
+    qmap = make_name_map("")
+
+    connection = gather_multi_file(":memory:", infiles, fmap, qmap, fg, features,
+                             dbname_to_run_id)
+    return connection
 
 
 # {{{ main program
