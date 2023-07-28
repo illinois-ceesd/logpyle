@@ -211,8 +211,7 @@ def _normalize_types(x: Any) -> Any:
 def gather_multi_file(outfile: str, infiles: List[str], fmap: Dict[str, str],
                       qmap: Dict[str, str], fg: FeatureGatherer,
                       features: Dict[str, Any],
-                      dbname_to_run_id: Dict[str, int],
-                      return_conn: bool = False) -> Optional[sqlite3.Connection]:
+                      dbname_to_run_id: Dict[str, int]) -> sqlite3.Connection:
     from pytools import ProgressBar
     pb = ProgressBar("Importing...", len(infiles))  # type: ignore[no-untyped-call]
 
@@ -341,8 +340,4 @@ def gather_multi_file(outfile: str, infiles: List[str], fmap: Dict[str, str],
     pb.finished()  # type: ignore[no-untyped-call]
 
     db_conn.commit()
-    if return_conn:
-        return db_conn
-    else:
-        db_conn.close()
-        return None
+    return db_conn

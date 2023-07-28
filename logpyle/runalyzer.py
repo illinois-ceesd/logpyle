@@ -44,6 +44,9 @@ class RunDB:
         self.interactive = interactive
         self.rank_agg_tables: Set[Tuple[str, Callable[..., Any]]] = set()
 
+    def __del__(self) -> None:
+        self.db.close()
+
     def q(self, qry: str, *extra_args: Any) -> Cursor:
         return self.db.execute(self.mangle_sql(qry), extra_args)
 
@@ -497,7 +500,7 @@ def auto_gather(filenames: List[str]) -> sqlite3.Connection:
         qmap = make_name_map("")
 
         connection = gather_multi_file(":memory:", infiles, fmap, qmap, fg, features,
-                                 dbname_to_run_id, True)
+                                 dbname_to_run_id)
         assert connection
 
         return connection
