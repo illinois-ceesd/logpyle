@@ -6,6 +6,8 @@ mypy --strict logpyle
 
 mypy --strict examples
 
+mypy --strict test
+
 mypy --strict bin/logtool
 mypy --strict bin/runalyzer
 mypy --strict bin/runalyzer-gather
