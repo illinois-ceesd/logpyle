@@ -111,6 +111,7 @@ jobs:
             if [[ $q2 == *"$q1"* ]]; then echo "t_init values match"; else exit 125; fi
 
             ## Gather and autogather multiple runs together and compare output
+            rm summary.sqlite
             runalyzer-gather summary.sqlite mpi-log*.sqlite log.sqlite
 
             q1=$(runalyzer summary.sqlite -c 'db.print_cursor(db.q("select $t_log.max"))')
