@@ -511,13 +511,11 @@ def test_joint_dataset(basicLogmgr: LogManager):
         "t_step",
         ("cpu time", Variable("s"), "t_wall"),
         "memory_usage_hwm",
-        "t_init",
     ]
     quantityNames = [
         "t_step",
         "cpu time",
         "memory_usage_hwm",
-        "t_init",
     ]
     dataset = basicLogmgr.get_joint_dataset(idealQuantitiesAdded)
 
@@ -611,6 +609,8 @@ def test_write_datafile(basicLogmgr: LogManager):
 
 
 def test_plot_matplotlib(basicLogmgr: LogManager):
+    pytest.importorskip("matplotlib")
+
     add_general_quantities(basicLogmgr)
 
     N = 20
