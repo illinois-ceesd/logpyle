@@ -62,7 +62,7 @@ jobs:
 
             ## Check that gathered and auto-gathered are equivilant for t_log non-mpi case
             q1=$(runalyzer summary.sqlite -c 'db.print_cursor(db.q("select $t_log.max"))')
-            q2=$(runalyzer mpi-log*.sqlite -c 'db.print_cursor(db.q("select $t_log.max"))')
+            q2=$(runalyzer log.sqlite -c 'db.print_cursor(db.q("select $t_log.max"))')
             if [[ $q2 == *"$q1"* ]]; then echo "t_log values match"; else exit 125; fi
 
             ## Check that t_init is within [0, 20], and that there is only one value
