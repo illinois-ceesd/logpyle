@@ -46,8 +46,6 @@ class RunDB:
 
     def __del__(self) -> None:
         self.db.close()
-        self.db.close()
-        print("db was closed twice")
 
     def q(self, qry: str, *extra_args: Any) -> Cursor:
         return self.db.execute(self.mangle_sql(qry), extra_args)
