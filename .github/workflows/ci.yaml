@@ -84,6 +84,7 @@ jobs:
             rm summary.sqlite
             runalyzer-gather summary.sqlite mpi-log*.sqlite
             runalyzer -m summary.sqlite -c 'dbplot(q("select $t_sim.max, $t_step.max"))'
+            names=$(echo mpi-log*.sqlite)
 
             # Perform some simple tests on the output file
 
@@ -98,7 +99,7 @@ jobs:
 
             ## Check that gathered and auto-gathered are equivilant for t_log mpi case
             q1=$(runalyzer summary.sqlite -c 'db.print_cursor(db.q("select $t_log.max"))')
-            q2=$(runalyzer mpi-log*.sqlite -c 'db.print_cursor(db.q("select $t_log.max"))')
+            q2=$(runalyzer $names -c 'db.print_cursor(db.q("select $t_log.max"))')
             if [[ $q2 == *"$q1"* ]]; then echo "t_log values match"; else exit 125; fi
 
             ## Check that t_init is within [0, 20], and that there is only one value
@@ -107,7 +108,7 @@ jobs:
 
             ## Check that gathered and auto-gathered are equivilant for t_init mpi case
             q1=$(runalyzer summary.sqlite -c 'db.print_cursor(db.q("select $t_init.max"))')
-            q2=$(runalyzer mpi-log*.sqlite -c 'db.print_cursor(db.q("select $t_init.max"))')
+            q2=$(runalyzer $names -c 'db.print_cursor(db.q("select $t_init.max"))')
             if [[ $q2 == *"$q1"* ]]; then echo "t_init values match"; else exit 125; fi
 
 
