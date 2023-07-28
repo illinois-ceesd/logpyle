@@ -489,9 +489,8 @@ def auto_gather(filenames: List[str]) -> sqlite3.Connection:
         return sqlite3.connect(filenames[0])
 
     # create in memory database of files to be gathered
-    from logpyle.runalyzer_gather import (FeatureGatherer,
-                                          gather_multi_file, make_name_map,
-                                          scan)
+    from logpyle.runalyzer_gather import (FeatureGatherer, gather_multi_file,
+                                          make_name_map, scan)
     print("Creating an in memory database from provided files")
     from os.path import exists
     infiles = [f for f in filenames if exists(f)]
