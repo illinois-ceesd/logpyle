@@ -125,6 +125,7 @@ jobs:
             set +e
             runalyzer summary.sqlite summary_multirun.sqlite -c 'db.print_cursor(db.q("select $t_log.max"))'
             if [ $? -eq 0 ]; then echo "Exception was not raised when gathering gathered files"; exit 1; else echo "Exception was raised"; fi
+            set -e
 
 
     docs:
