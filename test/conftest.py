@@ -1,12 +1,10 @@
 import pytest
 
-from logpyle import (
-    LogManager,
-)
+from logpyle import LogManager
 
 
 @pytest.fixture
-def basicLogmgr():
+def basic_logmgr():
     import os
 
     # setup
