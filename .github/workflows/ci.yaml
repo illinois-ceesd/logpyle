@@ -110,6 +110,17 @@ jobs:
             q2=$(runalyzer mpi-log*.sqlite -c 'db.print_cursor(db.q("select $t_init.max"))')
             if [[ $q2 == *"$q1"* ]]; then echo "t_init values match"; else exit 125; fi
 
+            ## Gather and autogather multiple runs together and compare output
+            runalyzer-gather summary.sqlite mpi-log*.sqlite log.sqlite
+
+            q1=$(runalyzer summary.sqlite -c 'db.print_cursor(db.q("select $t_log.max"))')
+            q2=$(runalyzer mpi-log*.sqlite log.sqlite -c 'db.print_cursor(db.q("select $t_log.max"))')
+            if [[ $q2 == *"$q1"* ]]; then echo "t_log values match"; else exit 125; fi
+
+            q1=$(runalyzer summary.sqlite -c 'db.print_cursor(db.q("select $t_init.max"))')
+            q2=$(runalyzer mpi-log*.sqlite log.sqlite -c 'db.print_cursor(db.q("select $t_init.max"))')
+            if [[ $q2 == *"$q1"* ]]; then echo "t_init values match"; else exit 125; fi
+
 
     docs:
         name: Documentation
