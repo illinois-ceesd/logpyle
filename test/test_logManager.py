@@ -598,10 +598,10 @@ def test_write_datafile(basic_logmgr: LogManager):
     os.remove(filename)
 
 
-def test_plot_matplotlib(basicLogmgr: LogManager):
+def test_plot_matplotlib(basic_logmgr: LogManager):
     pytest.importorskip("matplotlib")
 
-    add_general_quantities(basicLogmgr)
+    add_general_quantities(basic_logmgr)
 
     n = 20
 
