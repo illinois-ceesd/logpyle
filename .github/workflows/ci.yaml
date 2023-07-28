@@ -121,6 +121,8 @@ jobs:
             auto_gather=$(runalyzer mpi-log*.sqlite log.sqlite -c 'db.print_cursor(db.q("select $t_init.max"))' | grep -v Creating)
             if [[ $auto_gather == $manual_gather ]]; then echo "t_init values match"; else exit 1; fi
 
+            # ensure that gathering gathered files raises exception
+            set +e
             runalyzer summary.sqlite summary_multirun.sqlite -c 'db.print_cursor(db.q("select $t_log.max"))'
             if [ $? -eq 0 ]; then echo "Exception was not raised when gathering gathered files"; exit 1; else echo "Exception was raised"; fi
 
