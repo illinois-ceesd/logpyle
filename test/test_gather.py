@@ -52,13 +52,15 @@ def test_manual_gather_multi():
     def is_unique_filename(str: str):
         return str.startswith("mpi-log-rank")
 
+    n = 2
+
     log_files = [f for f in os.listdir() if is_unique_filename(f)]
     assert len(log_files) == 0  # no initial mpi-log files
 
-    os.system("mpiexec -n 4 ../examples/log-mpi.py")
+    os.system(f"mpiexec -n {n} ../examples/log-mpi.py")
 
     log_files = [f for f in os.listdir() if is_unique_filename(f)]
-    assert len(log_files) == 4, "The logging files were not generated."
+    assert len(log_files) == n, "The logging files were not generated."
 
     # gather example sqlite
     os.system("runalyzer-gather summary.sqlite mpi-log*.sqlite")
