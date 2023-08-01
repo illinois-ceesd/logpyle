@@ -1,46 +1,13 @@
-import pytest
-import sys
 import os
+import sys
 from time import sleep
 
-from logpyle import (
-    add_run_info,
-    add_general_quantities,
-    add_simulation_quantities,
-    set_dt,
-    GCStats,
-    LogManager,
-    IntervalTimer,
-    PushLogQuantity,
-    TimestepDuration,
-    StepToStepDuration,
-    TimestepCounter,
-    WallTime,
-    LogQuantity,
-    CallableLogQuantityAdapter,
-    MultiLogQuantity,
-    DtConsumer,
-    ETA,
-    EventCounter,
-    time_and_count_function,
-)
+import pytest
 
-
-@pytest.fixture
-def basicLogmgr():
-    import os
-
-    # setup
-    filename = "THIS_LOG_SHOULD_BE_DELETED.sqlite"
-    logmgr = LogManager(filename, "wo")
-    # give obj to test
-    yield logmgr
-    # cleanup object
-    logmgr.close()
-    os.remove(filename)
-
+from logpyle import LogManager, LogQuantity
 
 # {{{ mpi test infrastructure
+
 
 def run_test_with_mpi(num_ranks, f, *args, extra_env_vars=None):
     pytest.importorskip("mpi4py")
@@ -48,8 +15,8 @@ def run_test_with_mpi(num_ranks, f, *args, extra_env_vars=None):
     if extra_env_vars is None:
         extra_env_vars = {}
 
-    from pickle import dumps
     from base64 import b64encode
+    from pickle import dumps
     from subprocess import check_call
 
     env_vars = {
@@ -70,9 +37,8 @@ def run_test_with_mpi(num_ranks, f, *args, extra_env_vars=None):
 
 
 def run_test_with_mpi_inner():
-    from pickle import loads
-
     from base64 import b64decode
+    from pickle import loads
     f, args = loads(b64decode(os.environ["INVOCATION_INFO"].encode()))
 
     f(*args)
@@ -80,7 +46,7 @@ def run_test_with_mpi_inner():
 
 # }}}
 
-def setupManager() -> LogManager:
+def setup_manager() -> LogManager:
     from mpi4py import MPI  # pylint: disable=import-error
 
     comm = MPI.COMM_WORLD
@@ -90,29 +56,30 @@ def setupManager() -> LogManager:
     return logmgr, comm
 
 
-def teardownManager(logmgr: LogManager):
+def teardown_manager(logmgr: LogManager):
     logmgr.close()
 
-def cleanupFiles():
+
+def cleanup_files():
     sleep(5)
 
-    def isUniqueFilename(str: str):
+    def is_unique_filename(str: str):
         return str.startswith("THIS_LOG_SHOULD_BE_DELETED-")
 
-    files = [f for f in os.listdir() if isUniqueFilename(f)]
+    files = [f for f in os.listdir() if is_unique_filename(f)]
     for f in files:
         os.remove(f)
 
 
-@pytest.mark.parametrize('execution_number', range(1))
+@pytest.mark.parametrize("execution_number", range(1))
 def test_distributed_execution_basic(execution_number):
     run_test_with_mpi(2, _do_test_distributed_execution_basic)
 
-    cleanupFiles()
+    cleanup_files()
 
 
 def _do_test_distributed_execution_basic():
-    logmgr, comm = setupManager()
+    logmgr, comm = setup_manager()
 
     rank = comm.Get_rank()
     size = comm.Get_size()
@@ -123,18 +90,18 @@ def _do_test_distributed_execution_basic():
     assert rank == logmgr.rank
     assert logmgr.is_parallel is True
 
-    teardownManager(logmgr)
+    teardown_manager(logmgr)
 
 
-@pytest.mark.parametrize('execution_number', range(1))
+@pytest.mark.parametrize("execution_number", range(1))
 def test_distributed_execution_add_watches(execution_number):
     run_test_with_mpi(2, _do_test_distributed_execution_basic)
 
-    cleanupFiles()
+    cleanup_files()
 
 
 def _do_test_distributed_execution_add_watches():
-    logmgr, comm = setupManager()
+    logmgr, comm = setup_manager()
 
     rank = comm.Get_rank()
     size = comm.Get_size()
@@ -163,14 +130,14 @@ def _do_test_distributed_execution_add_watches():
     logmgr.save()
 
     # check that all watches are present
-    actualWatches = [watch.expr for watch in logmgr.watches]
+    actual_watches = [watch.expr for watch in logmgr.watches]
     expected = ["name1", "tup_name1", "name2"]
-    actualWatches.sort()
+    actual_watches.sort()
     expected.sort()
-    print(actualWatches, expected)
-    assert actualWatches == expected
+    print(actual_watches, expected)
+    assert actual_watches == expected
 
-    teardownManager(logmgr)
+    teardown_manager(logmgr)
 
 
 if __name__ == "__main__":
