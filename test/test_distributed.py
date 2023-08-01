@@ -1,6 +1,7 @@
 import pytest
 import sys
 import os
+from time import sleep
 
 from logpyle import (
     add_run_info,
@@ -92,6 +93,9 @@ def setupManager() -> LogManager:
 def teardownManager(logmgr: LogManager):
     logmgr.close()
 
+def cleanupFiles():
+    sleep(5)
+
     def isUniqueFilename(str: str):
         return str.startswith("THIS_LOG_SHOULD_BE_DELETED-")
 
@@ -103,6 +107,8 @@ def teardownManager(logmgr: LogManager):
 @pytest.mark.parametrize('execution_number', range(1))
 def test_distributed_execution_basic(execution_number):
     run_test_with_mpi(2, _do_test_distributed_execution_basic)
+
+    cleanupFiles()
 
 
 def _do_test_distributed_execution_basic():
@@ -123,6 +129,8 @@ def _do_test_distributed_execution_basic():
 @pytest.mark.parametrize('execution_number', range(1))
 def test_distributed_execution_add_watches(execution_number):
     run_test_with_mpi(2, _do_test_distributed_execution_basic)
+
+    cleanupFiles()
 
 
 def _do_test_distributed_execution_add_watches():
