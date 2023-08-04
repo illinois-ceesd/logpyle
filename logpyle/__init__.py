@@ -567,6 +567,7 @@ class LogManager:
                     suffix = _get_unique_suffix()
 
             filename = file_base + suffix + file_extension
+            self.sqlite_filename = filename
 
             if mode == "wo":
                 import os
