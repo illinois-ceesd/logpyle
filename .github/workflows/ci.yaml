@@ -60,7 +60,7 @@ jobs:
             ## Check that t_log is within [0, 1]
             runalyzer -m summary.sqlite -c 'assert all([0 < r[0] < 1 for r in q("select $t_log.max")])'
 
-            ## Check that gathered and auto-gathered are equivilant for t_log non-mpi case
+            ## Check that gathered and auto-gathered are equivalent for t_log non-mpi case
             manual_gather=$(runalyzer summary.sqlite -c 'db.print_cursor(db.q("select $t_log.max"))')
             auto_gather=$(runalyzer log.sqlite -c 'db.print_cursor(db.q("select $t_log.max"))' | grep -v Creating)
             if [[ $auto_gather == $manual_gather ]]; then echo "t_log values match"; else exit 1; fi
@@ -69,7 +69,7 @@ jobs:
             runalyzer -m summary.sqlite -c 'assert all([0 < r[0] < 20 for r in q("select $t_init.max")])'
             runalyzer -m summary.sqlite -c 'assert len([r[0] for r in q("select $t_init.max")]) == 1'
 
-            ## Check that gathered and auto-gathered are equivilant for t_sim non-mpi case
+            ## Check that gathered and auto-gathered are equivalent for t_sim non-mpi case
             manual_gather=$(runalyzer summary.sqlite -c 'db.print_cursor(db.q("select $t_init.max"))')
             auto_gather=$(runalyzer log.sqlite -c 'db.print_cursor(db.q("select $t_init.max"))' | grep -v Creating)
             if [[ $auto_gather == $manual_gather ]]; then echo "t_init values match"; else exit 1; fi
@@ -96,7 +96,7 @@ jobs:
             ## Check that t_log is within [0, 1]
             runalyzer -m summary.sqlite -c 'assert all([0 < r[0] < 1 for r in q("select $t_log.max")])'
 
-            ## Check that gathered and auto-gathered are equivilant for t_log mpi case
+            ## Check that gathered and auto-gathered are equivalent for t_log mpi case
             manual_gather=$(runalyzer summary.sqlite -c 'db.print_cursor(db.q("select $t_log.max"))')
             auto_gather=$(runalyzer mpi-log*.sqlite -c 'db.print_cursor(db.q("select $t_log.max"))' | grep -v Creating)
             if [[ $auto_gather == $manual_gather ]]; then echo "t_log values match"; else exit 1; fi
@@ -105,7 +105,7 @@ jobs:
             runalyzer -m summary.sqlite -c 'assert all([0 < r[0] < 20 for r in q("select $t_init.max")])'
             runalyzer -m summary.sqlite -c 'assert len([r[0] for r in q("select $t_init.max")]) == 1'
 
-            ## Check that gathered and auto-gathered are equivilant for t_init mpi case
+            ## Check that gathered and auto-gathered are equivalent for t_init mpi case
             manual_gather=$(runalyzer summary.sqlite -c 'db.print_cursor(db.q("select $t_init.max"))')
             auto_gather=$(runalyzer mpi-log*.sqlite -c 'db.print_cursor(db.q("select $t_init.max"))' | grep -v Creating)
             if [[ $auto_gather == $manual_gather ]]; then echo "t_init values match"; else exit 1; fi
