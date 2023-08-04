@@ -16,6 +16,7 @@ def basic_logmgr():
     logmgr.close()
     os.remove(filename)
 
+
 def assert_cov(old_filename: str, new_filename: str):
     import json
 
@@ -31,6 +32,7 @@ def assert_cov(old_filename: str, new_filename: str):
     new_f.close()
     old_f.close()
     if new_cov < old_cov:
-        raise Exception(f"New coverage is less than old coverage. {old_cov}->{new_cov}")
+        raise Exception(f"New coverage is less than old coverage.\
+                {old_cov}->{new_cov}")
     else:
         print("Test coverage is acceptable")
