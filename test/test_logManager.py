@@ -315,7 +315,7 @@ def test_in_memory_w():
     logmgr.save()
     logmgr.close()
     print(logmgr.sqlite_filename)
-    assert logmgr.sqlite_filename == ":memory:"
+    assert logmgr.sqlite_filename is None
 
 
 def test_in_memory_wo():
@@ -327,7 +327,7 @@ def test_in_memory_wo():
     logmgr.save()
     logmgr.close()
     print(logmgr.sqlite_filename)
-    assert logmgr.sqlite_filename == ":memory:"
+    assert logmgr.sqlite_filename is None
 
 
 def test_in_memory_wu():
@@ -339,7 +339,7 @@ def test_in_memory_wu():
     logmgr.save()
     logmgr.close()
     print(logmgr.sqlite_filename)
-    assert logmgr.sqlite_filename == ":memory:"
+    assert logmgr.sqlite_filename is None
 
 
 def test_unique_suffix():
