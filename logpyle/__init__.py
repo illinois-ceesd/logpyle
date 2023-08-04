@@ -546,6 +546,7 @@ class LogManager:
         # database binding
         import sqlite3 as sqlite
 
+        self.sqlite_filename: Optional[str] = None
         if filename is None:
             file_base = ":memory:"
             file_extension = ""
@@ -567,7 +568,8 @@ class LogManager:
                     suffix = _get_unique_suffix()
 
             filename = file_base + suffix + file_extension
-            self.sqlite_filename = filename
+            if not file_base == ":memory:":
+                self.sqlite_filename = filename
 
             if mode == "wo":
                 import os
