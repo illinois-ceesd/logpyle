@@ -145,5 +145,4 @@ jobs:
             python -m pytest --durations=0 --tb=native -rxsw --cov-report term --cov-report json:old_cov.json --cov=logpyle logpyle_main/test/
 
             # ensure that coverage can only increase
-            python test/assert_cov.py
-
+            python -c 'exec(compile(open("test/conftest.py", "rb").read(), "test/conftest.py", "exec")); assert_cov("new_cov.json", "old_cov.json")'
