@@ -306,6 +306,42 @@ def test_reading_in_memory_logmanager():
         print(val)
 
 
+def test_in_memory_w():
+    logmgr = LogManager(None, "w")
+    add_general_quantities(logmgr)
+    logmgr.tick_before()
+    logmgr.tick_after()
+
+    logmgr.save()
+    logmgr.close()
+    print(logmgr.sqlite_filename)
+    assert logmgr.sqlite_filename == ":memory:"
+
+
+def test_in_memory_wo():
+    logmgr = LogManager(None, "wo")
+    add_general_quantities(logmgr)
+    logmgr.tick_before()
+    logmgr.tick_after()
+
+    logmgr.save()
+    logmgr.close()
+    print(logmgr.sqlite_filename)
+    assert logmgr.sqlite_filename == ":memory:"
+
+
+def test_in_memory_wu():
+    logmgr = LogManager(None, "wu")
+    add_general_quantities(logmgr)
+    logmgr.tick_before()
+    logmgr.tick_after()
+
+    logmgr.save()
+    logmgr.close()
+    print(logmgr.sqlite_filename)
+    assert logmgr.sqlite_filename == ":memory:"
+
+
 def test_unique_suffix():
     # testing two in a row with no computation in between should force
     # a collision due to the names being based on time of day
