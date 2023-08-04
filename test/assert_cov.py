@@ -1,7 +1,7 @@
 import json
 
-new_f = open('new_cov.json')
-old_f = open('old_cov.json')
+new_f = open("new_cov.json")
+old_f = open("old_cov.json")
 
 new = json.load(new_f)
 old = json.load(old_f)
