@@ -1,7 +1,10 @@
+import logging
 import os
-import subprocess
-from logpyle import (LogManager, LogQuantity, add_run_info,
-                     add_general_quantities)
+from warnings import warn
+
+from logpyle import (LogManager, LogQuantity, add_general_quantities,
+                     add_run_info)
+from logpyle.runalyzer import make_wrapped_db
 
 
 class Fifteen(LogQuantity):
@@ -20,9 +23,18 @@ def create_log(filename: str):
 
     logmgr.add_quantity(Fifteen("fifteen"))
 
+    logger = logging.getLogger(__name__)
+
     for i in range(20):
         print(i)
         logmgr.tick_before()
+
+        if i == 5:
+            warn("warning from fifth timestep")
+
+        if i == 10:
+            logger.warning("test on tenth timestep")
+
         # do something ...
         logmgr.tick_after()
 
@@ -36,34 +48,46 @@ def test_auto_gather_single():
 
     # check schema
 
-    # ensure logging table exists
-    result = subprocess.run("runalyzer log.sqlite -c 'db.print_cursor(\
-        db.q(\"select * from logging\"))'",
-        shell=True, capture_output=True, text=True).stdout.strip()
-    print("Logging data:")
-    print(result)
-    # ensure warnings table exists
-    result = subprocess.run("runalyzer log.sqlite -c 'db.print_cursor(\
-            db.q(\"select * from warnings\"))'",
-            shell=True, capture_output=True, text=True).stdout.strip()
-    print("Warnings data:")
-    print(result)
-    # ensure quantity in runs table exists
-    result = subprocess.run("runalyzer log.sqlite -c 'db.print_cursor(\
-            db.q(\"select $t_log.max\"))'",
-            shell=True, capture_output=True, text=True).stdout.strip()
+    # ensure quantity table exists
+    db = make_wrapped_db(["log.sqlite"], mangle=True, interactive=False)
+    cur = db.q("select * from quantities")
     print("Quantity data:")
+    result = list(cur)
     print(result)
+    assert len(result) == 8
+
+    # ensure warnings table exists
+    db = make_wrapped_db(["log.sqlite"], mangle=True, interactive=False)
+    cur = db.q("select * from warnings")
+    print("Warnings data:")
+    result = list(cur)
+    print(result)
+    assert len(result) == 1
+
+    # ensure logging in runs table exists
+    db = make_wrapped_db(["log.sqlite"], mangle=True, interactive=False)
+    cur = db.q("select * from logging")
+    print("Logging data:")
+    result = list(cur)
+    print(result)
+    assert len(result) == 1
 
     # check constant
-    result = subprocess.run("runalyzer log.sqlite -c 'db.print_cursor(\
-            db.q(\"select $fifteen\"))'",
-            shell=True, capture_output=True, text=True).stdout.strip()
+    db = make_wrapped_db(["log.sqlite"], mangle=True, interactive=False)
+    cur = db.q("select * from runs")
     print("Constant data:")
+    result = [row[0] for row in cur.description]
     print(result)
-    constant_entries = result.splitlines()[3:]
-    for line in constant_entries:
-        assert float(line.strip()) == 15
+    assert len(result) == 11
+
+    db = make_wrapped_db(["log.sqlite"], mangle=True, interactive=False)
+    cur = db.q("select $fifteen")
+    print("Fifteen data:")
+    result = [row[0] for row in cur]
+    print(result)
+    assert len(result) == 20
+    for num in result:
+        assert num == 15
 
     # teardown test
     os.remove("log.sqlite")
@@ -72,166 +96,56 @@ def test_auto_gather_single():
 def test_auto_gather_multi():
     # run example
     def is_unique_filename(str: str):
-        return str.startswith("mpi-log")
+        return str.startswith("multi-log")
 
-    n = 2
+    n = 4
 
     log_files = [f for f in os.listdir() if is_unique_filename(f)]
-    assert len(log_files) == 0  # no initial mpi-log files
+    assert len(log_files) == 0  # no initial multi-log files
 
-    create_log("mpi-log-1.sqlite")
-    create_log("mpi-log-2.sqlite")
+    filenames = []
+    for i in range(n):
+        name = f"multi-log-{i}.sqlite"
+        filenames.append(name)
+        create_log(name)
 
     log_files = [f for f in os.listdir() if is_unique_filename(f)]
     assert len(log_files) == n, "The logging files were not generated."
 
     # check schema
 
-    # ensure logging table exists
-    result = subprocess.run("runalyzer mpi-log*.sqlite -c 'db.print_cursor(\
-        db.q(\"select * from logging\"))'",
-        shell=True, capture_output=True, text=True).stdout.strip()
-    print("Logging data:")
-    print(result)
-    # ensure warnings table exists
-    result = subprocess.run("runalyzer mpi-log*.sqlite -c 'db.print_cursor(\
-            db.q(\"select * from warnings\"))'",
-            shell=True, capture_output=True, text=True).stdout.strip()
-    print("Warnings data:")
-    print(result)
-    # ensure quantity in runs table exists
-    result = subprocess.run("runalyzer mpi-log*.sqlite -c 'db.print_cursor(\
-            db.q(\"select $t_log.max\"))'",
-            shell=True, capture_output=True, text=True).stdout.strip()
+    # ensure quantity table exists
+    db = make_wrapped_db(filenames, mangle=True, interactive=False)
+    cur = db.q("select * from quantities")
     print("Quantity data:")
+    result = list(cur)
     print(result)
+    assert len(result) == 8
+
+    # ensure warnings table exists
+    db = make_wrapped_db(filenames, mangle=True, interactive=False)
+    cur = db.q("select * from warnings")
+    print("Warnings data:")
+    result = list(cur)
+    print(result)
+    assert len(result) == 1
+
+    # ensure logging in runs table exists
+    db = make_wrapped_db(filenames, mangle=True, interactive=False)
+    cur = db.q("select * from logging")
+    print("Logging data:")
+    result = list(cur)
+    print(result)
+    assert len(result) == n
 
     # check constant
-    result = subprocess.run("runalyzer mpi-log*.sqlite -c 'db.print_cursor(\
-            db.q(\"select $fifteen\"))'",
-            shell=True, capture_output=True, text=True).stdout.strip()
+    db = make_wrapped_db(filenames, mangle=True, interactive=False)
+    cur = db.q("select * from runs")
     print("Constant data:")
+    result = [row[0] for row in cur.description]
     print(result)
-    constant_entries = result.splitlines()[3:]
-    for line in constant_entries:
-        assert float(line.strip()) == 15
+    assert len(result) == 11
 
     # teardown test
-    log_files = [f for f in os.listdir() if is_unique_filename(f)]
-    for f in log_files:
+    for f in filenames:
         os.remove(f)
-
-
-# def test_manual_gather_single():
-#     # run example
-#     os.system("python ../examples/log.py")
-#     assert os.path.exists("log.sqlite"), "The logging file was not generated."
-
-#     # gather example sqlite
-#     os.system("runalyzer-gather summary.sqlite log.sqlite")
-#     assert os.path.exists("summary.sqlite"), "The logging file was not gathered."
-
-#     # check schema
-
-#     # ensure logging table exists
-#     result = subprocess.run("runalyzer summary.sqlite -c 'db.print_cursor(\
-#         db.q(\"select * from logging\"))'",
-#         shell=True, capture_output=True, text=True).stdout.strip()
-#     print("Logging data:")
-#     print(result)
-#     # ensure warnings table exists
-#     result = subprocess.run("runalyzer summary.sqlite -c 'db.print_cursor(\
-#             db.q(\"select * from warnings\"))'",
-#             shell=True, capture_output=True, text=True).stdout.strip()
-#     print("Warnings data:")
-#     print(result)
-#     # ensure quantity in runs table exists
-#     result = subprocess.run("runalyzer summary.sqlite -c 'db.print_cursor(\
-#             db.q(\"select $t_log.max\"))'",
-#             shell=True, capture_output=True, text=True).stdout.strip()
-#     print("Quantity data:")
-#     print(result)
-
-#     # check constant
-#     result = subprocess.run("runalyzer summary.sqlite -c 'db.print_cursor(\
-#             db.q(\"select $fifteen\"))'",
-#             shell=True, capture_output=True, text=True).stdout.strip()
-#     print("Constant data:")
-#     print(result)
-#     constant_entries = result.splitlines()[2:]
-#     for line in constant_entries:
-#         assert float(line.strip()) == 15
-
-#     # teardown test
-#     os.remove("log.sqlite")
-#     os.remove("summary.sqlite")
-
-
-# def test_manual_gather_multi():
-#     # run example
-#     def is_unique_filename(str: str):
-#         return str.startswith("mpi-log-rank")
-
-#     n = 2
-
-#     log_files = [f for f in os.listdir() if is_unique_filename(f)]
-#     assert len(log_files) == 0  # no initial mpi-log files
-
-#     os.system(f"mpiexec -n {n} ../examples/log-mpi.py")
-
-#     log_files = [f for f in os.listdir() if is_unique_filename(f)]
-#     assert len(log_files) == n, "The logging files were not generated."
-
-#     # gather example sqlite
-#     os.system("runalyzer-gather summary.sqlite mpi-log*.sqlite")
-#     assert os.path.exists("summary.sqlite"), "The logging file was not gathered."
-
-#     # check schema
-
-#     # ensure logging table exists
-#     result = subprocess.run("runalyzer summary.sqlite -c 'db.print_cursor(\
-#         db.q(\"select * from logging\"))'",
-#         shell=True, capture_output=True, text=True).stdout.strip()
-#     print("Logging data:")
-#     print(result)
-#     # ensure warnings table exists
-#     result = subprocess.run("runalyzer summary.sqlite -c 'db.print_cursor(\
-#             db.q(\"select * from warnings\"))'",
-#             shell=True, capture_output=True, text=True).stdout.strip()
-#     print("Warnings data:")
-#     print(result)
-#     # ensure quantity in runs table exists
-#     result = subprocess.run("runalyzer summary.sqlite -c 'db.print_cursor(\
-#             db.q(\"select $t_log.max\"))'",
-#             shell=True, capture_output=True, text=True).stdout.strip()
-#     print("Quantity data:")
-#     print(result)
-
-#     # check constant
-#     result = subprocess.run("runalyzer summary.sqlite -c 'db.print_cursor(\
-#             db.q(\"select $fifteen\"))'",
-#             shell=True, capture_output=True, text=True).stdout.strip()
-#     print("Constant data:")
-#     print(result)
-#     constant_entries = result.splitlines()[2:]
-#     for line in constant_entries:
-#         assert float(line.strip()) == 15
-
-#     # check aggregate
-#     max_t_log = subprocess.run("runalyzer summary.sqlite -c 'db.print_cursor(\
-#             db.q(\"select $t_log.max\"))'",
-#             shell=True, capture_output=True, text=True).stdout.strip()
-#     min_t_log = subprocess.run("runalyzer summary.sqlite -c 'db.print_cursor(\
-#             db.q(\"select $t_log.min\"))'",
-#             shell=True, capture_output=True, text=True).stdout.strip()
-#     print("Quantity data:")
-#     max_min_t_log = zip(max_t_log.splitlines()[2:], min_t_log.splitlines()[2:])
-#     for max, min in max_min_t_log:
-#         print(max.strip(), min.strip())
-#         assert float(max.strip()) > float(min.strip())
-
-#     # teardown test
-#     log_files = [f for f in os.listdir() if is_unique_filename(f)]
-#     for f in log_files:
-#         os.remove(f)
-#     os.remove("summary.sqlite")
