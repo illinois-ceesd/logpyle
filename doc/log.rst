@@ -23,6 +23,9 @@ package.
 You may use ``runalyzer`` to analyze the log file::
 
     $ runalyzer log.sqlite
+    Creating an in memory database from provided files
+    Scanning...          [########################################] ETA ?
+    Importing...         [########################################] ETA ?
     Runalyzer running on Python 3.8.5 (default, Aug  2 2020, 15:09:07)
     [GCC 10.2.0]
     Run .help to see help for 'magic' commands
