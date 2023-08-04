@@ -86,8 +86,7 @@ def test_auto_gather_single():
     result = [row[0] for row in cur]
     print(result)
     assert len(result) == 20
-    for num in result:
-        assert num == 15
+    assert all(num == 15 for num in result)
 
     # teardown test
     os.remove("log.sqlite")
