@@ -139,12 +139,13 @@ jobs:
             python -m pytest --durations=0 --tb=native -rxsw --cov-report json:new_cov.json --cov=logpyle test/
             cat new_cov.json
 
-
             # get main's test coverage
             git clone https://github.com/illinois-ceesd/logpyle.git logpyle_main
             pip uninstall logpyle -y
             pip install -e logpyle_main/
             python -m pytest --durations=0 --tb=native -rxsw --cov-report json:old_cov.json --cov=logpyle logpyle_main/test/
             cat old_cov.json
+
+            # ensure that coverage can only increase
             python test/assert_cov.py
 
