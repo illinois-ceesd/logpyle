@@ -317,10 +317,6 @@ def test_unique_suffix():
         else:
             return False
 
-    files = [f for f in os.listdir() if is_unique_filename(f)]
-    for f in files:
-        os.remove(f)
-
     logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED.sqlite", "wu")
     logmgr.close()
 
