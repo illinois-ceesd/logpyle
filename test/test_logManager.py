@@ -316,32 +316,16 @@ def test_reading_in_memory_logmanager():
         print(val)
 
 
-def test_in_memory_w():
-    logmgr = LogManager(None, "w")
-    add_general_quantities(logmgr)
-    logmgr.tick_before()
-    logmgr.tick_after()
-
-    logmgr.save()
-    logmgr.close()
-    print(logmgr.sqlite_filename)
-    assert logmgr.sqlite_filename is None
+test_writing_modes = [
+    ("w"),
+    ("wo"),
+    ("wu"),
+]
 
 
-def test_in_memory_wo():
-    logmgr = LogManager(None, "wo")
-    add_general_quantities(logmgr)
-    logmgr.tick_before()
-    logmgr.tick_after()
-
-    logmgr.save()
-    logmgr.close()
-    print(logmgr.sqlite_filename)
-    assert logmgr.sqlite_filename is None
-
-
-def test_in_memory_wu():
-    logmgr = LogManager(None, "wu")
+@pytest.mark.parametrize("mode", test_writing_modes)
+def test_in_memory_writing(mode):
+    logmgr = LogManager(None, mode)
     add_general_quantities(logmgr)
     logmgr.tick_before()
     logmgr.tick_after()
