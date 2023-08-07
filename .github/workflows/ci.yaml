@@ -60,9 +60,20 @@ jobs:
             ## Check that t_log is within [0, 1]
             runalyzer -m summary.sqlite -c 'assert all([0 < r[0] < 1 for r in q("select $t_log.max")])'
 
+            ## Check that gathered and auto-gathered are equivalent for t_log non-mpi case
+            manual_gather=$(runalyzer summary.sqlite -c 'db.print_cursor(db.q("select $t_log.max"))')
+            auto_gather=$(runalyzer log.sqlite -c 'db.print_cursor(db.q("select $t_log.max"))' | grep -v Creating)
+            if [[ $auto_gather == $manual_gather ]]; then echo "t_log values match"; else exit 1; fi
+
             ## Check that t_init is within [0, 20], and that there is only one value
             runalyzer -m summary.sqlite -c 'assert all([0 < r[0] < 20 for r in q("select $t_init.max")])'
             runalyzer -m summary.sqlite -c 'assert len([r[0] for r in q("select $t_init.max")]) == 1'
+
+            ## Check that gathered and auto-gathered are equivalent for t_sim non-mpi case
+            manual_gather=$(runalyzer summary.sqlite -c 'db.print_cursor(db.q("select $t_init.max"))')
+            auto_gather=$(runalyzer log.sqlite -c 'db.print_cursor(db.q("select $t_init.max"))' | grep -v Creating)
+            if [[ $auto_gather == $manual_gather ]]; then echo "t_init values match"; else exit 1; fi
+
 
             # Allow oversubscription of ranks to cores with Open MPI
             export OMPI_MCA_rmaps_base_oversubscribe=1
@@ -85,9 +96,37 @@ jobs:
             ## Check that t_log is within [0, 1]
             runalyzer -m summary.sqlite -c 'assert all([0 < r[0] < 1 for r in q("select $t_log.max")])'
 
+            ## Check that gathered and auto-gathered are equivalent for t_log mpi case
+            manual_gather=$(runalyzer summary.sqlite -c 'db.print_cursor(db.q("select $t_log.max"))')
+            auto_gather=$(runalyzer mpi-log*.sqlite -c 'db.print_cursor(db.q("select $t_log.max"))' | grep -v Creating)
+            if [[ $auto_gather == $manual_gather ]]; then echo "t_log values match"; else exit 1; fi
+
             ## Check that t_init is within [0, 20], and that there is only one value
             runalyzer -m summary.sqlite -c 'assert all([0 < r[0] < 20 for r in q("select $t_init.max")])'
             runalyzer -m summary.sqlite -c 'assert len([r[0] for r in q("select $t_init.max")]) == 1'
+
+            ## Check that gathered and auto-gathered are equivalent for t_init mpi case
+            manual_gather=$(runalyzer summary.sqlite -c 'db.print_cursor(db.q("select $t_init.max"))')
+            auto_gather=$(runalyzer mpi-log*.sqlite -c 'db.print_cursor(db.q("select $t_init.max"))' | grep -v Creating)
+            if [[ $auto_gather == $manual_gather ]]; then echo "t_init values match"; else exit 1; fi
+
+            ## Gather and autogather multiple runs together and compare output
+            runalyzer-gather summary_multirun.sqlite mpi-log*.sqlite log.sqlite
+
+            manual_gather=$(runalyzer summary_multirun.sqlite -c 'db.print_cursor(db.q("select $t_log.max"))')
+            auto_gather=$(runalyzer mpi-log*.sqlite log.sqlite -c 'db.print_cursor(db.q("select $t_log.max"))' | grep -v Creating)
+            if [[ $auto_gather == $manual_gather ]]; then echo "t_log values match"; else exit 1; fi
+
+            manual_gather=$(runalyzer summary_multirun.sqlite -c 'db.print_cursor(db.q("select $t_init.max"))')
+            auto_gather=$(runalyzer mpi-log*.sqlite log.sqlite -c 'db.print_cursor(db.q("select $t_init.max"))' | grep -v Creating)
+            if [[ $auto_gather == $manual_gather ]]; then echo "t_init values match"; else exit 1; fi
+
+            # ensure that gathering gathered files raises exception
+            set +e
+            runalyzer summary.sqlite summary_multirun.sqlite -c 'db.print_cursor(db.q("select $t_log.max"))'
+            if [ $? -eq 0 ]; then echo "Exception was not raised when gathering gathered files"; exit 1; else echo "Exception was raised"; fi
+            set -e
+
 
     docs:
         name: Documentation

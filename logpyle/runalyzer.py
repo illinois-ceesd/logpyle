@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 
 import code
+import sqlite3
 
 try:
     import readline
@@ -42,6 +43,9 @@ class RunDB:
         self.db = db
         self.interactive = interactive
         self.rank_agg_tables: Set[Tuple[str, Callable[..., Any]]] = set()
+
+    def __del__(self) -> None:
+        self.db.close()
 
     def q(self, qry: str, *extra_args: Any) -> Cursor:
         return self.db.execute(self.mangle_sql(qry), extra_args)
@@ -454,11 +458,56 @@ def my_sprintf(format: str, arg: str) -> str:
 # }}}
 
 
+def auto_gather(filenames: List[str]) -> sqlite3.Connection:
+    # allow for creating ungathered files.
+    # Check if database has been gathered, if not, create one in memory
+
+    # until no files have been checked, assume none have been gathered
+    gathered = False
+    # check if any of the provided files have been gathered
+    for f in filenames:
+        db = sqlite3.connect(f)
+        cur = db.cursor()
+
+        # get a list of tables with the name of 'runs'
+        res = list(cur.execute("""
+                            SELECT name
+                            FROM sqlite_master
+                            WHERE type='table' AND name='runs'
+                                          """))
+        # there exists a table with the name of 'runs'
+        if len(res) == 1:
+            gathered = True
+
+    if gathered:
+        # gathered files should only have one file
+        if len(filenames) > 1:
+            raise Exception("Runalyzing multiple gathered files is not supported!!!")
+
+        return sqlite3.connect(filenames[0])
+
+    # create in memory database of files to be gathered
+    from logpyle.runalyzer_gather import (FeatureGatherer, gather_multi_file,
+                                          make_name_map, scan)
+    print("Creating an in memory database from provided files")
+    from os.path import exists
+    infiles = [f for f in filenames if exists(f)]
+    # list of run features as {name: sql_type}
+    fg = FeatureGatherer(False, None)
+    features, dbname_to_run_id = scan(fg, infiles)
+
+    fmap = make_name_map("")
+    qmap = make_name_map("")
+
+    connection = gather_multi_file(":memory:", infiles, fmap, qmap, fg, features,
+                             dbname_to_run_id)
+    return connection
+
+
 # {{{ main program
 
-def make_wrapped_db(filename: str, interactive: bool, mangle: bool) -> RunDB:
-    import sqlite3
-    db = sqlite3.connect(filename)
+def make_wrapped_db(filenames: List[str], interactive: bool, mangle: bool) -> RunDB:
+    db = auto_gather(filenames)
     db.create_aggregate("stddev", 1, StdDeviation)  # type: ignore[arg-type]
     db.create_aggregate("var", 1, Variance)
     db.create_aggregate("norm1", 1, Norm1)  # type: ignore[arg-type]
