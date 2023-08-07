@@ -59,19 +59,8 @@ def teardown_manager(logmgr: LogManager):
     logmgr.close()
 
 
-def cleanup_files():
-    def is_unique_filename(str: str):
-        return str.startswith("THIS_LOG_SHOULD_BE_DELETED-")
-
-    files = [f for f in os.listdir() if is_unique_filename(f)]
-    for f in files:
-        os.remove(f)
-
-
-def test_distributed_execution_basic():
+def test_distributed_execution_basic(basic_distributed):
     run_test_with_mpi(2, _do_test_distributed_execution_basic)
-
-    cleanup_files()
 
 
 def _do_test_distributed_execution_basic():
@@ -89,10 +78,8 @@ def _do_test_distributed_execution_basic():
     teardown_manager(logmgr)
 
 
-def test_distributed_execution_add_watches():
+def test_distributed_execution_add_watches(basic_distributed):
     run_test_with_mpi(2, _do_test_distributed_execution_basic)
-
-    cleanup_files()
 
 
 def _do_test_distributed_execution_add_watches():
