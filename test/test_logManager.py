@@ -195,6 +195,8 @@ def test_existing_database_no_overwrite():
     logmgr.save()
     logmgr.close()
 
+    assert logmgr.sqlite_filename == filename
+
     with pytest.raises(RuntimeError):
         logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED.sqlite", "w")
 
@@ -215,6 +217,8 @@ def test_existing_database_with_overwrite():
     logmgr.save()
     logmgr.close()
 
+    assert logmgr.sqlite_filename == filename
+
     logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED.sqlite", "wo")
     # expect the data to have been overwritten
     with pytest.raises(KeyError):
@@ -233,6 +237,8 @@ def test_existing_file_with_overwrite():
 
     logmgr = LogManager(filename, "wo")
     logmgr.close()
+
+    assert logmgr.sqlite_filename == filename
 
     os.remove(filename)
 
@@ -257,11 +263,15 @@ def test_open_existing_database():
     logmgr.save()
     logmgr.close()
 
+    assert logmgr.sqlite_filename == filename
+
     logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED.sqlite", "r")
     # expect the data to be the same as the second tick
     saved_data = logmgr.get_expr_dataset("t_wall")
     print(saved_data)
     assert saved_data == second_tick
+
+    assert logmgr.sqlite_filename == filename
 
     os.remove(filename)
 
@@ -304,6 +314,26 @@ def test_reading_in_memory_logmanager():
         logmgr = LogManager(None, "r")
         val = logmgr.get_expr_dataset("t_wall")
         print(val)
+
+
+test_writing_modes = [
+    ("w"),
+    ("wo"),
+    ("wu"),
+]
+
+
+@pytest.mark.parametrize("mode", test_writing_modes)
+def test_in_memory_writing(mode):
+    logmgr = LogManager(None, mode)
+    add_general_quantities(logmgr)
+    logmgr.tick_before()
+    logmgr.tick_after()
+
+    logmgr.save()
+    logmgr.close()
+    print(logmgr.sqlite_filename)
+    assert logmgr.sqlite_filename is None
 
 
 def test_unique_suffix():
