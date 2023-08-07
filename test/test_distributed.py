@@ -61,8 +61,6 @@ def teardown_manager(logmgr: LogManager):
 
 
 def cleanup_files():
-    sleep(5)
-
     def is_unique_filename(str: str):
         return str.startswith("THIS_LOG_SHOULD_BE_DELETED-")
 
@@ -71,8 +69,7 @@ def cleanup_files():
         os.remove(f)
 
 
-@pytest.mark.parametrize("execution_number", range(1))
-def test_distributed_execution_basic(execution_number):
+def test_distributed_execution_basic():
     run_test_with_mpi(2, _do_test_distributed_execution_basic)
 
     cleanup_files()
@@ -93,8 +90,7 @@ def _do_test_distributed_execution_basic():
     teardown_manager(logmgr)
 
 
-@pytest.mark.parametrize("execution_number", range(1))
-def test_distributed_execution_add_watches(execution_number):
+def test_distributed_execution_add_watches():
     run_test_with_mpi(2, _do_test_distributed_execution_basic)
 
     cleanup_files()
