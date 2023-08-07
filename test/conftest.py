@@ -1,17 +1,6 @@
-import os
-
 import pytest
 
 from logpyle import LogManager
-
-
-def cleanup_mpi_files():
-    def is_unique_filename(str: str):
-        return str.startswith("THIS_LOG_SHOULD_BE_DELETED-")
-
-    files = [f for f in os.listdir() if is_unique_filename(f)]
-    for f in files:
-        os.remove(f)
 
 
 @pytest.fixture
@@ -26,13 +15,6 @@ def basic_logmgr():
     # cleanup object
     logmgr.close()
     os.remove(filename)
-
-
-@pytest.fixture
-def basic_distributed():
-    yield
-    cleanup_mpi_files()
-    print("cleaned up mpi files")
 
 
 def assert_cov(old_filename: str, new_filename: str):

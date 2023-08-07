@@ -57,9 +57,10 @@ def setup_manager() -> LogManager:
 
 def teardown_manager(logmgr: LogManager):
     logmgr.close()
+    os.remove(logmgr.sqlite_filename)
 
 
-def test_distributed_execution_basic(basic_distributed):
+def test_distributed_execution_basic():
     run_test_with_mpi(2, _do_test_distributed_execution_basic)
 
 
@@ -78,7 +79,7 @@ def _do_test_distributed_execution_basic():
     teardown_manager(logmgr)
 
 
-def test_distributed_execution_add_watches(basic_distributed):
+def test_distributed_execution_add_watches():
     run_test_with_mpi(2, _do_test_distributed_execution_basic)
 
 
