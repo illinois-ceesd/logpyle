@@ -171,9 +171,8 @@ jobs:
 
         - name: Run tests
           run: |
-            sudo apt-get update && sudo apt-get install -y libopenmpi-dev
             pip install -e .
             cd test
-            python -m pip install pytest pymbolic psutil matplotlib mpi4py
+            python -m pip install pytest pymbolic psutil matplotlib
             python -m pytest --durations=0 --tb=native -rxsw .
 
