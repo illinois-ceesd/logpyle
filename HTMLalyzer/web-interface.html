@@ -154,14 +154,1019 @@ async function download(filename, contents) {
     </py-config>
 
 <py-script>
+from typing import (TYPE_CHECKING, Any, Callable, Dict, Generator, Iterable,
+                    List, Optional, Sequence, TextIO, Tuple, Type, Union, cast)
+from time import monotonic as time_monotonic
+from dataclasses import dataclass
+from pytools.datatable import DataTable
+
+class LogQuantity:
+    """A source of a loggable scalar that is gathered at the start of each time step.
+
+    Quantity values are gathered in :meth:`LogManager.tick_before`.
+
+    .. automethod:: __init__
+    .. automethod:: tick
+    .. autoproperty:: default_aggregator
+    .. automethod:: __call__
+    """
+
+    sort_weight = 0
+
+    def __init__(self, name: str, unit: Optional[str] = None,
+                 description: Optional[str] = None) -> None:
+        """Create a new quantity.
+
+        Parameters
+        ----------
+        name
+          Quantity name.
+
+        unit
+          Quantity unit.
+
+        description
+          Quantity description.
+        """
+        self.name = name
+        self.unit = unit
+        self.description = description
+
+    @property
+    def default_aggregator(self) -> None:
+        """Default rank aggregation function."""
+        return None
+
+    def tick(self) -> None:
+        """Perform updates required at every :class:`LogManager` tick."""
+        pass
+
+    def __call__(self) -> Any:
+        """Return the current value of the diagnostic represented by this
+        :class:`LogQuantity` or None if no value is available.
+
+        This is only called if the invocation interval calls for it.
+        """
+        raise NotImplementedError
+
+
+@dataclass(frozen=True)
+class _GatherDescriptor:
+    quantity: LogQuantity
+    interval: int
+
+
+@dataclass(frozen=True)
+class _QuantityData:
+    unit: Optional[str]
+    description: Optional[str]
+    default_aggregator: Optional[Callable[..., Any]]
+
+
+
+class LogManager:
+    """A distributed-memory-capable diagnostic time-series logging facility.
+    It is meant to log data from a computation, with certain log quantities
+    available before a cycle, and certain other ones afterwards. A timeline of
+    invocations looks as follows::
+
+        tick_before()
+        compute...
+        tick_after()
+
+        tick_before()
+        compute...
+        tick_after()
+
+        ...
+
+    In a time-dependent simulation, each group of :meth:`tick_before`
+    :meth:`tick_after` calls captures data for a single time state,
+    namely that in which the data may have been *before* the "compute"
+    step. However, some data (such as the length of the timestep taken
+    in a time-adaptive method) may only be available *after* the completion
+    of the "compute..." stage, which is why :meth:`tick_after` exists.
+
+    A :class:`LogManager` logs any number of named time series of floats to
+    a file. Non-time-series data, in the form of constants, is also
+    supported and saved.
+
+    If MPI parallelism is used, the "head rank" below always refers to
+    rank 0.
+
+    Command line tools called :command:`runalyzer` are available for looking
+    at the data in a saved log.
+
+    .. automethod:: __init__
+    .. automethod:: save
+    .. automethod:: close
+
+    .. rubric:: Data retrieval
+
+    .. automethod:: get_table
+    .. automethod:: get_warnings
+    .. automethod:: get_logging
+    .. automethod:: get_expr_dataset
+    .. automethod:: get_joint_dataset
+
+    .. rubric:: Configuration
+
+    .. automethod:: capture_warnings
+    .. automethod:: capture_logging
+    .. automethod:: add_watches
+    .. automethod:: set_watch_interval
+    .. automethod:: set_constant
+    .. automethod:: add_quantity
+
+    .. rubric:: Time Loop
+
+    .. automethod:: tick_before
+    .. automethod:: tick_after
+    """
+
+    def __init__(self, filename: Optional[str] = None, mode: str = "r",
+                 mpi_comm: Optional["mpi4py.MPI.Comm"] = None,
+                 capture_warnings: bool = True, commit_interval: int = 90,
+                 watch_interval: float = 1.0,
+                 capture_logging: bool = True) -> None:
+        """Initialize this log manager instance.
+
+        :arg filename: If given, the filename to which this log is bound.
+          If this database exists, the current state is loaded from it.
+        :arg mode: One of "w", "r" for write, read. "w" assumes that the
+          database is initially empty. May also be "wu" to indicate that
+          a unique filename should be chosen automatically. May also be "wo"
+          to indicate that the file should be overwritten.
+        :arg mpi_comm: An optional :class:`mpi4py.MPI.Comm` object.
+          If given, logs are periodically synchronized to the head node,
+          which then writes them out to disk.
+        :arg capture_warnings: Tap the Python warnings facility and save warnings
+          to the log file.
+        :arg commit_interval: actually perform a commit only every N times a commit
+          is requested.
+        :arg watch_interval: print watches every N seconds.
+        """
+
+        assert isinstance(mode, str), "mode must be a string"
+        assert mode in ["w", "r", "wu", "wo"], "invalid mode"
+
+        self.quantity_data: Dict[str, _QuantityData] = {}
+        self.last_values: Dict[str, Optional[float]] = {}
+        self.before_gather_descriptors: List[_GatherDescriptor] = []
+        self.after_gather_descriptors: List[_GatherDescriptor] = []
+        self.tick_count = 0
+
+        self.commit_interval = commit_interval
+        self.commit_countdown = commit_interval
+
+        self.constants: Dict[str, object] = {}
+
+        self.last_save_time = time_monotonic()
+
+        # self-timing
+        self.start_time = time_monotonic()
+        self.t_log: float = 0
+
+        # parallel support
+        self.head_rank = 0
+        self.mpi_comm = mpi_comm
+        self.is_parallel = mpi_comm is not None
+
+        if mpi_comm is None:
+            self.rank = 0
+        else:
+            self.rank = mpi_comm.rank
+            self.head_rank = 0
+
+        # watch stuff
+        self.watches: List[_WatchInfo] = []
+        self.have_nonlocal_watches = False
+
+        # Interval between printing watches, in seconds
+        self.set_watch_interval(watch_interval)
+
+        # database binding
+        import sqlite3 as sqlite
+
+        self.sqlite_filename: Optional[str] = None
+        if filename is None:
+            file_base = ":memory:"
+            file_extension = ""
+        else:
+            import os
+            file_base, file_extension = os.path.splitext(filename)
+            if self.is_parallel:
+                file_base += "-rank%d" % self.rank
+
+        while True:
+            suffix = ""
+
+            if mode == "wu" and not file_base == ":memory:":
+                if self.is_parallel:
+                    assert self.mpi_comm
+                    suffix = self.mpi_comm.bcast(_get_unique_suffix(),
+                                                 root=self.head_rank)
+                else:
+                    suffix = _get_unique_suffix()
+
+            filename = file_base + suffix + file_extension
+            if not file_base == ":memory:":
+                self.sqlite_filename = filename
+
+            if mode == "wo":
+                import os
+                try:
+                    os.remove(filename)
+                except OSError:
+                    pass
+
+            self.db_conn = sqlite.connect(filename, timeout=30)
+            self.mode = mode
+            try:
+                self.db_conn.execute("select * from quantities;")
+            except sqlite.OperationalError:
+                # we're building a new database
+                if mode == "r":
+                    raise RuntimeError("Log database '%s' not found" % filename)
+
+                self.schema_version = _set_up_schema(self.db_conn)
+                self.set_constant("schema_version", self.schema_version)
+
+                self.set_constant("is_parallel", self.is_parallel)
+
+                # set globally unique run_id
+                if self.is_parallel:
+                    assert self.mpi_comm
+                    self.set_constant("unique_run_id",
+                            self.mpi_comm.bcast(_get_unique_id(),
+                                root=self.head_rank))
+                else:
+                    self.set_constant("unique_run_id", _get_unique_id())
+
+                if self.is_parallel:
+                    assert self.mpi_comm
+                    self.set_constant("rank_count", self.mpi_comm.Get_size())
+                else:
+                    self.set_constant("rank_count", 1)
+
+            else:
+                # we've opened an existing database
+                if mode == "w":
+                    raise RuntimeError("Log database '%s' already exists" % filename)
+
+                if mode == "wu":
+                    # try again with a new suffix
+                    continue
+
+                if mode == "wo":
+                    # try again, someone might have created a file with the same name
+                    continue
+
+                self._load()
+
+            break
+
+        # {{{ warnings/logging capture
+
+        self.warning_data: List[_LogWarningInfo] = []
+        self.old_showwarning: Optional[Callable[..., Any]] = None
+        if capture_warnings and self.mode[0] == "w":
+            self.capture_warnings(True)
+
+        self.logging_data: List[_LogWarningInfo] = []
+        self.logging_handler: Optional[logging.Handler] = None
+        if capture_logging and self.mode[0] == "w":
+            self.capture_logging(True)
+
+        # }}}
+
+    def get_logging(self) -> DataTable:
+        # Match the table set up by _set_up_schema
+        columns = ["rank", "step", "unixtime", "level", "message", "filename",
+                   "lineno"]
+
+        result = DataTable(columns)
+
+        if self.schema_version < 3:
+            from warnings import warn
+            warn("This database lacks a 'logging' table")
+            return result
+
+        for row in self.db_conn.execute(
+                "select %s from logging" % (", ".join(columns))):
+            result.insert_row(row)
+
+        return result
+
+    def get_warnings(self) -> DataTable:
+        # Match the table set up by _set_up_schema
+        columns = ["step", "message", "category", "filename", "lineno"]
+        if self.schema_version >= 2:
+            columns.insert(0, "rank")
+
+            if self.schema_version >= 3:
+                columns.insert(2, "unixtime")
+
+        result = DataTable(columns)
+
+        for row in self.db_conn.execute(
+                "select %s from warnings" % (", ".join(columns))):
+            result.insert_row(row)
+
+        return result
+
+    def capture_warnings(self, enable: bool = True) -> None:
+        def _showwarning(message: Union[Warning, str], category: Type[Warning],
+                         filename: str, lineno: int, file: Optional[TextIO] = None,
+                         line: Optional[str] = None) -> None:
+            assert self.old_showwarning
+            self.old_showwarning(message, category, filename, lineno, file, line)
+
+            from time import time
+
+            self.warning_data.append(_LogWarningInfo(
+                tick_count=self.tick_count,
+                time=time(),
+                message=str(message),
+                category=str(category),
+                filename=filename,
+                lineno=lineno
+            ))
+
+        import warnings
+        if enable:
+            if self.schema_version < 3:
+                raise ValueError("Warnings capture needs at least schema_version 3, "
+                                f" got {self.schema_version}")
+            if self.old_showwarning is None:
+                self.old_showwarning = warnings.showwarning
+                warnings.showwarning = _showwarning
+            else:
+                raise RuntimeError("Warnings capture was enabled twice")
+        else:
+            if self.old_showwarning is None:
+                raise RuntimeError(
+                        "Warnings capture was disabled, but never enabled")
+
+            warnings.showwarning = self.old_showwarning
+            self.old_showwarning = None
+
+    def capture_logging(self, enable: bool = True) -> None:
+        class LogpyleLogHandler(logging.Handler):
+            def __init__(self, mgr: LogManager) -> None:
+                logging.Handler.__init__(self)
+                self.mgr = mgr
+
+            def emit(self, record: logging.LogRecord) -> None:
+                from time import time
+                self.mgr.logging_data.append(
+                    _LogWarningInfo(tick_count=self.mgr.tick_count,
+                                time=time(),
+                                message=record.getMessage(),
+                                category=record.levelname,
+                                filename=record.pathname,
+                                lineno=record.lineno))
+
+        root_logger = logging.getLogger()
+
+        if enable:
+            if self.schema_version < 3:
+                raise ValueError("Logging capture needs at least schema_version 3, "
+                                f" got {self.schema_version}")
+            if self.mode[0] == "w" and self.logging_handler is None:
+                self.logging_handler = LogpyleLogHandler(self)
+                root_logger.addHandler(self.logging_handler)
+            elif self.logging_handler:
+                from warnings import warn
+                warn("Logging capture already enabled")
+        else:
+            if self.logging_handler:
+                root_logger.removeHandler(self.logging_handler)
+            self.logging_handler = None
+
+    def _load(self) -> None:
+        if self.mpi_comm and self.mpi_comm.rank != self.head_rank:
+            return
+
+        from pickle import loads
+        for name, value in self.db_conn.execute("select name, value from constants"):
+            self.constants[name] = loads(value)
+
+        self.schema_version = cast(int, self.constants.get("schema_version", 0))
+
+        self.is_parallel = bool(self.constants["is_parallel"])
+
+        for name, unit, description, def_agg in self.db_conn.execute(
+                "select name, unit, description, default_aggregator "
+                "from quantities"):
+            self.quantity_data[name] = _QuantityData(
+                    unit, description, loads(def_agg))
+
+    def close(self) -> None:
+        if self.old_showwarning is not None:
+            self.capture_warnings(False)
+
+        if self.logging_handler:
+            self.capture_logging(False)
+
+        self.save()
+        self.db_conn.close()
+
+    def add_watches(self, watches: List[Union[str, Tuple[str, str]]]) -> None:
+        """Add quantities that are printed after every time step.
+
+        :arg watches:
+            List of expressions to watch. Each element can either be
+            a string of the expression to watch, or a tuple of the expression
+            and a format string. In the format string, you can use the custom
+            fields ``{display}``, ``{value}``, and ``{unit}`` to indicate where the
+            watch expression, value, and unit should be printed. The default format
+            string for each watch is ``{display}={value:g}{unit}``.
+        """
+
+        default_format = "{display}={value:g}{unit} | "
+
+        for watch in watches:
+            if isinstance(watch, tuple):
+                expr, fmt = watch
+            else:
+                expr = watch
+                fmt = default_format
+
+            parsed = self._parse_expr(expr)
+            parsed, dep_data = self._get_expr_dep_data(parsed)
+
+            if len(dep_data) == 1:
+                unit = dep_data[0].qdat.unit
+            else:
+                unit = None
+
+            from pytools import any
+            self.have_nonlocal_watches = self.have_nonlocal_watches or \
+                    any(dd.nonlocal_agg for dd in dep_data)
+
+            from pymbolic import compile  # type: ignore[import]
+            compiled = compile(parsed, [dd.varname for dd in dep_data])
+
+            watch_info = _WatchInfo(parsed=parsed, expr=expr, dep_data=dep_data,
+                                    compiled=compiled, unit=unit, format=fmt)
+
+            self.watches.append(watch_info)
+
+    def set_watch_interval(self, interval: float) -> None:
+        """Set the interval (in seconds) between the time watches are printed.
+
+        :arg interval: watch printing interval in seconds.
+        """
+        self.watch_interval = interval
+        self.next_watch_tick = self.tick_count + 1
+
+    def set_constant(self, name: str, value: Any) -> None:
+        """Make a named, constant value available in the log.
+
+        :arg name: the name of the constant.
+        :arg value: the value of the constant.
+        """
+        existed = name in self.constants
+        self.constants[name] = value
+
+        from pickle import dumps
+        value = bytes(dumps(value))
+
+        if existed:
+            self.db_conn.execute("update constants set value = ? where name = ?",
+                    (value, name))
+        else:
+            self.db_conn.execute("insert into constants values (?,?)",
+                    (name, value))
+
+        self._commit()
+
+    def _insert_datapoint(self, name: str, value: Optional[float]) -> None:
+        if value is None:
+            return
+
+        self.last_values[name] = value
+
+        try:
+            self.db_conn.execute("insert into %s values (?,?,?)" % name,
+                    (self.tick_count, self.rank, float(value)))
+        except Exception:
+            print("while adding datapoint for '%s':" % name)
+            raise
+
+    def _update_t_log(self, name: str, value: float) -> None:
+        if value is None:
+            return
+
+        self.last_values[name] = value
+
+        try:
+            self.db_conn.execute(f"update {name} set value = {float(value)} \
+                where rank = {self.rank} and step = {self.tick_count}")
+        except Exception:
+            print("while adding datapoint for '%s':" % name)
+            raise
+
+    def _gather_for_descriptor(self, gd) -> None:
+        if self.tick_count % gd.interval == 0:
+            q_value = gd.quantity()
+            if isinstance(gd.quantity, MultiLogQuantity):
+                for name, value in zip(gd.quantity.names, q_value):
+                    self._insert_datapoint(name, value)
+            else:
+                self._insert_datapoint(gd.quantity.name, q_value)
+
+    def tick_before(self) -> None:
+        """Record data points from each added :class:`LogQuantity` that
+        is not an instance of :class:`PostLogQuantity`. Also, invoke
+        :meth:`PostLogQuantity.prepare_for_tick` on :class:`PostLogQuantity`
+        instances.
+        """
+        tick_start_time = time_monotonic()
+
+        for gd in self.before_gather_descriptors:
+            self._gather_for_descriptor(gd)
+
+        for gd in self.after_gather_descriptors:
+            cast(PostLogQuantity, gd.quantity).prepare_for_tick()
+
+        self.t_log = time_monotonic() - tick_start_time
+
+    def tick_after(self) -> None:
+        """Record data points from each added :class:`LogQuantity` that
+        is an instance of :class:`PostLogQuantity`.
+
+        May also checkpoint data to disk.
+        """
+        tick_start_time = time_monotonic()
+
+        for gd_lst in [self.before_gather_descriptors,
+                self.after_gather_descriptors]:
+            for gd in gd_lst:
+                gd.quantity.tick()
+
+        for gd in self.after_gather_descriptors:
+            self._gather_for_descriptor(gd)
+
+        if tick_start_time - self.start_time > 15*60:
+            save_interval = 5*60
+        else:
+            save_interval = 15
+
+        if tick_start_time > self.last_save_time + save_interval:
+            self.save()
+
+        # print watches
+        if self.tick_count+1 >= self.next_watch_tick:
+            self._watch_tick()
+
+        self.t_log += time_monotonic() - tick_start_time
+
+        # Adjust log update time(s), t_log
+        for gd in self.after_gather_descriptors:
+            if isinstance(gd.quantity, LogUpdateDuration):
+                self._update_t_log(gd.quantity.name, gd.quantity())
+
+        self.tick_count += 1
+
+    def _commit(self) -> None:
+        self.commit_countdown -= 1
+        if self.commit_countdown <= 0:
+            self.commit_countdown = self.commit_interval
+            self.db_conn.commit()
+
+    def save_logging(self) -> None:
+        for log in self.logging_data:
+            self.db_conn.execute(
+                "insert into logging values (?,?,?,?,?,?,?)",
+                (self.rank, log.tick_count, log.time,
+                log.category, log.message, log.filename,
+                log.lineno))
+
+        self.logging_data = []
+
+    def save_warnings(self) -> None:
+        for w in self.warning_data:
+            self.db_conn.execute(
+                "insert into warnings values (?,?,?,?,?,?,?)",
+                (self.rank, w.tick_count, w.time, w.message,
+                    w.category, w.filename, w.lineno))
+
+        self.warning_data = []
+
+    def save(self) -> None:
+        if self.mode[0] == "w":
+            self.save_logging()
+            self.save_warnings()
+
+        from sqlite3 import OperationalError
+        try:
+            self.db_conn.commit()
+        except OperationalError as e:
+            from warnings import warn
+            warn("encountered sqlite error during commit: %s" % e)
+
+        self.last_save_time = time_monotonic()
+
+    def add_quantity(self, quantity: LogQuantity, interval: int = 1) -> None:
+        """Add a :class:`LogQuantity` to this manager.
+
+        :arg quantity: add the specified :class:`LogQuantity`.
+        :arg interval: interval (in time steps) when to gather this quantity.
+        """
+
+        def add_internal(name: str, unit: Optional[str], description: Optional[str],
+                         def_agg: Optional[Callable[..., Any]]) -> None:
+            logger.debug("add log quantity '%s'" % name)
+
+            if name in self.quantity_data:
+                raise RuntimeError("cannot add the same quantity '%s' twice" % name)
+            self.quantity_data[name] = _QuantityData(unit, description, def_agg)
+
+            from pickle import dumps
+            self.db_conn.execute("""insert into quantities values (?,?,?,?)""", (
+                name, unit, description,
+                bytes(dumps(def_agg))))
+            self.db_conn.execute("""create table %s
+              (step integer, rank integer, value real)""" % name)
+
+            self._commit()
+
+        gd = _GatherDescriptor(quantity, interval)
+        if isinstance(quantity, PostLogQuantity):
+            gd_list = self.after_gather_descriptors
+        else:
+            gd_list = self.before_gather_descriptors
+
+        gd_list.append(gd)
+        gd_list.sort(key=lambda gd: gd.quantity.sort_weight)
+
+        if isinstance(quantity, MultiLogQuantity):
+            for name, unit, description, def_agg in zip(
+                    quantity.names,
+                    quantity.units,
+                    quantity.descriptions,
+                    quantity.default_aggregators):
+                add_internal(name, unit, description, def_agg)
+        else:
+            add_internal(quantity.name,
+                    quantity.unit, quantity.description,
+                    quantity.default_aggregator)
+
+import re
+import sqlite3
+
+bool_feat_re = re.compile(r"^([a-z]+)(True|False)$")
+int_feat_re = re.compile(r"^([a-z]+)([0-9]+)$")
+real_feat_re = re.compile(r"^([a-z]+)([0-9]+\.?[0-9]*)$")
+str_feat_re = re.compile(r"^([a-z]+)([A-Z][A-Za-z_0-9]+)$")
+
+from sqlite3 import Connection
+from typing import Any, Dict, List, Optional, Tuple, Union, cast
+
+from pytools.datatable import DataTable
+
+sqlite_keywords = """
+    abort action add after all alter analyze and as asc attach
+    autoincrement before begin between by cascade case cast check
+    collate column commit conflict constraint create cross current_date
+    current_time current_timestamp database default deferrable deferred
+    delete desc detach distinct drop each else end escape except
+    exclusive exists explain fail for foreign from full glob group
+    having if ignore immediate in index indexed initially inner insert
+    instead intersect into is isnull join key left like limit match
+    natural no not notnull null of offset on or order outer plan pragma
+    primary query raise references regexp reindex release rename
+    replace restrict right rollback row savepoint select set table temp
+    temporary then to transaction trigger union unique update using
+    vacuum values view virtual when where""".split()
+
+
+def parse_dir_feature(feat: str, number: int) \
+                        -> Tuple[Union[str, Any], str, Union[str, Any]]:
+    bool_match = bool_feat_re.match(feat)
+    if bool_match is not None:
+        return (bool_match.group(1), "integer", int(bool_match.group(2) == "True"))
+    int_match = int_feat_re.match(feat)
+    if int_match is not None:
+        return (int_match.group(1), "integer", float(int_match.group(2)))
+    real_match = real_feat_re.match(feat)
+    if real_match is not None:
+        return (real_match.group(1), "real", float(real_match.group(2)))
+    str_match = str_feat_re.match(feat)
+    if str_match is not None:
+        return (str_match.group(1), "text", str_match.group(2))
+    return ("dirfeat%d" % number, "text", feat)
+
+
+def larger_sql_type(type_a: Optional[str], type_b: Optional[str]) -> Optional[str]:
+    assert type_a in [None, "text", "real", "integer"]
+    assert type_b in [None, "text", "real", "integer"]
+
+    if type_a is None:
+        return type_b
+    if type_b is None:
+        return type_a
+    if "text" in [type_a, type_b]:
+        return "text"
+    if "real" in [type_a, type_b]:
+        return "real"
+    assert type_a == type_b == "integer"
+    return "integer"
+
+
+def sql_type_and_value(value: Any) \
+                        -> Tuple[Optional[str], Union[int, float, str, None]]:
+    if value is None:
+        return None, None
+    elif isinstance(value, bool):
+        return "integer", int(value)
+    elif isinstance(value, int):
+        return "integer", value
+    elif isinstance(value, float):
+        return "real", value
+    else:
+        return "text", str(value)
+
+
+def sql_type_and_value_from_str(value: str) \
+                        -> Tuple[Optional[str], Union[int, float, str, None]]:
+    if value == "None":
+        return None, None
+    elif value in ["True", "False"]:
+        return "integer", value == "True"
+    else:
+        try:
+            return "integer", int(value)
+        except ValueError:
+            pass
+        try:
+            return "real", float(value)
+        except ValueError:
+            pass
+        return "text", str(value)
+
+
+class FeatureGatherer:
+    def __init__(self, features_from_dir: bool = False,
+                 features_file: Optional[str] = None) -> None:
+        self.features_from_dir = features_from_dir
+
+        self.dir_to_features = {}
+        if features_file is not None:
+            for line in open(features_file).readlines():
+                colon_idx = line.find(":")
+                assert colon_idx != -1
+
+                entries = [val.strip() for val in line[colon_idx+1:].split(",")]
+                features = []
+                for entry in entries:
+                    equal_idx = entry.find("=")
+                    assert equal_idx != -1
+                    features.append((entry[:equal_idx],)
+                            + sql_type_and_value_from_str(entry[equal_idx+1:]))
+
+                self.dir_to_features[line[:colon_idx]] = features
+
+    def get_db_features(self, dbname: str, logmgr) -> List[Any]:
+        from os.path import dirname
+        dn = dirname(dbname)
+
+        features = self.dir_to_features.get(dn, [])[:]
+
+        if self.features_from_dir:
+            features.extend(parse_dir_feature(feat, i)
+                    for i, feat in enumerate(dn.split("-")))
+
+        for name, value in logmgr.constants.items():
+            features.append((name,) + sql_type_and_value(value))
+
+        return features
+
+
+def scan(fg: FeatureGatherer, dbnames: List[str], progress: bool = True) \
+            -> Tuple[Dict[str, Any], Dict[str, int]]:
+    features: Dict[str, Any] = {}
+    dbname_to_run_id = {}
+    uid_to_run_id: Dict[str, int] = {}
+    next_run_id = 1
+
+    from pytools import ProgressBar
+    if progress:
+        pb = ProgressBar("Scanning...",  # type: ignore[no-untyped-call]
+                         len(dbnames))
+
+    for dbname in dbnames:
+        try:
+            logmgr = LogManager(dbname, "r")
+        except Exception:
+            print("Trouble with file '%s'" % dbname)
+            raise
+
+        unique_run_id = cast(str, logmgr.constants.get("unique_run_id"))
+        run_id = uid_to_run_id.get(unique_run_id)
+
+        if run_id is None:
+            run_id = next_run_id
+            next_run_id += 1
+
+            if unique_run_id is not None:
+                uid_to_run_id[unique_run_id] = run_id
+
+        dbname_to_run_id[dbname] = run_id
+
+        if progress:
+            pb.progress()  # type: ignore[no-untyped-call]
+
+        for fname, ftype, fvalue in fg.get_db_features(dbname, logmgr):
+            if fname in features:
+                features[fname] = larger_sql_type(ftype, features[fname])
+            else:
+                if ftype is None:
+                    ftype = "text"
+                features[fname] = ftype
+
+        logmgr.close()
+
+    if progress:
+        pb.finished()  # type: ignore[no-untyped-call]
+
+    return features, dbname_to_run_id
+
+
+def make_name_map(map_str: str) -> Dict[str, str]:
+    import re
+    result: Dict[str, str] = {}
+
+    if not map_str:
+        return result
+
+    map_re = re.compile(r"^([a-z_A-Z0-9]+)=([a-z_A-Z0-9]+)$")
+    for fmap_entry in map_str.split(","):
+        match = map_re.match(fmap_entry)
+        if not (match and match.group(1) and match.group(2)):
+            raise RuntimeError(
+                    "Arguments to -m should have the form F1=FNAME1,F2=FNAME2,...")
+        result[match.group(1)] = match.group(2)
+
+    return result
+
+
+def _normalize_types(x: Any) -> Any:
+    # get rid of numpy types
+    if isinstance(x, int):
+        return int(x)
+    if isinstance(x, float):
+        return float(x)
+    return x
+
+
+def gather_multi_file(outfile: str, infiles: List[str], fmap: Dict[str, str],
+                      qmap: Dict[str, str], fg: FeatureGatherer,
+                      features: Dict[str, Any],
+                      dbname_to_run_id: Dict[str, int]) -> sqlite3.Connection:
+    from pytools import ProgressBar
+    pb = ProgressBar("Importing...", len(infiles))  # type: ignore[no-untyped-call]
+
+    feature_col_name_map = {}
+    for fname in features:
+        tgt_name = fmap.get(fname, fname)
+
+        if tgt_name.lower() in sqlite_keywords:
+            feature_col_name_map[fname] = tgt_name+"_"
+        else:
+            feature_col_name_map[fname] = tgt_name
+
+    import sqlite3
+    db_conn = sqlite3.connect(outfile)
+    run_columns = [
+            "id integer primary key",
+            "dirname text",
+            "filename text",
+            ] + ["{} {}".format(feature_col_name_map[fname], ftype)
+                    for fname, ftype in features.items()]
+    db_conn.execute("create table runs (%s)" % ",".join(run_columns))
+    db_conn.execute("create index runs_id on runs (id)")
+
+    # Caveat: the next three tables need to match the tables in _set_up_schema,
+    # plus the 'id'/'run_id' columns.
+    db_conn.execute("""create table quantities (
+            id integer primary key,
+            name text,
+            unit text,
+            description text,
+            rank_aggregator text
+            )""")
+
+    db_conn.execute("""
+      create table warnings (
+        run_id integer,
+        rank integer,
+        step integer,
+        unixtime integer,
+        message text,
+        category text,
+        filename text,
+        lineno integer
+        )""")
+
+    db_conn.execute("""
+      create table logging (
+        run_id integer,
+        rank integer,
+        step integer,
+        unixtime integer,
+        level text,
+        message text,
+        filename text,
+        lineno integer
+        )""")
+
+    created_tables = set()
+
+    from os.path import basename, dirname
+
+    written_run_ids = set()
+
+    for dbname in infiles:
+        pb.progress()  # type: ignore[no-untyped-call]
+
+        run_id = dbname_to_run_id[dbname]
+
+        logmgr = LogManager(dbname, "r")
+
+        if run_id not in written_run_ids:
+            dbfeatures = fg.get_db_features(dbname, logmgr)
+            qry = "insert into runs ({}) values ({})".format(
+                ",".join(["id", "dirname", "filename"]
+                    + [feature_col_name_map[f[0]] for f in dbfeatures]),
+                ",".join("?" * (len(dbfeatures)+3)))
+            db_conn.execute(qry,
+                    [run_id, dirname(dbname), basename(dbname)]
+                    + [_normalize_types(f[2]) for f in dbfeatures])
+
+            written_run_ids.add(run_id)
+
+        def transfer_data_table_multi(db_conn: Connection, tbl_name: str,
+                                      data_table: DataTable) -> None:
+            my_data = [(run_id,)+d for d in data_table.data]
+
+            db_conn.executemany(f"insert into {tbl_name} (%s) values (%s)" %
+                ("run_id,"
+                    + ", ".join(data_table.column_names),
+                    ", ".join("?" * (len(data_table.column_names)+1))),
+                my_data)
+
+        transfer_data_table_multi(db_conn, "warnings", logmgr.get_warnings())
+        transfer_data_table_multi(db_conn, "logging", logmgr.get_logging())
+
+        for qname, qdat in logmgr.quantity_data.items():
+            tgt_qname = qmap.get(qname, qname)
+
+            if tgt_qname not in created_tables:
+                created_tables.add(tgt_qname)
+                db_conn.execute("create table %s ("
+                  "run_id integer, step integer, rank integer, value real)"
+                  % tgt_qname)
+
+                db_conn.execute(
+                        "create index {}_main on {} (run_id,step,rank)"
+                        .format(tgt_qname, tgt_qname))
+
+                agg = qdat.default_aggregator
+                try:
+                    agg = agg.__name__  # type: ignore[union-attr, assignment]
+                except AttributeError:
+                    if agg is not None:
+                        agg = str(agg)  # type: ignore[assignment]
+
+                db_conn.execute("insert into quantities "
+                        "(name,unit,description,rank_aggregator)"
+                        "values (?,?,?,?)",
+                        (tgt_qname, qdat.unit, qdat.description, agg))
+
+            cursor = logmgr.db_conn.execute(
+                    f"select {run_id},step,rank,value from {qname}")
+            db_conn.executemany("insert into %s values (?,?,?,?)" % tgt_qname,
+                    cursor)
+        logmgr.close()
+    pb.finished()  # type: ignore[no-untyped-call]
+
+    db_conn.commit()
+    return db_conn
+
+#! /usr/bin/env python
+
 import code
+import sqlite3
 
 try:
-	import readline
-	import rlcompleter  # noqa: F401
-	HAVE_READLINE = True
+    import readline
+    import rlcompleter  # noqa: F401
+    HAVE_READLINE = True
 except ImportError:
-	HAVE_READLINE = False
+    HAVE_READLINE = False
 
 
 import logging
@@ -172,466 +1177,514 @@ from dataclasses import dataclass
 from itertools import product
 from sqlite3 import Connection, Cursor
 from typing import (Any, Callable, Dict, Generator, List, Optional, Sequence,
-					Set, Tuple, Type, Union)
+                    Set, Tuple, Type, Union)
 
 from pytools import Table
 
 
 @dataclass(frozen=True)
 class PlotStyle:
-	dashes: Tuple[int, ...]
-	color: str
+    dashes: Tuple[int, ...]
+    color: str
 
 
 PLOT_STYLES = [
-		PlotStyle(dashes=dashes, color=color)
-		for dashes, color in product(
-			[(), (12, 2), (4, 2),  (2, 2), (2, 8)],
-			["blue", "green", "red", "magenta", "cyan"],
-			)]
+        PlotStyle(dashes=dashes, color=color)
+        for dashes, color in product(
+            [(), (12, 2), (4, 2),  (2, 2), (2, 8)],
+            ["blue", "green", "red", "magenta", "cyan"],
+            )]
 
 
 class RunDB:
-	def __init__(self, db: Connection, interactive: bool) -> None:
-		self.db = db
-		self.interactive = interactive
-		self.rank_agg_tables: Set[Tuple[str, Callable[..., Any]]] = set()
+    def __init__(self, db: Connection, interactive: bool) -> None:
+        self.db = db
+        self.interactive = interactive
+        self.rank_agg_tables: Set[Tuple[str, Callable[..., Any]]] = set()
 
-	def q(self, qry: str, *extra_args: Any) -> Cursor:
-		return self.db.execute(self.mangle_sql(qry), extra_args)
+    def __del__(self) -> None:
+        self.db.close()
 
-	def mangle_sql(self, qry: str) -> str:
-		return qry
+    def q(self, qry: str, *extra_args: Any) -> Cursor:
+        return self.db.execute(self.mangle_sql(qry), extra_args)
 
-	def get_rank_agg_table(self, qty: str,
-							rank_aggregator: Callable[..., Any]) -> str:
-		tbl_name = f"rankagg_{rank_aggregator}_{qty}"
+    def mangle_sql(self, qry: str) -> str:
+        return qry
 
-		if (qty, rank_aggregator) in self.rank_agg_tables:
-			return tbl_name
+    def get_rank_agg_table(self, qty: str,
+                           rank_aggregator: Callable[..., Any]) -> str:
+        tbl_name = f"rankagg_{rank_aggregator}_{qty}"
 
-		logger.info("Building temporary rank aggregation table {tbl_name}.")
+        if (qty, rank_aggregator) in self.rank_agg_tables:
+            return tbl_name
 
-		self.db.execute("create temporary table %s as "
-				"select run_id, step, %s(value) as value "
-				"from %s group by run_id,step" % (
-					tbl_name, rank_aggregator, qty))
-		self.db.execute("create index %s_run_step on %s (run_id,step)"
-				% (tbl_name, tbl_name))
-		self.rank_agg_tables.add((qty, rank_aggregator))
-		return tbl_name
+        logger.info("Building temporary rank aggregation table {tbl_name}.")
 
-	def scatter_cursor(self, cursor: Cursor, labels: Optional[List[str]] = None,
-						*args: Any, **kwargs: Any) -> None:
-		import matplotlib.pyplot as plt
+        self.db.execute("create temporary table %s as "
+                "select run_id, step, %s(value) as value "
+                "from %s group by run_id,step" % (
+                    tbl_name, rank_aggregator, qty))
+        self.db.execute("create index %s_run_step on %s (run_id,step)"
+                % (tbl_name, tbl_name))
+        self.rank_agg_tables.add((qty, rank_aggregator))
+        return tbl_name
 
-		data_args = tuple(zip(*list(cursor)))
-		plt.scatter(*(data_args + args), **kwargs)
+    def scatter_cursor(self, cursor: Cursor, labels: Optional[List[str]] = None,
+                       *args: Any, **kwargs: Any) -> None:
+        import matplotlib.pyplot as plt
 
-		if isinstance(labels, list) and len(labels) == 2:
-			plt.xlabel(labels[0])
-			plt.ylabel(labels[1])
-		elif labels is not None:
-			raise TypeError("The 'labels' parameter must be a list with two"
-							"elements.")
+        data_args = tuple(zip(*list(cursor)))
+        plt.scatter(*(data_args + args), **kwargs)
 
-		if self.interactive:
-			plt.show()
+        if isinstance(labels, list) and len(labels) == 2:
+            plt.xlabel(labels[0])
+            plt.ylabel(labels[1])
+        elif labels is not None:
+            raise TypeError("The 'labels' parameter must be a list with two"
+                            "elements.")
 
-	def plot_cursor(self, cursor: Cursor, labels: Optional[List[str]] = None,
-					*args: Any, **kwargs: Any) -> None:
-		import matplotlib.pyplot as plt
-		from matplotlib.pyplot import legend, plot, show, savefig
+        if self.interactive:
+            plt.show()
 
-		fig, _ = plt.subplots()
+    def plot_cursor(self, cursor: Cursor, labels: Optional[List[str]] = None,
+                    *args: Any, **kwargs: Any) -> None:
+        from matplotlib.pyplot import legend, plot, show
 
-		auto_style = kwargs.pop("auto_style", True)
+        auto_style = kwargs.pop("auto_style", True)
 
-		if len(cursor.description) == 2:
-			if auto_style:
-				style = PLOT_STYLES[0]
-				kwargs["dashes"] = style.dashes
-				kwargs["color"] = style.color
+        if len(cursor.description) == 2:
+            if auto_style:
+                style = PLOT_STYLES[0]
+                kwargs["dashes"] = style.dashes
+                kwargs["color"] = style.color
 
-			x, y = list(zip(*list(cursor)))
-			p = plot(x, y, *args, **kwargs)
+            x, y = list(zip(*list(cursor)))
+            p = plot(x, y, *args, **kwargs)
 
-			if isinstance(labels, list) and len(labels) == 2:
-				p[0].axes.set_xlabel(labels[0])
-				p[0].axes.set_ylabel(labels[1])
-			elif labels is not None:
-				raise TypeError("The 'labels' parameter must be a list with two"
-								" elements.")
+            if isinstance(labels, list) and len(labels) == 2:
+                p[0].axes.set_xlabel(labels[0])
+                p[0].axes.set_ylabel(labels[1])
+            elif labels is not None:
+                raise TypeError("The 'labels' parameter must be a list with two"
+                                " elements.")
 
-		elif len(cursor.description) > 2:
-			small_legend = kwargs.pop("small_legend", True)
+        elif len(cursor.description) > 2:
+            small_legend = kwargs.pop("small_legend", True)
 
-			def format_label(kv_pairs: Sequence[Tuple[str, Any]]) -> str:
-				return " ".join(f"{column}:{value}"
-							for column, value in kv_pairs)
-			format_label = kwargs.pop("format_label", format_label)
+            def format_label(kv_pairs: Sequence[Tuple[str, Any]]) -> str:
+                return " ".join(f"{column}:{value}"
+                            for column, value in kv_pairs)
+            format_label = kwargs.pop("format_label", format_label)
 
-			def do_plot(x: List[float], y: List[float],
-						row_rest: Tuple[Any, ...]) -> None:
-				my_kwargs = kwargs.copy()
-				style = PLOT_STYLES[style_idx[0] % len(PLOT_STYLES)]
-				if auto_style:
-					my_kwargs.setdefault("dashes", style.dashes)
-					my_kwargs.setdefault("color", style.color)
+            def do_plot(x: List[float], y: List[float],
+                        row_rest: Tuple[Any, ...]) -> None:
+                my_kwargs = kwargs.copy()
+                style = PLOT_STYLES[style_idx[0] % len(PLOT_STYLES)]
+                if auto_style:
+                    my_kwargs.setdefault("dashes", style.dashes)
+                    my_kwargs.setdefault("color", style.color)
 
-				my_kwargs.setdefault("label",
-						format_label(list(zip(
-							(col[0] for col in cursor.description[2:]),
-							row_rest))))
+                my_kwargs.setdefault("label",
+                        format_label(list(zip(
+                            (col[0] for col in cursor.description[2:]),
+                            row_rest))))
 
-				plot(x, y, *args, hold=True, **my_kwargs)
-				style_idx[0] += 1
+                plot(x, y, *args, hold=True, **my_kwargs)
+                style_idx[0] += 1
 
-			style_idx = [0]
-			for x, y, rest in split_cursor(cursor):
-				do_plot(x, y, rest)  # type: ignore[arg-type]
+            style_idx = [0]
+            for x, y, rest in split_cursor(cursor):
+                do_plot(x, y, rest)  # type: ignore[arg-type]
 
-		else:
-			raise ValueError("invalid number of columns")
+            if small_legend:
+                from matplotlib.font_manager import FontProperties
+                legend(pad=0.04, prop=FontProperties(size=8), loc="best",
+                        labelsep=0)
+        else:
+            raise ValueError("invalid number of columns")
 
-		if self.interactive:
-			from pyodide.ffi import to_js
-			from js import document, console, window
-			from os.path import exists
-			import matplotlib.image as mpimg
-			display(fig, target="graph-area", append=False)
-			show()
+        if self.interactive:
+            show()
 
-	def print_cursor(self, cursor: Cursor) -> None:
-		print(table_from_cursor(cursor))
+    def print_cursor(self, cursor: Cursor) -> None:
+        print(table_from_cursor(cursor))
 
 
 def split_cursor(cursor: Cursor) -> Generator[
-		Tuple[List[Any], List[Any], Optional[Tuple[Any, ...]]], None, None]:
+        Tuple[List[Any], List[Any], Optional[Tuple[Any, ...]]], None, None]:
 
-	x: List[Any] = []
-	y: List[Any] = []
-	last_rest = None
-	for row in cursor:
-		row_tuple = tuple(row)
-		row_rest = row_tuple[2:]
+    x: List[Any] = []
+    y: List[Any] = []
+    last_rest = None
+    for row in cursor:
+        row_tuple = tuple(row)
+        row_rest = row_tuple[2:]
 
-		if last_rest is None:
-			last_rest = row_rest
+        if last_rest is None:
+            last_rest = row_rest
 
-		if row_rest != last_rest:
-			yield x, y, last_rest
-			del x[:]
-			del y[:]
+        if row_rest != last_rest:
+            yield x, y, last_rest
+            del x[:]
+            del y[:]
 
-			last_rest = row_rest
+            last_rest = row_rest
 
-		x.append(row_tuple[0])
-		y.append(row_tuple[1])
-	if x:
-		yield x, y, last_rest
+        x.append(row_tuple[0])
+        y.append(row_tuple[1])
+    if x:
+        yield x, y, last_rest
 
 
 def table_from_cursor(cursor: Cursor) -> Table:
-	tbl = Table()
-	tbl.add_row(tuple([column[0] for column in cursor.description]))
-	for row in cursor:
-		tbl.add_row(row)
-	return tbl
+    tbl = Table()
+    tbl.add_row(tuple([column[0] for column in cursor.description]))
+    for row in cursor:
+        tbl.add_row(row)
+    return tbl
 
 
 class MagicRunDB(RunDB):
-	def mangle_sql(self, qry: str) -> str:
-		up_qry = qry.upper()
-		if "FROM" in up_qry and "$$" not in up_qry:
-			return qry
+    def mangle_sql(self, qry: str) -> str:
+        up_qry = qry.upper()
+        if "FROM" in up_qry and "$$" not in up_qry:
+            return qry
 
-		magic_columns = set()
-		import re
+        magic_columns = set()
+        import re
 
-		# should be: re.Match[Any]
-		def replace_magic_column(match: Any) -> str:
-			qty_name = match.group(1)
-			rank_aggregator = match.group(2)
+        # should be: re.Match[Any]
+        def replace_magic_column(match: Any) -> str:
+            qty_name = match.group(1)
+            rank_aggregator = match.group(2)
 
-			if rank_aggregator is not None:
-				rank_aggregator = rank_aggregator[1:]
-				magic_columns.add((qty_name, rank_aggregator))
-				return f"{rank_aggregator}_{qty_name}.value AS {qty_name}"
-			else:
-				magic_columns.add((qty_name, None))
-				return "%s.value AS %s" % (qty_name, qty_name)
+            if rank_aggregator is not None:
+                rank_aggregator = rank_aggregator[1:]
+                magic_columns.add((qty_name, rank_aggregator))
+                return f"{rank_aggregator}_{qty_name}.value AS {qty_name}"
+            else:
+                magic_columns.add((qty_name, None))
+                return "%s.value AS %s" % (qty_name, qty_name)
 
-		magic_column_re = re.compile(r"\$([a-zA-Z][A-Za-z0-9_]*)(\.[a-z]*)?")
-		qry, _ = magic_column_re.subn(replace_magic_column, qry)
+        magic_column_re = re.compile(r"\$([a-zA-Z][A-Za-z0-9_]*)(\.[a-z]*)?")
+        qry, _ = magic_column_re.subn(replace_magic_column, qry)
 
-		other_clauses = [  # noqa: F841
-				"UNION",  "INTERSECT", "EXCEPT", "WHERE", "GROUP",
-				"HAVING", "ORDER", "LIMIT", ";"]
+        other_clauses = [  # noqa: F841
+                "UNION",  "INTERSECT", "EXCEPT", "WHERE", "GROUP",
+                "HAVING", "ORDER", "LIMIT", ";"]
 
-		from_clause = "from runs "
-		last_tbl = None
-		for tbl, rank_aggregator in magic_columns:
-			if rank_aggregator is not None:
-				full_tbl = f"{rank_aggregator}_{tbl}"
-				full_tbl_src = "{} as {}".format(
-						self.get_rank_agg_table(tbl, rank_aggregator),
-						full_tbl)
+        from_clause = "from runs "
+        last_tbl = None
+        for tbl, rank_aggregator in magic_columns:
+            if rank_aggregator is not None:
+                full_tbl = f"{rank_aggregator}_{tbl}"
+                full_tbl_src = "{} as {}".format(
+                        self.get_rank_agg_table(tbl, rank_aggregator),
+                        full_tbl)
 
-				if last_tbl is not None:
-					addendum = f" and {last_tbl}.step = {full_tbl}.step"
-				else:
-					addendum = ""
-			else:
-				full_tbl = tbl
-				full_tbl_src = tbl
+                if last_tbl is not None:
+                    addendum = f" and {last_tbl}.step = {full_tbl}.step"
+                else:
+                    addendum = ""
+            else:
+                full_tbl = tbl
+                full_tbl_src = tbl
 
-				if last_tbl is not None:
-					addendum = " and {}.step = {}.step and {}.rank={}.rank".format(
-							last_tbl, full_tbl, last_tbl, full_tbl)
-				else:
-					addendum = ""
+                if last_tbl is not None:
+                    addendum = " and {}.step = {}.step and {}.rank={}.rank".format(
+                            last_tbl, full_tbl, last_tbl, full_tbl)
+                else:
+                    addendum = ""
 
-			from_clause += " inner join {} on ({}.run_id = runs.id{}) ".format(
-					full_tbl_src, full_tbl, addendum)
-			last_tbl = full_tbl
+            from_clause += " inner join {} on ({}.run_id = runs.id{}) ".format(
+                    full_tbl_src, full_tbl, addendum)
+            last_tbl = full_tbl
 
-		def get_clause_indices(qry: str) -> Dict[str, int]:
-			other_clauses = ["UNION",  "INTERSECT", "EXCEPT", "WHERE", "GROUP",
-					"HAVING", "ORDER", "LIMIT", ";"]
+        def get_clause_indices(qry: str) -> Dict[str, int]:
+            other_clauses = ["UNION",  "INTERSECT", "EXCEPT", "WHERE", "GROUP",
+                    "HAVING", "ORDER", "LIMIT", ";"]
 
-			result = {}
-			up_qry = qry.upper()
-			for clause in other_clauses:
-				clause_match = re.search(r"\b%s\b" % clause, up_qry)
-				if clause_match is not None:
-					result[clause] = clause_match.start()
+            result = {}
+            up_qry = qry.upper()
+            for clause in other_clauses:
+                clause_match = re.search(r"\b%s\b" % clause, up_qry)
+                if clause_match is not None:
+                    result[clause] = clause_match.start()
 
-			return result
+            return result
 
-		# add 'from'
-		if "$$" in qry:
-			qry = qry.replace("$$", " %s " % from_clause)
-		else:
-			clause_indices = get_clause_indices(qry)
+        # add 'from'
+        if "$$" in qry:
+            qry = qry.replace("$$", " %s " % from_clause)
+        else:
+            clause_indices = get_clause_indices(qry)
 
-			if not clause_indices:
-				qry = qry+" "+from_clause
-			else:
-				first_clause_idx = min(clause_indices.values())
-				qry = (
-						qry[:first_clause_idx]
-						+ from_clause
-						+ qry[first_clause_idx:])
+            if not clause_indices:
+                qry = qry+" "+from_clause
+            else:
+                first_clause_idx = min(clause_indices.values())
+                qry = (
+                        qry[:first_clause_idx]
+                        + from_clause
+                        + qry[first_clause_idx:])
 
-		return qry
+        return qry
 
 
 def make_runalyzer_symbols(db: RunDB) \
-		-> Dict[str, Union[RunDB, str, None, Callable[..., Any]]]:
-	return {
-			"__name__": "__console__",
-			"__doc__": None,
-			"db": db,
-			"mangle_sql": db.mangle_sql,
-			"q": db.q,
-			"dbplot": db.plot_cursor,
-			"dbscatter": db.scatter_cursor,
-			"dbprint": db.print_cursor,
-			"split_cursor": split_cursor,
-			"table_from_cursor": table_from_cursor,
-			}
+        -> Dict[str, Union[RunDB, str, None, Callable[..., Any]]]:
+    return {
+            "__name__": "__console__",
+            "__doc__": None,
+            "db": db,
+            "mangle_sql": db.mangle_sql,
+            "q": db.q,
+            "dbplot": db.plot_cursor,
+            "dbscatter": db.scatter_cursor,
+            "dbprint": db.print_cursor,
+            "split_cursor": split_cursor,
+            "table_from_cursor": table_from_cursor,
+            }
 
 
 class RunalyzerConsole(code.InteractiveConsole):
-	def __init__(self, db: RunDB) -> None:
-		self.db = db
-		code.InteractiveConsole.__init__(self,
-				make_runalyzer_symbols(db))
+    def __init__(self, db: RunDB) -> None:
+        self.db = db
+        code.InteractiveConsole.__init__(self,
+                make_runalyzer_symbols(db))
 
-		try:
-			import numpy  # noqa: F401
-			self.runsource("from numpy import *")
-		except ImportError:
-			pass
+        try:
+            import numpy  # noqa: F401
+            self.runsource("from numpy import *")
+        except ImportError:
+            pass
 
-		try:
-			import matplotlib.pyplot  # noqa
-			self.runsource("from matplotlib.pyplot import *")
-		except ImportError:
-			pass
-		except RuntimeError:
-			pass
+        try:
+            import matplotlib.pyplot  # noqa
+            self.runsource("from matplotlib.pyplot import *")
+        except ImportError:
+            pass
+        except RuntimeError:
+            pass
 
-		if HAVE_READLINE:
-			import atexit
-			import os
+        if HAVE_READLINE:
+            import atexit
+            import os
 
-			histfile = os.path.join(os.environ["HOME"], ".runalyzerhist")
-			if os.access(histfile, os.R_OK):
-				readline.read_history_file(histfile)
-			atexit.register(readline.write_history_file, histfile)
-			readline.parse_and_bind("tab: complete")
+            histfile = os.path.join(os.environ["HOME"], ".runalyzerhist")
+            if os.access(histfile, os.R_OK):
+                readline.read_history_file(histfile)
+            atexit.register(readline.write_history_file, histfile)
+            readline.parse_and_bind("tab: complete")
 
-		self.last_push_result = False
+        self.last_push_result = False
 
-	def push(self, cmdline: str) -> bool:
-		if cmdline.startswith("."):
-			try:
-				self.execute_magic(cmdline)
-			except Exception:
-				import traceback
-				traceback.print_exc()
-		else:
-			self.last_push_result = code.InteractiveConsole.push(self, cmdline)
+    def push(self, cmdline: str) -> bool:
+        if cmdline.startswith("."):
+            try:
+                self.execute_magic(cmdline)
+            except Exception:
+                import traceback
+                traceback.print_exc()
+        else:
+            self.last_push_result = code.InteractiveConsole.push(self, cmdline)
 
-		return self.last_push_result
+        return self.last_push_result
 
-	def execute_magic(self, cmdline: str) -> None:
-		cmd_end = cmdline.find(" ")
-		if cmd_end == -1:
-			cmd = cmdline[1:]
-			args = ""
-		else:
-			cmd = cmdline[1:cmd_end]
-			args = cmdline[cmd_end+1:]
+    def execute_magic(self, cmdline: str) -> None:
+        cmd_end = cmdline.find(" ")
+        if cmd_end == -1:
+            cmd = cmdline[1:]
+            args = ""
+        else:
+            cmd = cmdline[1:cmd_end]
+            args = cmdline[cmd_end+1:]
 
-		if cmd == "help":
-			print("""
+        if cmd == "help":
+            print("""
 Commands:
-	.help        show this help message
-	.q SQL       execute a (potentially mangled) query
-	.constants   show a list of (constant) run properties
-	.quantities  show a list of time-dependent quantities
-	.warnings    show a list of warnings
-	.logging     show a list of logging messages
+ .help        show this help message
+ .q SQL       execute a (potentially mangled) query
+ .constants   show a list of (constant) run properties
+ .quantities  show a list of time-dependent quantities
+ .warnings    show a list of warnings
+ .logging     show a list of logging messages
 
 Plotting:
-	.plot SQL    plot results of (potentially mangled) query.
-				result sets can be (x,y) or (x,y,descr1,descr2,...),
-				in which case a new plot will be started for each
-				tuple (descr1, descr2, ...)
-	.scatter SQL make scatterplot results of (potentially mangled) query.
-				result sets can have between two and four columns
-				for (x,y,size,color).
+ .plot SQL    plot results of (potentially mangled) query.
+              result sets can be (x,y) or (x,y,descr1,descr2,...),
+              in which case a new plot will be started for each
+              tuple (descr1, descr2, ...)
+ .scatter SQL make scatterplot results of (potentially mangled) query.
+              result sets can have between two and four columns
+              for (x,y,size,color).
 
 SQL mangling, if requested ("MagicSQL"):
-	select $quantity where pred(feature)
+    select $quantity where pred(feature)
 
 Custom SQLite aggregates:
-	stddev, var, norm1, norm2
+    stddev, var, norm1, norm2
 
 Available Python symbols:
-	db: the SQLite database
-	mangle_sql(query_str): mangle the SQL query string query_str
-	q(query_str): get db cursor for mangled query_str
-	dbplot(cursor): plot result of cursor
-	dbscatter(cursor): make scatterplot result of cursor
-	dbprint(cursor): print result of cursor
-	split_cursor(cursor): x,y,data gather that .plot uses internally
-	table_from_cursor(cursor): Create a printable table from a cursor
+    db: the SQLite database
+    mangle_sql(query_str): mangle the SQL query string query_str
+    q(query_str): get db cursor for mangled query_str
+    dbplot(cursor): plot result of cursor
+    dbscatter(cursor): make scatterplot result of cursor
+    dbprint(cursor): print result of cursor
+    split_cursor(cursor): x,y,data gather that .plot uses internally
+    table_from_cursor(cursor): Create a printable table from a cursor
 """)
-		elif cmd == "q":
-			self.db.print_cursor(self.db.q(args))
+        elif cmd == "q":
+            self.db.print_cursor(self.db.q(args))
 
-		elif cmd == "runprops" or cmd == "constants":
-			cursor = self.db.db.execute("select * from runs")
-			columns = [column[0] for column in cursor.description]
-			columns.sort()
-			for col in columns:
-				print(col)
-		elif cmd == "quantities":
-			self.db.print_cursor(self.db.q("select * from quantities order by name"))
-		elif cmd == "warnings":
-			self.db.print_cursor(self.db.q("select * from warnings"))
-		elif cmd == "logging":
-			self.db.print_cursor(self.db.q("select * from logging"))
-		elif cmd == "title":
-			from pylab import title
-			title(args)
-		elif cmd == "plot":
-			cursor = self.db.db.execute(self.db.mangle_sql(args))
-			columnnames = [column[0] for column in cursor.description]
-			self.db.plot_cursor(cursor, labels=columnnames)
-		elif cmd == "scatter":
-			cursor = self.db.db.execute(self.db.mangle_sql(args))
-			columnnames = [column[0] for column in cursor.description]
-			self.db.scatter_cursor(cursor, labels=columnnames)
-		else:
-			print("invalid magic command")
+        elif cmd == "runprops" or cmd == "constants":
+            cursor = self.db.db.execute("select * from runs")
+            columns = [column[0] for column in cursor.description]
+            columns.sort()
+            for col in columns:
+                print(col)
+        elif cmd == "quantities":
+            self.db.print_cursor(self.db.q("select * from quantities order by name"))
+        elif cmd == "warnings":
+            self.db.print_cursor(self.db.q("select * from warnings"))
+        elif cmd == "logging":
+            self.db.print_cursor(self.db.q("select * from logging"))
+        elif cmd == "title":
+            from pylab import title
+            title(args)
+        elif cmd == "plot":
+            cursor = self.db.db.execute(self.db.mangle_sql(args))
+            columnnames = [column[0] for column in cursor.description]
+            self.db.plot_cursor(cursor, labels=columnnames)
+        elif cmd == "scatter":
+            cursor = self.db.db.execute(self.db.mangle_sql(args))
+            columnnames = [column[0] for column in cursor.description]
+            self.db.scatter_cursor(cursor, labels=columnnames)
+        else:
+            print("invalid magic command")
 
 
+# {{{ custom aggregates
 
 from pytools import VarianceAggregator  # noqa: E402
 
 
 class Variance(VarianceAggregator):
-	def __init__(self) -> None:
-		VarianceAggregator.__init__(self,  # type: ignore[no-untyped-call]
-									entire_pop=True)
+    def __init__(self) -> None:
+        VarianceAggregator.__init__(self,  # type: ignore[no-untyped-call]
+                                    entire_pop=True)
 
 
 class StdDeviation(Variance):
-	def finalize(self) -> Optional[float]:
-		result = Variance.finalize(self)  # type: ignore[no-untyped-call]
+    def finalize(self) -> Optional[float]:
+        result = Variance.finalize(self)  # type: ignore[no-untyped-call]
 
-		if result is None:
-			return None
-		else:
-			from math import sqrt
-			return sqrt(result)
+        if result is None:
+            return None
+        else:
+            from math import sqrt
+            return sqrt(result)
 
 
 class Norm1:
-	def __init__(self) -> None:
-		self.abs_sum = 0.0
+    def __init__(self) -> None:
+        self.abs_sum = 0.0
 
-	def step(self, value: float) -> None:
-		self.abs_sum += abs(value)
+    def step(self, value: float) -> None:
+        self.abs_sum += abs(value)
 
-	def finalize(self) -> float:
-		return self.abs_sum
+    def finalize(self) -> float:
+        return self.abs_sum
 
 
 class Norm2:
-	def __init__(self) -> None:
-		self.square_sum = 0.0
+    def __init__(self) -> None:
+        self.square_sum = 0.0
 
-	def step(self, value: float) -> None:
-		self.square_sum += value**2
+    def step(self, value: float) -> None:
+        self.square_sum += value**2
 
-	def finalize(self) -> float:
-		from math import sqrt
-		return sqrt(self.square_sum)
+    def finalize(self) -> float:
+        from math import sqrt
+        return sqrt(self.square_sum)
 
 
 def my_sprintf(format: str, arg: str) -> str:
-	return format % arg
+    return format % arg
+
+# }}}
 
 
+def auto_gather(filenames: List[str]) -> sqlite3.Connection:
+    # allow for creating ungathered files.
+    # Check if database has been gathered, if not, create one in memory
+
+    # until no files have been checked, assume none have been gathered
+    gathered = False
+    # check if any of the provided files have been gathered
+    print("hello")
+    for f in filenames:
+        db = sqlite3.connect(f)
+        cur = db.cursor()
+
+        # get a list of tables with the name of 'runs'
+        res = list(cur.execute("""
+                            SELECT name
+                            FROM sqlite_master
+                            WHERE type='table' AND name='runs'
+                                          """))
+        # there exists a table with the name of 'runs'
+        if len(res) == 1:
+            gathered = True
+
+    if gathered:
+        # gathered files should only have one file
+        if len(filenames) > 1:
+            raise Exception("Runalyzing multiple gathered files is not supported!!!")
+
+        return sqlite3.connect(filenames[0])
+
+    # create in memory database of files to be gathered
+    print("Creating an in memory database from provided files")
+    from os.path import exists
+    infiles = [f for f in filenames if exists(f)]
+    # list of run features as {name: sql_type}
+    fg = FeatureGatherer(False, None)
+    features, dbname_to_run_id = scan(fg, infiles)
+
+    fmap = make_name_map("")
+    qmap = make_name_map("")
+
+    connection = gather_multi_file(":memory:", infiles, fmap, qmap, fg, features,
+                             dbname_to_run_id)
+    return connection
 
 
-def make_wrapped_db(filename: str, interactive: bool, mangle: bool) -> RunDB:
-	import sqlite3
-	db = sqlite3.connect(filename)
-	db.create_aggregate("stddev", 1, StdDeviation)  # type: ignore[arg-type]
-	db.create_aggregate("var", 1, Variance)
-	db.create_aggregate("norm1", 1, Norm1)  # type: ignore[arg-type]
-	db.create_aggregate("norm2", 1, Norm2)  # type: ignore[arg-type]
+# {{{ main program
 
-	db.create_function("sprintf", 2, my_sprintf)
-	from math import pow, sqrt
-	db.create_function("sqrt", 1, sqrt)
-	db.create_function("pow", 2, pow)
+def make_wrapped_db(filenames: List[str], interactive: bool, mangle: bool) -> RunDB:
+    db = auto_gather(filenames)
+    db.create_aggregate("stddev", 1, StdDeviation)  # type: ignore[arg-type]
+    db.create_aggregate("var", 1, Variance)
+    db.create_aggregate("norm1", 1, Norm1)  # type: ignore[arg-type]
+    db.create_aggregate("norm2", 1, Norm2)  # type: ignore[arg-type]
 
-	if mangle:
-		db_wrap_class: Type[RunDB] = MagicRunDB
-	else:
-		db_wrap_class = RunDB
+    db.create_function("sprintf", 2, my_sprintf)
+    from math import pow, sqrt
+    db.create_function("sqrt", 1, sqrt)
+    db.create_function("pow", 2, pow)
 
-	return db_wrap_class(db, interactive=interactive)
+    if mangle:
+        db_wrap_class: Type[RunDB] = MagicRunDB
+    else:
+        db_wrap_class = RunDB
 
+    return db_wrap_class(db, interactive=interactive)
 
+# }}}
+
+# vim: foldmethod=marker
 
 </py-script>
 
@@ -791,7 +1844,7 @@ async def runPlot(event):
     id = event.target.getAttribute("param")
     output = document.getElementById("output" + str(id))
     output.id = "graph-area"
-    runDb = make_wrapped_db(file_dict[id].name, True, True)
+    runDb = make_wrapped_db([file_dict[id].name], True, True)
     q1 = document.getElementById("quantity1_" + str(id)).value
     q2 = document.getElementById("quantity2_" + str(id)).value
     query = "select ${}, ${}".format(q1, q2)
@@ -893,7 +1946,7 @@ async def runTable(event):
     id = event.target.getAttribute("param")
     output = document.getElementById("output" + str(id))
     output.id = "graph-area"
-    runDb = make_wrapped_db(file_dict[id].name, True, True)
+    runDb = make_wrapped_db([file_dict[id].name], True, True)
     query = "select $t_sim, $t_2step"
     cursor = runDb.db.execute(runDb.mangle_sql(query))
     columnnames = [column[0] for column in cursor.description]
@@ -954,7 +2007,7 @@ async def storeFile(event):
         file_dict[id] = dataFile(f1.name)
 
     # extract constants from sqlite file
-    runDb = make_wrapped_db(file_dict[id].name, True, True)
+    runDb = make_wrapped_db([file_dict[id].name], True, True)
     cursor = runDb.db.execute("select * from runs")
     columns = [col[0] for col in cursor.description]
     vals = list([row for row in cursor][0])

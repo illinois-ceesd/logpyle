@@ -51,7 +51,7 @@ async def runPlot(event):
     id = event.target.getAttribute("param")
     output = document.getElementById("output" + str(id))
     output.id = "graph-area"
-    runDb = make_wrapped_db(file_dict[id].name, True, True)
+    runDb = make_wrapped_db([file_dict[id].name], True, True)
     q1 = document.getElementById("quantity1_" + str(id)).value
     q2 = document.getElementById("quantity2_" + str(id)).value
     query = "select ${}, ${}".format(q1, q2)
@@ -153,7 +153,7 @@ async def runTable(event):
     id = event.target.getAttribute("param")
     output = document.getElementById("output" + str(id))
     output.id = "graph-area"
-    runDb = make_wrapped_db(file_dict[id].name, True, True)
+    runDb = make_wrapped_db([file_dict[id].name], True, True)
     query = "select $t_sim, $t_2step"
     cursor = runDb.db.execute(runDb.mangle_sql(query))
     columnnames = [column[0] for column in cursor.description]
@@ -214,7 +214,7 @@ async def storeFile(event):
         file_dict[id] = dataFile(f1.name)
 
     # extract constants from sqlite file
-    runDb = make_wrapped_db(file_dict[id].name, True, True)
+    runDb = make_wrapped_db([file_dict[id].name], True, True)
     cursor = runDb.db.execute("select * from runs")
     columns = [col[0] for col in cursor.description]
     vals = list([row for row in cursor][0])
