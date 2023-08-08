@@ -1,34 +1,24 @@
 import logging
-import pytest
-import random
-from pymbolic.primitives import Variable
-from random import uniform
-from time import sleep, monotonic as time_monotonic
+from time import monotonic as time_monotonic
+from time import sleep
 from warnings import warn
 
-from logpyle import (
-    add_run_info,
-    add_general_quantities,
-    add_simulation_quantities,
-    set_dt,
-    LogManager,
-    IntervalTimer,
-    PushLogQuantity,
-    LogQuantity,
-    EventCounter,
-    time_and_count_function,
-)
+import pytest
+from pymbolic.primitives import Variable
 
-from testlib import basicLogmgr
+from logpyle import (EventCounter, IntervalTimer, LogManager, LogQuantity,
+                     PushLogQuantity, add_general_quantities, add_run_info,
+                     add_simulation_quantities, set_dt,
+                     time_and_count_function)
 
 
-def test_start_time_has_past(basicLogmgr: LogManager):
-    assert basicLogmgr.start_time <= time_monotonic()
+def test_start_time_has_past(basic_logmgr: LogManager):
+    assert basic_logmgr.start_time <= time_monotonic()
 
 
-def test_empty_on_init(basicLogmgr: LogManager):
+def test_empty_on_init(basic_logmgr: LogManager):
     # ensure that there are no initial watches
-    assert len(basicLogmgr.watches) == 0
+    assert len(basic_logmgr.watches) == 0
 
 
 def test_basic_warning():
@@ -36,40 +26,40 @@ def test_basic_warning():
         warn("Oof. Something went awry.", UserWarning)
 
 
-def test_logging_warnings_from_warnings_module(basicLogmgr: LogManager):
+def test_logging_warnings_from_warnings_module(basic_logmgr: LogManager):
     first_warning_message = "Not a warning: First warning message!!!"
     first_warning_type = UserWarning
 
-    basicLogmgr.tick_before()
+    basic_logmgr.tick_before()
     warn(first_warning_message, first_warning_type)
-    basicLogmgr.tick_after()
+    basic_logmgr.tick_after()
 
     # ensure that the warning was caught properly
-    print(basicLogmgr.warning_data[0])
-    assert basicLogmgr.warning_data[0].message == first_warning_message
-    assert basicLogmgr.warning_data[0].category == str(first_warning_type)
-    assert basicLogmgr.warning_data[0].tick_count == 0
+    print(basic_logmgr.warning_data[0])
+    assert basic_logmgr.warning_data[0].message == first_warning_message
+    assert basic_logmgr.warning_data[0].category == str(first_warning_type)
+    assert basic_logmgr.warning_data[0].tick_count == 0
 
     second_warning_message = "Not a warning: Second warning message!!!"
     second_warning_type = UserWarning
 
-    basicLogmgr.tick_before()
+    basic_logmgr.tick_before()
     warn(second_warning_message, second_warning_type)
-    basicLogmgr.tick_after()
+    basic_logmgr.tick_after()
 
     # ensure that the warning was caught properly
-    print(basicLogmgr.warning_data[1])
-    assert basicLogmgr.warning_data[1].message == second_warning_message
-    assert basicLogmgr.warning_data[1].category == str(second_warning_type)
-    assert basicLogmgr.warning_data[1].tick_count == 1
+    print(basic_logmgr.warning_data[1])
+    assert basic_logmgr.warning_data[1].message == second_warning_message
+    assert basic_logmgr.warning_data[1].category == str(second_warning_type)
+    assert basic_logmgr.warning_data[1].tick_count == 1
 
     # save warnings to database
-    basicLogmgr.save_warnings()
+    basic_logmgr.save_warnings()
 
     # ensure that warnings are of the correct form
-    message_ind = basicLogmgr.get_warnings().column_names.index("message")
-    step_ind = basicLogmgr.get_warnings().column_names.index("step")
-    data = basicLogmgr.get_warnings().data
+    message_ind = basic_logmgr.get_warnings().column_names.index("message")
+    step_ind = basic_logmgr.get_warnings().column_names.index("step")
+    data = basic_logmgr.get_warnings().data
 
     # ensure the first warning has been saved correctly
     assert data[0][message_ind] == first_warning_message
@@ -80,40 +70,40 @@ def test_logging_warnings_from_warnings_module(basicLogmgr: LogManager):
     assert data[1][step_ind] == 1
 
 
-def test_logging_warnings_from_logging_module(basicLogmgr: LogManager):
+def test_logging_warnings_from_logging_module(basic_logmgr: LogManager):
     logger = logging.getLogger(__name__)
 
     first_warning_message = "Not a warning: First warning message!!!"
 
-    basicLogmgr.tick_before()
+    basic_logmgr.tick_before()
     logger.warning(first_warning_message)
-    basicLogmgr.tick_after()
+    basic_logmgr.tick_after()
 
     # ensure that the warning was caught properly
-    print(basicLogmgr.logging_data)
-    assert basicLogmgr.logging_data[0].message == first_warning_message
-    assert basicLogmgr.logging_data[0].category == "WARNING"
-    assert basicLogmgr.logging_data[0].tick_count == 0
+    print(basic_logmgr.logging_data)
+    assert basic_logmgr.logging_data[0].message == first_warning_message
+    assert basic_logmgr.logging_data[0].category == "WARNING"
+    assert basic_logmgr.logging_data[0].tick_count == 0
 
     second_warning_message = "Not a warning: Second warning message!!!"
 
-    basicLogmgr.tick_before()
+    basic_logmgr.tick_before()
     logger.warning(second_warning_message)
-    basicLogmgr.tick_after()
+    basic_logmgr.tick_after()
 
     # ensure that the warning was caught properly
-    print(basicLogmgr.logging_data[1])
-    assert basicLogmgr.logging_data[1].message == second_warning_message
-    assert basicLogmgr.logging_data[1].category == "WARNING"
-    assert basicLogmgr.logging_data[1].tick_count == 1
+    print(basic_logmgr.logging_data[1])
+    assert basic_logmgr.logging_data[1].message == second_warning_message
+    assert basic_logmgr.logging_data[1].category == "WARNING"
+    assert basic_logmgr.logging_data[1].tick_count == 1
 
     # save warnings to database
-    basicLogmgr.save_logging()
+    basic_logmgr.save_logging()
 
     # ensure that warnings are of the correct form
-    message_ind = basicLogmgr.get_logging().column_names.index("message")
-    step_ind = basicLogmgr.get_logging().column_names.index("step")
-    data = basicLogmgr.get_logging().data
+    message_ind = basic_logmgr.get_logging().column_names.index("message")
+    step_ind = basic_logmgr.get_logging().column_names.index("step")
+    data = basic_logmgr.get_logging().data
 
     # ensure the first warning has been saved correctly
     assert data[0][message_ind] == first_warning_message
@@ -124,15 +114,15 @@ def test_logging_warnings_from_logging_module(basicLogmgr: LogManager):
     assert data[1][step_ind] == 1
 
 
-def test_general_quantities(basicLogmgr: LogManager):
+def test_general_quantities(basic_logmgr: LogManager):
     # verify that exactly all general quantities were added
 
-    add_general_quantities(basicLogmgr)
-    basicLogmgr.tick_before()
-    basicLogmgr.tick_after()
-    basicLogmgr.save()
+    add_general_quantities(basic_logmgr)
+    basic_logmgr.tick_before()
+    basic_logmgr.tick_after()
+    basic_logmgr.save()
 
-    idealQuantitiesAdded = [
+    ideal_quantities_added = [
         "t_step",
         "t_wall",
         "t_2step",
@@ -142,55 +132,55 @@ def test_general_quantities(basicLogmgr: LogManager):
         "t_init",
     ]
 
-    actualQuantitiesAdded = basicLogmgr.db_conn.execute(
+    actual_quantities_added = basic_logmgr.db_conn.execute(
         "select * from quantities"
     ).fetchall()
 
     # reformat into list of quantities
-    actualQuantitiesAdded = [desc[0] for desc in actualQuantitiesAdded]
+    actual_quantities_added = [desc[0] for desc in actual_quantities_added]
 
     # sort lists for comparison
-    idealQuantitiesAdded.sort()
-    actualQuantitiesAdded.sort()
+    ideal_quantities_added.sort()
+    actual_quantities_added.sort()
 
-    assert idealQuantitiesAdded == actualQuantitiesAdded
+    assert ideal_quantities_added == actual_quantities_added
 
 
-def test_simulation_quantities(basicLogmgr: LogManager):
-    add_simulation_quantities(basicLogmgr)
+def test_simulation_quantities(basic_logmgr: LogManager):
+    add_simulation_quantities(basic_logmgr)
 
     # must set a dt for simulation quantities
-    set_dt(basicLogmgr, 0.05)
+    set_dt(basic_logmgr, 0.05)
 
-    basicLogmgr.tick_before()
+    basic_logmgr.tick_before()
     sleep(0.01)
-    basicLogmgr.tick_after()
-    basicLogmgr.save()
+    basic_logmgr.tick_after()
+    basic_logmgr.save()
 
-    idealQuantitiesAdded = [
+    ideal_quantities_added = [
         "t_sim",
         "dt",
     ]
 
-    actualQuantitiesAdded = basicLogmgr.db_conn.execute(
+    actual_quantities_added = basic_logmgr.db_conn.execute(
         "select * from quantities"
     ).fetchall()
 
     # reformat into list of quantities
-    actualQuantitiesAdded = [desc[0] for desc in actualQuantitiesAdded]
+    actual_quantities_added = [desc[0] for desc in actual_quantities_added]
 
     # sort lists for comparison
-    idealQuantitiesAdded.sort()
-    actualQuantitiesAdded.sort()
+    ideal_quantities_added.sort()
+    actual_quantities_added.sort()
 
-    assert idealQuantitiesAdded == actualQuantitiesAdded
+    assert ideal_quantities_added == actual_quantities_added
 
 
-def test_nonexisting_table(basicLogmgr: LogManager):
-    add_general_quantities(basicLogmgr)
+def test_nonexisting_table(basic_logmgr: LogManager):
+    add_general_quantities(basic_logmgr)
 
     with pytest.raises(KeyError):
-        basicLogmgr.get_table("nonexistent table")
+        basic_logmgr.get_table("nonexistent table")
 
 
 def test_existing_database_no_overwrite():
@@ -204,6 +194,8 @@ def test_existing_database_no_overwrite():
 
     logmgr.save()
     logmgr.close()
+
+    assert logmgr.sqlite_filename == filename
 
     with pytest.raises(RuntimeError):
         logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED.sqlite", "w")
@@ -225,6 +217,8 @@ def test_existing_database_with_overwrite():
     logmgr.save()
     logmgr.close()
 
+    assert logmgr.sqlite_filename == filename
+
     logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED.sqlite", "wo")
     # expect the data to have been overwritten
     with pytest.raises(KeyError):
@@ -244,6 +238,8 @@ def test_existing_file_with_overwrite():
     logmgr = LogManager(filename, "wo")
     logmgr.close()
 
+    assert logmgr.sqlite_filename == filename
+
     os.remove(filename)
 
 
@@ -255,30 +251,34 @@ def test_open_existing_database():
 
     add_general_quantities(logmgr)
 
-    firstTick = logmgr.get_expr_dataset("t_wall")
-    print(firstTick)
+    first_tick = logmgr.get_expr_dataset("t_wall")
+    print(first_tick)
 
     logmgr.tick_before()
     logmgr.tick_after()
 
-    secondTick = logmgr.get_expr_dataset("t_wall")
-    print(secondTick)
+    second_tick = logmgr.get_expr_dataset("t_wall")
+    print(second_tick)
 
     logmgr.save()
     logmgr.close()
 
+    assert logmgr.sqlite_filename == filename
+
     logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED.sqlite", "r")
     # expect the data to be the same as the second tick
-    savedData = logmgr.get_expr_dataset("t_wall")
-    print(savedData)
-    assert savedData == secondTick
+    saved_data = logmgr.get_expr_dataset("t_wall")
+    print(saved_data)
+    assert saved_data == second_tick
+
+    assert logmgr.sqlite_filename == filename
 
     os.remove(filename)
 
 
 # assuming that a nameless (in memory) database should not save
 # data after closing.
-def test_in_memory_LogManager():
+def test_in_memory_logmanager():
     # Tests an in memory database
     logmgr = LogManager(None, "wo")
     add_general_quantities(logmgr)
@@ -294,7 +294,7 @@ def test_in_memory_LogManager():
         print(val)
 
 
-def test_reading_in_memory_LogManager():
+def test_reading_in_memory_logmanager():
     # ensure in memory db can not be read
     with pytest.raises(RuntimeError):
         logmgr = LogManager(None, "r")
@@ -316,12 +316,32 @@ def test_reading_in_memory_LogManager():
         print(val)
 
 
+test_writing_modes = [
+    ("w"),
+    ("wo"),
+    ("wu"),
+]
+
+
+@pytest.mark.parametrize("mode", test_writing_modes)
+def test_in_memory_writing(mode):
+    logmgr = LogManager(None, mode)
+    add_general_quantities(logmgr)
+    logmgr.tick_before()
+    logmgr.tick_after()
+
+    logmgr.save()
+    logmgr.close()
+    print(logmgr.sqlite_filename)
+    assert logmgr.sqlite_filename is None
+
+
 def test_unique_suffix():
     # testing two in a row with no computation in between should force
     # a collision due to the names being based on time of day
     import os
 
-    def isUniqueFilename(str: str):
+    def is_unique_filename(str: str):
         if str.startswith("THIS_LOG_SHOULD_BE_DELETED-"):
             return True
         else:
@@ -334,7 +354,7 @@ def test_unique_suffix():
     logmgr.close()
 
     # assert that two distinct databases were created
-    files = [f for f in os.listdir() if isUniqueFilename(f)]
+    files = [f for f in os.listdir() if is_unique_filename(f)]
     print(files)
     assert len(files) == 2
 
@@ -345,53 +365,53 @@ def test_unique_suffix():
 def test_read_nonexistant_database():
     import os
 
-    fakeFileName = "THIS_LOG_SHOULD_BE_DELETED_AND_DOES_NOT_EXIST"
+    fake_file_name = "THIS_LOG_SHOULD_BE_DELETED_AND_DOES_NOT_EXIST"
     with pytest.raises(RuntimeError):
-        LogManager(fakeFileName, "r")
+        LogManager(fake_file_name, "r")
 
-    os.remove(fakeFileName)
+    os.remove(fake_file_name)
 
 
-def test_add_run_info(basicLogmgr: LogManager):
+def test_add_run_info(basic_logmgr: LogManager):
     from socket import gethostname
 
-    timeTol = 0.5
+    time_tol = 0.5
 
-    add_run_info(basicLogmgr)
+    add_run_info(basic_logmgr)
 
-    savedMachine = basicLogmgr.constants["machine"]
-    print(savedMachine)
-    assert savedMachine == gethostname()
+    saved_machine = basic_logmgr.constants["machine"]
+    print(saved_machine)
+    assert saved_machine == gethostname()
 
     from time import time
 
     # ensure that it is the same day that this log was created
-    savedDate = basicLogmgr.constants["date"]
-    print(savedDate)
+    saved_data = basic_logmgr.constants["date"]
+    print(saved_data)
 
-    savedTime = basicLogmgr.constants["unixtime"]
-    print(savedTime)
-    assert abs(time() - savedTime) < timeTol
+    saved_time = basic_logmgr.constants["unixtime"]
+    print(saved_time)
+    assert abs(time() - saved_time) < time_tol
 
 
-def test_set_dt(basicLogmgr: LogManager):
+def test_set_dt(basic_logmgr: LogManager):
     # Should verify that the dt is set/changed and is applied
     # to dt consuming quantities after changing
-    add_simulation_quantities(basicLogmgr)
+    add_simulation_quantities(basic_logmgr)
     for descriptor_list in [
-        basicLogmgr.before_gather_descriptors,
-        basicLogmgr.after_gather_descriptors,
+        basic_logmgr.before_gather_descriptors,
+        basic_logmgr.after_gather_descriptors,
     ]:
         for descriptor in descriptor_list:
             q_dt = descriptor.quantity.dt
             print(q_dt)
             assert q_dt is None
 
-    set_dt(basicLogmgr, 0.5)
+    set_dt(basic_logmgr, 0.5)
 
     for descriptor_list in [
-        basicLogmgr.before_gather_descriptors,
-        basicLogmgr.after_gather_descriptors,
+        basic_logmgr.before_gather_descriptors,
+        basic_logmgr.after_gather_descriptors,
     ]:
         for descriptor in descriptor_list:
             q_dt = descriptor.quantity.dt
@@ -399,11 +419,11 @@ def test_set_dt(basicLogmgr: LogManager):
             assert q_dt is not None
             assert q_dt == 0.5
 
-    set_dt(basicLogmgr, 0.02)
+    set_dt(basic_logmgr, 0.02)
 
     for descriptor_list in [
-        basicLogmgr.before_gather_descriptors,
-        basicLogmgr.after_gather_descriptors,
+        basic_logmgr.before_gather_descriptors,
+        basic_logmgr.after_gather_descriptors,
     ]:
         for descriptor in descriptor_list:
             q_dt = descriptor.quantity.dt
@@ -412,37 +432,37 @@ def test_set_dt(basicLogmgr: LogManager):
             assert q_dt == 0.02
 
 
-def test_double_enable_warnings(basicLogmgr: LogManager):
+def test_double_enable_warnings(basic_logmgr: LogManager):
     # default is enabled
     with pytest.raises(RuntimeError):
-        basicLogmgr.capture_warnings(True)
+        basic_logmgr.capture_warnings(True)
 
 
-def test_double_disable_warnings(basicLogmgr: LogManager):
+def test_double_disable_warnings(basic_logmgr: LogManager):
     # default is enabled
-    basicLogmgr.capture_warnings(False)
+    basic_logmgr.capture_warnings(False)
     with pytest.raises(RuntimeError):
-        basicLogmgr.capture_warnings(False)
+        basic_logmgr.capture_warnings(False)
 
 
 # tests double enable logging as is (strange asymmetry with warnings)
-def test_double_enable_logging(basicLogmgr: LogManager):
+def test_double_enable_logging(basic_logmgr: LogManager):
     # default is enabled
     with pytest.warns(UserWarning):
-        basicLogmgr.capture_logging(True)
+        basic_logmgr.capture_logging(True)
 
 
-def test_double_add_quantity(basicLogmgr: LogManager):
+def test_double_add_quantity(basic_logmgr: LogManager):
     class Fifteen(LogQuantity):
         def __call__(self) -> int:
             return 15
 
-    basicLogmgr.add_quantity(Fifteen("fifteen"))
+    basic_logmgr.add_quantity(Fifteen("fifteen"))
     with pytest.raises(RuntimeError):
-        basicLogmgr.add_quantity(Fifteen("fifteen"))
+        basic_logmgr.add_quantity(Fifteen("fifteen"))
 
 
-def test_add_watches(basicLogmgr: LogManager):
+def test_add_watches(basic_logmgr: LogManager):
     # test adding a few watches
 
     class Fifteen(LogQuantity):
@@ -453,29 +473,29 @@ def test_add_watches(basicLogmgr: LogManager):
         def __call__(self) -> str:
             return "15.0"
 
-    basicLogmgr.add_quantity(Fifteen("name1"))
-    basicLogmgr.add_quantity(Fifteen("name2"))
-    basicLogmgr.add_quantity(FifteenStr("tup_name1"))
+    basic_logmgr.add_quantity(Fifteen("name1"))
+    basic_logmgr.add_quantity(Fifteen("name2"))
+    basic_logmgr.add_quantity(FifteenStr("tup_name1"))
 
     watch_list = ["name1", ("tup_name1", "str"), "name2"]
 
-    basicLogmgr.add_watches(watch_list)
+    basic_logmgr.add_watches(watch_list)
 
-    basicLogmgr.tick_before()
+    basic_logmgr.tick_before()
     # do something ...
-    basicLogmgr.tick_before()
-    basicLogmgr.save()
+    basic_logmgr.tick_before()
+    basic_logmgr.save()
 
     # check that all watches are present
-    actualWatches = [watch.expr for watch in basicLogmgr.watches]
+    actual_watches = [watch.expr for watch in basic_logmgr.watches]
     expected = ["name1", "tup_name1", "name2"]
-    actualWatches.sort()
+    actual_watches.sort()
     expected.sort()
-    print(actualWatches, expected)
-    assert actualWatches == expected
+    print(actual_watches, expected)
+    assert actual_watches == expected
 
 
-def test_time_and_count_function(basicLogmgr: LogManager):
+def test_time_and_count_function(basic_logmgr: LogManager):
     tol = 0.1
 
     def func_to_be_timed(t: float):
@@ -485,119 +505,117 @@ def test_time_and_count_function(basicLogmgr: LogManager):
     timer = IntervalTimer("t_duration")
     counter = EventCounter("num_itr")
 
-    basicLogmgr.add_quantity(counter)
+    basic_logmgr.add_quantity(counter)
 
-    basicLogmgr.tick_before()
+    basic_logmgr.tick_before()
 
-    N = 10
-    for i in range(N):
+    n = 10
+    for i in range(n):
         time_and_count_function(func_to_be_timed, timer, counter)(0.1)
 
-    basicLogmgr.tick_after()
+    basic_logmgr.tick_after()
 
     print(timer.elapsed, counter.events)
 
-    assert abs(timer.elapsed - N * 0.1) < tol
-    assert counter.events == N
+    assert abs(timer.elapsed - n * 0.1) < tol
+    assert counter.events == n
 
 
-def test_joint_dataset(basicLogmgr: LogManager):
-    add_general_quantities(basicLogmgr)
-    basicLogmgr.tick_before()
-    basicLogmgr.tick_after()
-    basicLogmgr.save()
+def test_joint_dataset(basic_logmgr: LogManager):
+    add_general_quantities(basic_logmgr)
+    basic_logmgr.tick_before()
+    basic_logmgr.tick_after()
+    basic_logmgr.save()
 
-    idealQuantitiesAdded = [
+    ideal_quantities_added = [
         "t_step",
         ("cpu time", Variable("s"), "t_wall"),
         "memory_usage_hwm",
-        "t_init",
     ]
-    quantityNames = [
+    quantity_names = [
         "t_step",
         "cpu time",
         "memory_usage_hwm",
-        "t_init",
     ]
-    dataset = basicLogmgr.get_joint_dataset(idealQuantitiesAdded)
+    dataset = basic_logmgr.get_joint_dataset(ideal_quantities_added)
 
     print(dataset)
     names = list(dataset[0])
     names.sort()
-    quantityNames.sort()
+    quantity_names.sort()
 
-    for quantity in quantityNames:
+    for quantity in quantity_names:
         assert quantity in names
-    assert len(names) == len(quantityNames)
+    assert len(names) == len(quantity_names)
 
 
-def test_plot_data(basicLogmgr: LogManager):
-    add_general_quantities(basicLogmgr)
+def test_plot_data(basic_logmgr: LogManager):
+    add_general_quantities(basic_logmgr)
 
-    basicLogmgr.tick_before()
+    basic_logmgr.tick_before()
     # do something ...
-    basicLogmgr.tick_after()
+    basic_logmgr.tick_after()
 
     # there should be one step
-    data1 = basicLogmgr.get_plot_data("t_wall", "t_wall")
+    data1 = basic_logmgr.get_plot_data("t_wall", "t_wall")
     print(data1)
     assert len(data1[0][0]) == 1
 
-    basicLogmgr.tick_before()
+    basic_logmgr.tick_before()
     # do something ...
-    basicLogmgr.tick_after()
+    basic_logmgr.tick_after()
 
     # there should be two steps
-    data2 = basicLogmgr.get_plot_data("t_wall", "t_wall")
+    data2 = basic_logmgr.get_plot_data("t_wall", "t_wall")
     print(data2)
     assert len(data2[0][0]) == 2
 
-    basicLogmgr.tick_before()
+    basic_logmgr.tick_before()
     # do something ...
-    basicLogmgr.tick_after()
+    basic_logmgr.tick_after()
 
     # there should be three steps
-    data3 = basicLogmgr.get_plot_data("t_wall", "t_wall")
+    data3 = basic_logmgr.get_plot_data("t_wall", "t_wall")
     print(data3)
     assert len(data3[0][0]) == 3
 
     # first two of three steps should be taken
-    data0_1 = basicLogmgr.get_plot_data("t_wall", "t_wall", 0, 1)
+    data0_1 = basic_logmgr.get_plot_data("t_wall", "t_wall", 0, 1)
     print(data0_1)
     assert len(data0_1) == 2
 
     # last two of three steps should be taken
-    data1_2 = basicLogmgr.get_plot_data("t_wall", "t_wall", 1, 2)
+    data1_2 = basic_logmgr.get_plot_data("t_wall", "t_wall", 1, 2)
     print(data1_2)
     assert len(data1_2) == 2
 
 
-def test_write_datafile(basicLogmgr: LogManager):
+def test_write_datafile(basic_logmgr: LogManager):
     import os
 
-    def hasContents(str1):
-        trimedStr = str1.strip()
-        if len(trimedStr) == 0:
+    def has_contents(str1):
+        trimmed_str = str1.strip()
+        if len(trimmed_str) == 0:
             return False
         else:
             return True
 
-    add_general_quantities(basicLogmgr)
+    add_general_quantities(basic_logmgr)
 
-    N = 20
+    n = 20
 
-    for i in range(N):
-        basicLogmgr.tick_before()
+    for i in range(n):
+        basic_logmgr.tick_before()
         # do something ...
-        basicLogmgr.tick_after()
+        basic_logmgr.tick_after()
 
     filename = "THIS_LOG_SHOULD_BE_DELETED.txt"
 
-    basicLogmgr.write_datafile(filename, "t_wall", "t_wall")
+    basic_logmgr.write_datafile(filename, "t_wall", "t_wall")
 
-    File_object = open(filename, "r")
-    lines = File_object.readlines()
-    lines = filter(hasContents, lines)
+    file_object = open(filename, "r")
+    lines = file_object.readlines()
+    lines = filter(has_contents, lines)
 
     i = 0
     for line in lines:
@@ -605,22 +623,24 @@ def test_write_datafile(basicLogmgr: LogManager):
         i += 1
 
     print(i)
-    assert i == N + 1  # N data points plus the title
+    assert i == n + 1  # n data points plus the title
 
     os.remove(filename)
 
 
-def test_plot_matplotlib(basicLogmgr: LogManager):
-    add_general_quantities(basicLogmgr)
+def test_plot_matplotlib(basic_logmgr: LogManager):
+    pytest.importorskip("matplotlib")
 
-    N = 20
+    add_general_quantities(basic_logmgr)
 
-    for i in range(N):
-        basicLogmgr.tick_before()
+    n = 20
+
+    for i in range(n):
+        basic_logmgr.tick_before()
         # do something ...
-        basicLogmgr.tick_after()
+        basic_logmgr.tick_after()
 
-    basicLogmgr.plot_matplotlib("t_wall", "t_wall")
+    basic_logmgr.plot_matplotlib("t_wall", "t_wall")
 
 
 test_aggregator_data = [
@@ -636,139 +656,139 @@ test_aggregator_data = [
 
 
 @pytest.mark.parametrize("agg, data, expected", test_aggregator_data)
-def test_single_rank_aggregator(basicLogmgr, agg, data, expected):
-    add_general_quantities(basicLogmgr)
+def test_single_rank_aggregator(basic_logmgr, agg, data, expected):
+    add_general_quantities(basic_logmgr)
 
-    pushQ = PushLogQuantity("value")
-    basicLogmgr.add_quantity(pushQ)
+    push_q = PushLogQuantity("value")
+    basic_logmgr.add_quantity(push_q)
 
     for val in data:
         print(val)
-        pushQ.push_value(val)
-        basicLogmgr.tick_before()
+        push_q.push_value(val)
+        basic_logmgr.tick_before()
         # do something ...
-        basicLogmgr.tick_after()
+        basic_logmgr.tick_after()
 
-    basicLogmgr.save()
+    basic_logmgr.save()
 
     # NOT_REAL_AGG should raise an error
     if agg == "NOT_REAL_AGG":
         with pytest.raises(ValueError):
-            result = basicLogmgr.get_expr_dataset("value." + agg)
+            result = basic_logmgr.get_expr_dataset("value." + agg)
         return
 
     # nothing else should raise an error
-    result = basicLogmgr.get_expr_dataset("value." + agg)
+    result = basic_logmgr.get_expr_dataset("value." + agg)
     print(result)
     assert result[-1][-1][-1] == expected
 
 
 # # TODO currently calls unimplemented function
-# def test_EventCounter(basicLogmgr: LogManager):
+# def test_EventCounter(basic_logmgr: LogManager):
 #     # the event counter should keep track of events that occur
 #     # during the timestep
 
 #     counter1 = EventCounter("num_events1")
 #     counter2 = EventCounter("num_events2")
 
-#     basicLogmgr.add_quantity(counter1)
+#     basic_logmgr.add_quantity(counter1)
 
-#     N = 21
-#     basicLogmgr.tick_before()
+#     n = 21
+#     basic_logmgr.tick_before()
 
-#     for i in range(N):
+#     for i in range(n):
 #         counter1.add()
 
 #     print(counter1.events)
-#     assert counter1.events == N
+#     assert counter1.events == n
 
-#     basicLogmgr.tick_after()
+#     basic_logmgr.tick_after()
 
 #     # transfer counter1's count to counter2's
-#     basicLogmgr.tick_before()
+#     basic_logmgr.tick_before()
 
 #     # at the beggining of tick, counter should clear
 #     print(counter1.events)
 #     assert counter1.events == 0
 
-#     for i in range(N):
+#     for i in range(n):
 #         if i % 3 == 0:
 #             counter1.add()
 
 #     counter2.transfer(counter1)
 
 #     assert counter1.events == 0
-#     assert counter2.events == N
+#     assert counter2.events == n
 
-#     for i in range(N):
+#     for i in range(n):
 #         if i % 3 == 0:
 #             counter2.add()
 
 #     print(counter2.events)
-#     assert counter2.events == 2 * N
+#     assert counter2.events == 2 * n
 
-#     basicLogmgr.tick_after()
-
-
-# # TODO
-# # currently not raising
-# def test_double_enable_logging(basicLogmgr: LogManager):
-#     # default is enabled
-#     with pytest.raises(RuntimeError):
-#         basicLogmgr.capture_logging(True)
+#     basic_logmgr.tick_after()
 
 
 # # TODO
 # # currently not raising
-# def test_double_disable_logging(basicLogmgr: LogManager):
+# def test_double_enable_logging(basic_logmgr: LogManager):
 #     # default is enabled
-#     basicLogmgr.capture_logging(False)
 #     with pytest.raises(RuntimeError):
-#         basicLogmgr.capture_logging(False)
+#         basic_logmgr.capture_logging(True)
+
+
+# # TODO
+# # currently not raising
+# def test_double_disable_logging(basic_logmgr: LogManager):
+#     # default is enabled
+#     basic_logmgr.capture_logging(False)
+#     with pytest.raises(RuntimeError):
+#         basic_logmgr.capture_logging(False)
 
 
 # # TODO currently crashes when no timesteps are present
-# def test_empty_plot_data(basicLogmgr: LogManager):
-#     add_general_quantities(basicLogmgr)
+# def test_empty_plot_data(basic_logmgr: LogManager):
+#     add_general_quantities(basic_logmgr)
 
 #     # there should be zero step
-#     data0 = basicLogmgr.get_plot_data("t_wall", "t_wall")
+#     data0 = basic_logmgr.get_plot_data("t_wall", "t_wall")
 #     print(data0)
 #     assert len(data0[0][0]) == 0
 
-#     basicLogmgr.tick_before()
+#     basic_logmgr.tick_before()
 #     # do something ...
-#     basicLogmgr.tick_after()
+#     basic_logmgr.tick_after()
 
 #     # there should be one step
-#     data1 = basicLogmgr.get_plot_data("t_wall", "t_wall")
+#     data1 = basic_logmgr.get_plot_data("t_wall", "t_wall")
 #     print(data1)
 #     assert len(data1[0][0]) == 1
 
-#     basicLogmgr.tick_before()
+#     basic_logmgr.tick_before()
 #     # do something ...
-#     basicLogmgr.tick_after()
+#     basic_logmgr.tick_after()
 
 #     # there should be two steps
-#     data2 = basicLogmgr.get_plot_data("t_wall", "t_wall")
+#     data2 = basic_logmgr.get_plot_data("t_wall", "t_wall")
 #     print(data2)
 #     assert len(data2[0][0]) == 2
 
-#     basicLogmgr.tick_before()
+#     basic_logmgr.tick_before()
 #     # do something ...
-#     basicLogmgr.tick_after()
+#     basic_logmgr.tick_after()
 
 #     # there should be three steps
-#     data3 = basicLogmgr.get_plot_data("t_wall", "t_wall")
+#     data3 = basic_logmgr.get_plot_data("t_wall", "t_wall")
 #     print(data3)
 #     assert len(data3[0][0]) == 3
 
 #     # first two of three steps should be taken
-#     data0_1 = basicLogmgr.get_plot_data("t_wall", "t_wall", 0, 1)
+#     data0_1 = basic_logmgr.get_plot_data("t_wall", "t_wall", 0, 1)
 #     print(data0_1)
 #     assert len(data0_1) == 2
 
 #     # last two of three steps should be taken
-#     data1_2 = basicLogmgr.get_plot_data("t_wall", "t_wall", 1, 2)
+#     data1_2 = basic_logmgr.get_plot_data("t_wall", "t_wall", 1, 2)
 #     print(data1_2)
 #     assert len(data1_2) == 2
