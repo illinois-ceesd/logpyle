@@ -186,3 +186,25 @@ jobs:
             # ensure that coverage can only increase
             cd test
             python -c 'from conftest import assert_cov; assert_cov("../new_cov.json", "../old_cov.json")'
+    html:
+        name: HTMLalyzer
+        runs-on: ubuntu-latest
+        steps:
+        - uses: actions/checkout@v3
+        -
+            uses: actions/setup-python@v4
+            with:
+                python-version: '3.x'
+
+        - name: Run
+          run: |
+            pip install -e .
+            python -m pip install pymbolic psutil matplotlib Jinja2
+
+            # open default html
+            htmlalyzer
+
+            # open html after being built
+            htmlalyzer -b
+
+
