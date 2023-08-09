@@ -23,16 +23,12 @@ file_div = """
 {{ new_file_html }}
 """
 
-logpyle_whl_file_str = """
-{{ logpyle_whl_file_str  }}
-"""
-logpyle_whl_file_name = "logpyle-2023.2.3-py2.py3-none-any.whl"
+logpyle_whl_file_str = "{{ logpyle_whl_file_str }}"
+logpyle_whl_file_name = "{{ logpyle_whl_file_name }}"
 
 
-pymbolic_whl_file_str = """
-{{ pymbolic_whl_file_str    }}
-"""
-pymbolic_whl_file_name = "pymbolic-2022.2-py3-none-any.whl"
+pymbolic_whl_file_str = "{{ pymbolic_whl_file_str }}"
+pymbolic_whl_file_name = "{{ pymbolic_whl_file_name }}"
 
 
 async def import_logpyle() -> None:
