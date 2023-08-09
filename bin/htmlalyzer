@@ -6,10 +6,9 @@ def main() -> None:
     import os
     import webbrowser
 
-    import HTMLalyzer
-    from HTMLalyzer import setup
+    import logpyle.HTMLalyzer
 
-    html_path = os.path.dirname(HTMLalyzer.__file__)
+    html_path = os.path.dirname(logpyle.HTMLalyzer.__file__)
 
     parser = argparse.ArgumentParser(description="""Analyze a logpyle database
                                      with a web based GUI.""")
@@ -18,7 +17,7 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.build:
-        setup()
+        logpyle.HTMLalyzer.setup()
 
     print("Attempting to open HTML file in your web browser of choice!")
     webbrowser.open_new_tab(html_path+"/web-interface.html")

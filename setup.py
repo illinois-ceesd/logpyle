@@ -56,4 +56,4 @@ setup(name="logpyle",
       url="https://github.com/illinois-ceesd/logpyle",
       author_email="inform@tiker.net",
       license="MIT",
-      packages=["logpyle", "HTMLalyzer"])
+      packages=["logpyle"])

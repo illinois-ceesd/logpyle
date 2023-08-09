@@ -357,7 +357,7 @@ async def run_chart(event: Any) -> None:
     x_vals = [ele[0] for ele in x_vals]
     # x_vals = [1,2]
 
-    y_vals = {}
+    y_vals: dict[str, dict[str, Any]] = {}
     y_quantities_div = document.getElementById("yQuantities" + str(id))
     for y_quantity_div in y_quantities_div.children:
         y_values_elements = y_quantity_div.children
@@ -620,7 +620,7 @@ async def store_file(event: Any) -> None:
     print_table_button.addEventListener("click", create_proxy(print_table))
 
 
-file_dict = {}
+file_dict: dict[str, Any] = {}
 asyncio.ensure_future(import_logpyle())
 </py-script>
 

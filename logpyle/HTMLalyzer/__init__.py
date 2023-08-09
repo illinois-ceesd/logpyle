@@ -4,17 +4,16 @@ def setup() -> None:
 
     from jinja2 import Environment, FileSystemLoader, environment
 
-    import HTMLalyzer
-    import logpyle
+    from logpyle import HTMLalyzer
 
     print("Building HTML file for HTMLalyzer!")
 
-    with open("HTMLalyzer/logpyle-2023.2.3-py2.py3-none-any.whl", "rb") as f:
+    with open("logpyle/HTMLalyzer/logpyle-2023.2.3-py2.py3-none-any.whl", "rb") as f:
         binary_data = f.read()
         data = base64.b64encode(binary_data)
         logpyle_whl_file_str = data.decode("utf-8")
 
-    with open("HTMLalyzer/pymbolic-2022.2-py3-none-any.whl", "rb") as f:
+    with open("logpyle/HTMLalyzer/pymbolic-2022.2-py3-none-any.whl", "rb") as f:
         binary_data = f.read()
         data = base64.b64encode(binary_data)
         pymbolic_whl_file_str = data.decode("utf-8")
