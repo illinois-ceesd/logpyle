@@ -11,6 +11,7 @@ def setup() -> None:
 
     print("Building HTML file for HTMLalyzer!")
 
+    # gather whl filenames
     html_files = os.listdir(html_path)
     logpyle_whl_file_name = None
     pymbolic_whl_file_name = None
@@ -22,11 +23,12 @@ def setup() -> None:
     assert logpyle_whl_file_name, "logpyle .whl file not found"
     assert pymbolic_whl_file_name, "pymbolic .whl file not found"
 
+    # get logpyle whl
     with open(html_path+"/"+logpyle_whl_file_name, "rb") as f:
         binary_data = f.read()
         data = base64.b64encode(binary_data)
         logpyle_whl_file_str = data.decode("utf-8")
-
+    # get pymbolic whl
     with open(html_path+"/"+pymbolic_whl_file_name, "rb") as f:
         binary_data = f.read()
         data = base64.b64encode(binary_data)
@@ -55,6 +57,7 @@ def setup() -> None:
             jsFile=main_js,
             )
 
+    # write html file to logpyle/HTMLalyzer/
     filename = "web-interface.html"
     with open(html_path+"/"+filename, mode="w", encoding="utf-8") as message:
         message.write(content)

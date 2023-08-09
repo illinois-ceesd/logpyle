@@ -33,8 +33,6 @@ async function chartsOutputGraph(id, x, ys, colors) {
 		});
 	}
 
-	console.log(datasets)
-
 	// create chart pointing to the file's chart canvas
 	new Chart(document.getElementById("chart"+id), {
 		type: 'scatter',
@@ -50,9 +48,6 @@ async function chartsOutputGraph(id, x, ys, colors) {
 		},
 
 	});
-
-
-
 }
 
 
@@ -68,6 +63,3 @@ async function download(filename, contents) {
 
   document.body.removeChild(element);
 }
-
-
-

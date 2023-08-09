@@ -92,7 +92,6 @@ async def run_chart(event: Any) -> None:
     x = file_dict[id].quantities[x_quantity]
     x_vals = x["vals"]
     x_vals = [ele[0] for ele in x_vals]
-    # x_vals = [1,2]
 
     y_vals: dict[str, dict[str, Any]] = {}
     y_quantities_div = document.getElementById("yQuantities" + str(id))
