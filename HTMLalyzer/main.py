@@ -1,103 +1,104 @@
 import asyncio
-import json
-import js
-from js import document, DOMParser
-from pyscript import Element
-from pyodide.ffi import create_proxy
-import micropip
 import base64
+import json
+from typing import Any
 
-class dataFile:
-    def __init__(self, name):
+import js  # type: ignore
+import micropip  # type: ignore
+from js import DOMParser, document
+from pyodide.ffi import create_proxy  # type: ignore
+
+
+class DataFile:
+    def __init__(self, name: str):
         self.name = name
-        self.constants = {}
-        self.quantities = {}
+        self.constants: dict[str, Any] = {}
+        self.quantities: dict[str, dict[str, Any]] = {}
 
 
-nextId = 1
+next_id = 1
 
 # this HTML string was imported from newFile.html
-fileDiv = """
-{{ newFileHTML }}
+file_div = """
+{{ new_file_html }}
 """
 
-logpyleWhlFileString = """
-{{ logpyleWhlFileString  }}
+logpyle_whl_file_str = """
+{{ logpyle_whl_file_str  }}
 """
-logpyleWhlFileName = "logpyle-2023.2.3-py2.py3-none-any.whl"
+logpyle_whl_file_name = "logpyle-2023.2.3-py2.py3-none-any.whl"
 
 
-pymbolicWhlFileString = """
-{{ pymbolicWhlFileString  }}
+pymbolic_whl_file_str = """
+{{ pymbolic_whl_file_str    }}
 """
-pymbolicWhlFileName = "pymbolic-2022.2-py3-none-any.whl"
+pymbolic_whl_file_name = "pymbolic-2022.2-py3-none-any.whl"
 
 
-async def importLogpyle():
-    import os
-    # install dependencies
+async def import_logpyle() -> None:
     # install pymbolic
-    whlBase64 = pymbolicWhlFileString.encode("utf-8")
-    whl_binary_data = base64.decodebytes(whlBase64)
-    with open(pymbolicWhlFileName, "wb") as f:
+    whl_base_64 = pymbolic_whl_file_str.encode("utf-8")
+    whl_binary_data = base64.decodebytes(whl_base_64)
+    with open(pymbolic_whl_file_name, "wb") as f:
         f.write(whl_binary_data)
-    await micropip.install("emfs:"+pymbolicWhlFileName, keep_going=True, deps=True)
+    await micropip.install("emfs:"+pymbolic_whl_file_name)
 
     # install logpyle
-    whlBase64 = logpyleWhlFileString.encode("utf-8")
-    whl_binary_data = base64.decodebytes(whlBase64)
-    with open(logpyleWhlFileName, "wb") as f:
+    whl_base_64 = logpyle_whl_file_str.encode("utf-8")
+    whl_binary_data = base64.decodebytes(whl_base_64)
+    with open(logpyle_whl_file_name, "wb") as f:
         f.write(whl_binary_data)
-    await micropip.install("emfs:"+logpyleWhlFileName, keep_going=True, deps=True)
+    await micropip.install("emfs:"+logpyle_whl_file_name)
 
 
-def addFileFunc():
-    global nextId
+def add_file_func() -> None:
+    global next_id
 
-    fileList = document.getElementById("fileList")
+    file_list = document.getElementById("file_list")
     parser = DOMParser.new()
-    html = parser.parseFromString(fileDiv.format(str(nextId)), 'text/html')
-    fileList.appendChild(html.body)
+    html = parser.parseFromString(file_div.format(str(next_id)), "text/html")
+    file_list.appendChild(html.body)
 
-    newFile = document.getElementById(str(nextId))
-    if nextId % 2 == 0:
+    new_file = document.getElementById(str(next_id))
+    if next_id % 2 == 0:
         # grey minus some green
-        newFile.style.backgroundColor = "#B0A8B0"
+        new_file.style.backgroundColor = "#B0A8B0"
     else:
         # grey minus some blue
-        newFile.style.backgroundColor = "#B0B0A8"
+        new_file.style.backgroundColor = "#B0B0A8"
 
     # attach listener to new file input
-    input = document.getElementById("file" + str(nextId))
-    input.addEventListener("change", create_proxy(storeFile))
+    input = document.getElementById("file" + str(next_id))
+    input.addEventListener("change", create_proxy(store_file))
 
-    nextId = nextId + 1
+    next_id = next_id + 1
 
 
-async def runPlot(event):
+async def run_plot(event: Any) -> None:
     from logpyle.runalyzer import make_wrapped_db
     id = event.target.getAttribute("param")
     output = document.getElementById("output" + str(id))
     output.id = "graph-area"
-    runDb = make_wrapped_db([file_dict[id].name], True, True)
+    run_db = make_wrapped_db([file_dict[id].name], True, True)
     q1 = document.getElementById("quantity1_" + str(id)).value
     q2 = document.getElementById("quantity2_" + str(id)).value
     query = "select ${}, ${}".format(q1, q2)
-    cursor = runDb.db.execute(runDb.mangle_sql(query))
+    cursor = run_db.db.execute(run_db.mangle_sql(query))
     columnnames = [column[0] for column in cursor.description]
-    runDb.plot_cursor(cursor, labels=columnnames)
+    run_db.plot_cursor(cursor, labels=columnnames)
 
     output.id = "output" + str(id)
 
-async def runChart(event):
+
+async def run_chart(event: Any) -> None:
     id = event.target.getAttribute("param")
     x_quantity: str = document.getElementById("quantity1_" + str(id)).value
     x = file_dict[id].quantities[x_quantity]
     x_vals = x["vals"]
-    x_vals = [ ele[0] for ele in x_vals]
+    x_vals = [ele[0] for ele in x_vals]
     # x_vals = [1,2]
 
-    y_vals = {}
+    y_vals: dict[str, dict[str, Any]] = {}
     y_quantities_div = document.getElementById("yQuantities" + str(id))
     for y_quantity_div in y_quantities_div.children:
         y_values_elements = y_quantity_div.children
@@ -107,29 +108,28 @@ async def runChart(event):
         y_ele = file_dict[id].quantities[y_name]
 
         y_val = y_ele["vals"]
-        y_val = [ ele[0] for ele in y_val]
+        y_val = [ele[0] for ele in y_val]
 
         units = y_ele["units"]
 
         y_vals[y_name] = {}
-        y_vals[y_name]['vals'] = y_val
-        y_vals[y_name]['color'] = color
-        y_vals[y_name]['units'] = units
+        y_vals[y_name]["vals"] = y_val
+        y_vals[y_name]["color"] = color
+        y_vals[y_name]["units"] = units
 
-
-    # y_vals = {"lol": [0.005,0.015], "lol2": [0.002,0.007]}
     js.chartsOutputGraph(
             id,
             json.dumps(x_vals),
             json.dumps(y_vals),
             )
 
-        # file_dict[id].quantities[q_name] = {'vals':vals, 'id': q_id,
-        #                                     'units':q_unit, 'desc':q_desc,
-        #                                     'rank_agg': q_rank_agg}
+    # struct of quantities
+    # file_dict[id].quantities[q_name] = {"vals":vals, "id": q_id,
+    #                                     "units":q_unit, "desc":q_desc,
+    #                                     "rank_agg": q_rank_agg}
 
 
-async def addTableList(event):
+async def add_table_list(event: Any) -> None:
     id = event.target.getAttribute("param")
     quantity = document.getElementById("tableQuantitySelect" + str(id)).value
     table_list = document.getElementById("tableList" + str(id))
@@ -141,16 +141,16 @@ async def addTableList(event):
     del_button = document.createElement("button")
     del_button.style.float = "right"
     del_button.innerHTML = "delete"
-    del_button.addEventListener("click", create_proxy(removeTableEle))
+    del_button.addEventListener("click", create_proxy(remove_table_ele))
     item.appendChild(text)
     item.appendChild(del_button)
     table_list.appendChild(item)
 
 
-async def addLine(event):
+async def add_line(event: Any) -> None:
     id = event.target.getAttribute("param1")
     i = event.target.param2
-    event.target.param2 = event.target.param2 + 1
+    event.target.param2 = i + 1
     y_quantities = document.getElementById("yQuantities" + str(id))
 
     y_div = document.createElement("div")
@@ -159,7 +159,6 @@ async def addLine(event):
 
     y_div.setAttribute("style", "white-space:nowrap")
     y_color.setAttribute("type", "color")
-
 
     for quantity in file_dict[id].quantities:
         item = document.createElement("option")
@@ -173,26 +172,25 @@ async def addLine(event):
     y_quantities.appendChild(y_div)
 
 
-async def removeTableEle(event):
+async def remove_table_ele(event: Any) -> None:
     event.target.parentElement.remove()
 
 
-async def runTable(event):
-    import matplotlib.pyplot as plt
+async def run_table(event: Any) -> None:
     from logpyle.runalyzer import make_wrapped_db
     id = event.target.getAttribute("param")
     output = document.getElementById("output" + str(id))
     output.id = "graph-area"
-    runDb = make_wrapped_db([file_dict[id].name], True, True)
+    run_db = make_wrapped_db([file_dict[id].name], True, True)
     query = "select $t_sim, $t_2step"
-    cursor = runDb.db.execute(runDb.mangle_sql(query))
+    cursor = run_db.db.execute(run_db.mangle_sql(query))
     columnnames = [column[0] for column in cursor.description]
-    runDb.plot_cursor(cursor, labels=columnnames)
+    run_db.plot_cursor(cursor, labels=columnnames)
 
     output.id = "output" + str(id)
 
 
-def downloadTable(event):
+def download_table(event: Any) -> None:
     id = event.target.getAttribute("param")
 
     names = []
@@ -203,7 +201,7 @@ def downloadTable(event):
     quantities = {}
     for name in names:
         vals = file_dict[id].quantities[name]["vals"]
-        vals  = [ ele[0] for ele in vals ]
+        vals = [ele[0] for ele in vals]
         quantities[name] = vals
 
     title = "# " + " vs. ".join(quantities.keys())
@@ -211,115 +209,115 @@ def downloadTable(event):
     body = ""
     items = list(quantities.values())
     for line_num in range(len(items[0])):
-        cur_vals = [ str(ele[line_num]) for ele in items]
+        cur_vals = [str(ele[line_num]) for ele in items]
         line = "\t".join(cur_vals) + "\n"
         body += line
 
     js.download("output.txt", title + "\n" + body)
 
 
-def printTable(event):
+def print_table(event: Any) -> None:
     pass
 
 
-async def storeFile(event):
+async def store_file(event: Any) -> None:
     global file_dict
-    fileList = event.target.files.to_py()
-    from js import document, Uint8Array
+    file_list = event.target.files.to_py()
+    from js import Uint8Array, document
+
     from logpyle.runalyzer import make_wrapped_db
     id = event.target.parentElement.parentElement.id
 
     # write database file
-    for f1 in fileList:
-        with open(f1.name, 'wb') as file:
+    for f1 in file_list:
+        with open(f1.name, "wb") as file:
             data = Uint8Array.new(await f1.arrayBuffer())
             file.write(bytearray(data))
 
-    for f1 in fileList:
-        file_dict[id] = dataFile(f1.name)
+    for f1 in file_list:
+        file_dict[id] = DataFile(f1.name)
 
     # extract constants from sqlite file
-    runDb = make_wrapped_db([file_dict[id].name], True, True)
-    cursor = runDb.db.execute("select * from runs")
+    run_db = make_wrapped_db([file_dict[id].name], True, True)
+    cursor = run_db.db.execute("select * from runs")
     columns = [col[0] for col in cursor.description]
-    vals = list([row for row in cursor][0])
+    vals = list(list(cursor)[0])
     for (col, val) in zip(columns, vals):
         file_dict[id].constants[col] = val
 
     # extract quantities from sqlite file
-    cursor = runDb.db.execute("select * from quantities order by name")
+    cursor = run_db.db.execute("select * from quantities order by name")
     columns = [col[0] for col in cursor.description]
     for row in cursor:
         q_id, q_name, q_unit, q_desc, q_rank_agg = row
-        tmp_cur = runDb.db.execute(runDb.mangle_sql(
+        tmp_cur = run_db.db.execute(run_db.mangle_sql(
             "select ${}".format(q_name)))
 
-        vals = [val for val in tmp_cur]
-        file_dict[id].quantities[q_name] = {'vals':vals, 'id': q_id,
-                                            'units':q_unit, 'desc':q_desc,
-                                            'rank_agg': q_rank_agg}
+        vals = list(tmp_cur)
+        file_dict[id].quantities[q_name] = {"vals": vals, "id":  q_id,
+                                            "units": q_unit, "desc": q_desc,
+                                            "rank_agg":  q_rank_agg}
 
     # display constants
-    constantsTable = document.getElementById("constantsTable" + str(id))
+    constants_table = document.getElementById("constants_table" + str(id))
     for key, value in file_dict[id].constants.items():
         # item = document.createElement("li")
         # item.innerHTML = str(k) + ": " + str(v)
         # constants_list.appendChild(item)
 
-        row = document.createElement('tr')
+        row = document.createElement("tr")
         row.className = "constantsTr"
 
-        quantity_ele = document.createElement('td')
+        quantity_ele = document.createElement("td")
         quantity_ele.className = "constantsTd"
         quantity_ele.innerHTML = key
         row.appendChild(quantity_ele)
 
-        units_ele = document.createElement('td')
+        units_ele = document.createElement("td")
         units_ele.className = "constantsTd"
         units_ele.innerHTML = value
         row.appendChild(units_ele)
 
         # append the row to the body of the table
-        constantsTable.children[1].appendChild(row)
+        constants_table.children[1].appendChild(row)
 
     # display quantities
-    quantitiesTable = document.getElementById("quantitiesTable" + str(id))
+    quantities_table = document.getElementById("quantities_table" + str(id))
     for q_name, quantity in file_dict[id].quantities.items():
-        row = document.createElement('tr')
+        row = document.createElement("tr")
         row.className = "quantitiesTr"
 
-        quantity_ele = document.createElement('td')
+        quantity_ele = document.createElement("td")
         quantity_ele.className = "quantitiesTd"
         quantity_ele.innerHTML = q_name
         row.appendChild(quantity_ele)
 
-        units_ele = document.createElement('td')
+        units_ele = document.createElement("td")
         units_ele.className = "quantitiesTd"
-        units_ele.innerHTML = quantity['units']
+        units_ele.innerHTML = quantity["units"]
         row.appendChild(units_ele)
 
-        desc_ele = document.createElement('td')
+        desc_ele = document.createElement("td")
         desc_ele .className = "quantitiesTd"
-        desc_ele.innerHTML = quantity['desc']
+        desc_ele.innerHTML = quantity["desc"]
         row.appendChild(desc_ele)
 
-        id_ele = document.createElement('td')
+        id_ele = document.createElement("td")
         id_ele.className = "quantitiesTd"
-        id_ele.innerHTML = quantity['id']
+        id_ele.innerHTML = quantity["id"]
         row.appendChild(id_ele)
 
-        rank_agg_ele = document.createElement('td')
+        rank_agg_ele = document.createElement("td")
         rank_agg_ele.className = "quantitiesTd"
-        rank_agg_ele.innerHTML = quantity['rank_agg']
+        rank_agg_ele.innerHTML = quantity["rank_agg"]
         row.appendChild(rank_agg_ele)
 
         # append the row to the body of the table
-        quantitiesTable.children[1].appendChild(row)
-
+        quantities_table.children[1].appendChild(row)
 
     # create plot group
     chart_button = document.getElementById("chartsButton" + str(id))
-    chart_button .addEventListener("click", create_proxy(runChart))
+    chart_button .addEventListener("click", create_proxy(run_chart))
     # add quantites to quantity 1 dropdown
     plot_q1_select = document.getElementById("quantity1_" + str(id))
     for quantity in file_dict[id].quantities:
@@ -340,13 +338,12 @@ async def storeFile(event):
 
     # construct plot footer
     add_line_button = document.getElementById("addLineButton" + str(id))
-    add_line_button.addEventListener("click", create_proxy(addLine))
+    add_line_button.addEventListener("click", create_proxy(add_line))
     add_line_button.param2 = 1
-
 
     # construct table header
     table_button = document.getElementById("tableButton" + str(id))
-    table_button.addEventListener("click", create_proxy(addTableList))
+    table_button.addEventListener("click", create_proxy(add_table_list))
 
     # add quantites to table dropdown
     table_select = document.getElementById("tableQuantitySelect" + str(id))
@@ -356,16 +353,13 @@ async def storeFile(event):
         item.value = quantity
         table_select.appendChild(item)
 
-
-
-
     # construct table footer
     download_table_button = document.getElementById("tableDownloadButton" + str(id))
     download_table_button.addEventListener("click",
-                                           create_proxy(downloadTable))
+                                           create_proxy(download_table))
     print_table_button = document.getElementById("tablePrintButton" + str(id))
-    print_table_button.addEventListener("click", create_proxy(printTable))
+    print_table_button.addEventListener("click", create_proxy(print_table))
 
 
-file_dict = {}
-asyncio.ensure_future(importLogpyle())
+file_dict: dict[str, Any] = {}
+asyncio.ensure_future(import_logpyle())
