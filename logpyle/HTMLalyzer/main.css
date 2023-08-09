@@ -53,3 +53,8 @@
 	flex-direction:row;
 }
 
+.terminal {
+	max-height: 150px;
+	overflow: auto;
+	margin: 0px;
+}

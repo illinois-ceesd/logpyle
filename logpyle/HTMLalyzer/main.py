@@ -10,8 +10,8 @@ from pyodide.ffi import create_proxy  # type: ignore
 
 
 class DataFile:
-    def __init__(self, name: str):
-        self.name = name
+    def __init__(self, names: list[str]):
+        self.names = names
         self.constants: dict[str, Any] = {}
         self.quantities: dict[str, dict[str, Any]] = {}
 
@@ -75,7 +75,7 @@ async def run_plot(event: Any) -> None:
     id = event.target.getAttribute("param")
     output = document.getElementById("output" + str(id))
     output.id = "graph-area"
-    run_db = make_wrapped_db([file_dict[id].name], True, True)
+    run_db = make_wrapped_db(file_dict[id].names, True, True)
     q1 = document.getElementById("quantity1_" + str(id)).value
     q2 = document.getElementById("quantity2_" + str(id)).value
     query = "select ${}, ${}".format(q1, q2)
@@ -176,7 +176,7 @@ async def run_table(event: Any) -> None:
     id = event.target.getAttribute("param")
     output = document.getElementById("output" + str(id))
     output.id = "graph-area"
-    run_db = make_wrapped_db([file_dict[id].name], True, True)
+    run_db = make_wrapped_db(file_dict[id].names, True, True)
     query = "select $t_sim, $t_2step"
     cursor = run_db.db.execute(run_db.mangle_sql(query))
     columnnames = [column[0] for column in cursor.description]
@@ -219,6 +219,7 @@ async def store_file(event: Any) -> None:
     global file_dict
     file_list = event.target.files.to_py()
     from js import Uint8Array, document
+    import os
 
     from logpyle.runalyzer import make_wrapped_db
     id = event.target.parentElement.parentElement.id
@@ -228,12 +229,13 @@ async def store_file(event: Any) -> None:
         with open(f1.name, "wb") as file:
             data = Uint8Array.new(await f1.arrayBuffer())
             file.write(bytearray(data))
+    print(os.listdir())
 
-    for f1 in file_list:
-        file_dict[id] = DataFile(f1.name)
+    names = [f1.name for f1 in file_list]
+    file_dict[id] = DataFile(names)
 
     # extract constants from sqlite file
-    run_db = make_wrapped_db([file_dict[id].name], True, True)
+    run_db = make_wrapped_db(file_dict[id].names, True, True)
     cursor = run_db.db.execute("select * from runs")
     columns = [col[0] for col in cursor.description]
     vals = list(list(cursor)[0])
@@ -256,10 +258,6 @@ async def store_file(event: Any) -> None:
     # display constants
     constants_table = document.getElementById("constants_table" + str(id))
     for key, value in file_dict[id].constants.items():
-        # item = document.createElement("li")
-        # item.innerHTML = str(k) + ": " + str(v)
-        # constants_list.appendChild(item)
-
         row = document.createElement("tr")
         row.className = "constantsTr"
 
