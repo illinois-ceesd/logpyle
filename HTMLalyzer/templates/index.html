@@ -16,20 +16,15 @@
 {{ jsFile }}
 </script>
 
-    <py-config>
-      packages = [
-	  "matplotlib",
-	  "pandas",
-	  "sqlite3",
-	  "pytools",
-	  ]
-    </py-config>
 
-<py-script>
-{{ logpyleFile }}
-{{ runalyzerGatherFile }}
-{{ runalyzerFile }}
-</py-script>
+<py-config>
+  packages = [
+  "matplotlib",
+  "pandas",
+  "sqlite3",
+  "pytools",
+  ]
+</py-config>
 
 <py-script>
 {{ pythonFile }}

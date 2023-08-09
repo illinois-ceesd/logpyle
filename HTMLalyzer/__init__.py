@@ -3,8 +3,19 @@ def setup():
     import HTMLalyzer
     import logpyle
     import os
+    import base64
 
     print("Building HTML file for HTMLalyzer!")
+
+    with open("HTMLalyzer/logpyle-2023.2.3-py2.py3-none-any.whl", "rb") as f:
+        binary_data = f.read()
+        data = base64.b64encode(binary_data)
+        logpyleWhlFileString = data.decode("utf-8")
+
+    with open("HTMLalyzer/pymbolic-2022.2-py3-none-any.whl", "rb") as f:
+        binary_data = f.read()
+        data = base64.b64encode(binary_data)
+        pymbolicWhlFileString = data.decode("utf-8")
 
     html_path = os.path.dirname(HTMLalyzer.__file__)
     logpyle_path = os.path.dirname(logpyle.__file__)
@@ -14,21 +25,19 @@ def setup():
     newFileHTML = open(html_path+"/templates/newFile.html", "r").read()
     mainPy = open(html_path+"/main.py", "r").read()
     mainPy = Environment().from_string(mainPy)
-    mainPy = mainPy.render(newFileHTML=newFileHTML)
+    mainPy = mainPy.render(
+            newFileHTML=newFileHTML,
+            logpyleWhlFileString=logpyleWhlFileString,
+            pymbolicWhlFileString=pymbolicWhlFileString,
+            )
     mainCSS = open(html_path+"/main.css", "r").read()
     mainJs = open(html_path+"/main.js", "r").read()
 
-    runalyzerFile = open(html_path+"/modifiedRunalyzer.py", "r").read()
-    runalyzerGatherFile = open(html_path+"/modifiedRunalyzerGather.py", "r").read()
-    logpyleFile  = open(html_path+"/modifiedLogpyle.py", "r").read()
-
+    # os.system("python3 -m build --wheel -o HTMLalyzer/")
 
     content = template.render(
             cssFile=mainCSS,
             pythonFile=mainPy,
-            runalyzerFile=runalyzerFile,
-            logpyleFile=logpyleFile,
-            runalyzerGatherFile=runalyzerGatherFile ,
             jsFile=mainJs,
             )
 

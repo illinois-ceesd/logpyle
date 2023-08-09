@@ -5,9 +5,7 @@ from js import document, DOMParser
 from pyscript import Element
 from pyodide.ffi import create_proxy
 import micropip
-
-async def customImports():
-    pass
+import base64
 
 class dataFile:
     def __init__(self, name):
@@ -22,6 +20,35 @@ nextId = 1
 fileDiv = """
 {{ newFileHTML }}
 """
+
+logpyleWhlFileString = """
+{{ logpyleWhlFileString  }}
+"""
+logpyleWhlFileName = "logpyle-2023.2.3-py2.py3-none-any.whl"
+
+
+pymbolicWhlFileString = """
+{{ pymbolicWhlFileString  }}
+"""
+pymbolicWhlFileName = "pymbolic-2022.2-py3-none-any.whl"
+
+
+async def importLogpyle():
+    import os
+    # install dependencies
+    # install pymbolic
+    whlBase64 = pymbolicWhlFileString.encode("utf-8")
+    whl_binary_data = base64.decodebytes(whlBase64)
+    with open(pymbolicWhlFileName, "wb") as f:
+        f.write(whl_binary_data)
+    await micropip.install("emfs:"+pymbolicWhlFileName, keep_going=True, deps=True)
+
+    # install logpyle
+    whlBase64 = logpyleWhlFileString.encode("utf-8")
+    whl_binary_data = base64.decodebytes(whlBase64)
+    with open(logpyleWhlFileName, "wb") as f:
+        f.write(whl_binary_data)
+    await micropip.install("emfs:"+logpyleWhlFileName, keep_going=True, deps=True)
 
 
 def addFileFunc():
@@ -48,6 +75,7 @@ def addFileFunc():
 
 
 async def runPlot(event):
+    from logpyle.runalyzer import make_wrapped_db
     id = event.target.getAttribute("param")
     output = document.getElementById("output" + str(id))
     output.id = "graph-area"
@@ -144,12 +172,14 @@ async def addLine(event):
 
     y_quantities.appendChild(y_div)
 
+
 async def removeTableEle(event):
     event.target.parentElement.remove()
 
 
 async def runTable(event):
     import matplotlib.pyplot as plt
+    from logpyle.runalyzer import make_wrapped_db
     id = event.target.getAttribute("param")
     output = document.getElementById("output" + str(id))
     output.id = "graph-area"
@@ -176,9 +206,6 @@ def downloadTable(event):
         vals  = [ ele[0] for ele in vals ]
         quantities[name] = vals
 
-
-
-
     title = "# " + " vs. ".join(quantities.keys())
 
     body = ""
@@ -190,18 +217,16 @@ def downloadTable(event):
 
     js.download("output.txt", title + "\n" + body)
 
-    pass
-
 
 def printTable(event):
     pass
-
 
 
 async def storeFile(event):
     global file_dict
     fileList = event.target.files.to_py()
     from js import document, Uint8Array
+    from logpyle.runalyzer import make_wrapped_db
     id = event.target.parentElement.parentElement.id
 
     # write database file
@@ -293,8 +318,6 @@ async def storeFile(event):
 
 
     # create plot group
-    # plot_button = document.getElementById("plotButton" + str(id))
-    # plot_button.addEventListener("click", create_proxy(runPlot))
     chart_button = document.getElementById("chartsButton" + str(id))
     chart_button .addEventListener("click", create_proxy(runChart))
     # add quantites to quantity 1 dropdown
@@ -344,6 +367,5 @@ async def storeFile(event):
     print_table_button.addEventListener("click", create_proxy(printTable))
 
 
-
 file_dict = {}
-asyncio.ensure_future(customImports())
+asyncio.ensure_future(importLogpyle())
