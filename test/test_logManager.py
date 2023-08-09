@@ -342,10 +342,7 @@ def test_unique_suffix():
     import os
 
     def is_unique_filename(str: str):
-        if str.startswith("THIS_LOG_SHOULD_BE_DELETED-"):
-            return True
-        else:
-            return False
+        return str.startswith("THIS_LOG_SHOULD_BE_DELETED-")
 
     logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED.sqlite", "wu")
     logmgr.close()
