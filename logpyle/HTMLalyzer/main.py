@@ -219,7 +219,6 @@ async def store_file(event: Any) -> None:
     global file_dict
     file_list = event.target.files.to_py()
     from js import Uint8Array, document
-    import os
 
     from logpyle.runalyzer import make_wrapped_db
     id = event.target.parentElement.parentElement.id
@@ -229,7 +228,6 @@ async def store_file(event: Any) -> None:
         with open(f1.name, "wb") as file:
             data = Uint8Array.new(await f1.arrayBuffer())
             file.write(bytearray(data))
-    print(os.listdir())
 
     names = [f1.name for f1 in file_list]
     file_dict[id] = DataFile(names)
