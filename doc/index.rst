@@ -3,7 +3,7 @@ Welcome to logpyle's documentation!
 
 :mod:`logpyle` is a Python package for time series logging (formerly part of
 the ``pytools.log`` and ``datapyle`` packages) that uses :mod:`sqlite3` under
-the hood and makes it easy to compare multiple runs. 
+the hood and makes it easy to compare multiple runs.
 
 Here's an example use of the interface in context. See the :ref:`tutorial`
 for a more complete introduction.
@@ -19,6 +19,7 @@ Contents
 
     log
     api
+    analysis
     misc
 
     🚀 Github <https://github.com/illinois-ceesd/logpyle>
