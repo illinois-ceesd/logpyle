@@ -341,25 +341,28 @@ def test_unique_suffix():
     # a collision due to the names being based on time of day
     import os
 
-    def is_unique_filename(str: str):
-        if str.startswith("THIS_LOG_SHOULD_BE_DELETED-"):
-            return True
-        else:
-            return False
+    logmgr1 = LogManager("THIS_LOG_SHOULD_BE_DELETED.sqlite", "wu")
+    logmgr1.close()
 
-    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED.sqlite", "wu")
-    logmgr.close()
-
-    logmgr = LogManager("THIS_LOG_SHOULD_BE_DELETED.sqlite", "wu")
-    logmgr.close()
+    logmgr2 = LogManager("THIS_LOG_SHOULD_BE_DELETED.sqlite", "wu")
+    logmgr2.close()
 
     # assert that two distinct databases were created
-    files = [f for f in os.listdir() if is_unique_filename(f)]
-    print(files)
-    assert len(files) == 2
+    db_name1 = logmgr1.sqlite_filename
+    db_name2 = logmgr2.sqlite_filename
 
-    os.remove(files[0])
-    os.remove(files[1])
+    # type narrowing the optional type
+    assert db_name1
+    assert db_name2
+
+    files = os.listdir()
+    print(files)
+    assert files.count(db_name1) == 1
+    assert files.count(db_name2) == 1
+    assert db_name1 != db_name2
+
+    os.remove(db_name1)
+    os.remove(db_name2)
 
 
 def test_read_nonexistant_database():
