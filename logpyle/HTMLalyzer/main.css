@@ -75,3 +75,11 @@
 	overflow: auto;
 	margin: 0px;
 }
+.py-terminal {
+	min-height: 10em;
+	background-color: black;
+	color: white;
+	padding: 0px;
+	margin: 0px;
+	overflow: auto;
+}

@@ -13,21 +13,36 @@ def setup() -> None:
 
     # gather whl filenames
     html_files = os.listdir(html_path)
-    logpyle_whl_file_name = None
     pymbolic_whl_file_name = None
     for s in html_files:
-        if s.startswith("logpyle"):
-            logpyle_whl_file_name = s
         if s.startswith("pymbolic"):
             pymbolic_whl_file_name = s
-    assert logpyle_whl_file_name, "logpyle .whl file not found"
     assert pymbolic_whl_file_name, "pymbolic .whl file not found"
 
-    # get logpyle whl
-    with open(html_path+"/"+logpyle_whl_file_name, "rb") as f:
+    # get logpyle
+    with open(html_path+"/../__init__.py", "rb") as f:
         binary_data = f.read()
         data = base64.b64encode(binary_data)
-        logpyle_whl_file_str = data.decode("utf-8")
+        logpyle_py_file = data.decode("utf-8")
+
+    # get runalyzer
+    with open(html_path+"/../runalyzer.py", "rb") as f:
+        binary_data = f.read()
+        data = base64.b64encode(binary_data)
+        runalyzer_py_file = data.decode("utf-8")
+
+    # get runalyzer_gather
+    with open(html_path+"/../runalyzer_gather.py", "rb") as f:
+        binary_data = f.read()
+        data = base64.b64encode(binary_data)
+        runalyzer_gather_py_file = data.decode("utf-8")
+
+    # get version.py
+    with open(html_path+"/../version.py", "rb") as f:
+        binary_data = f.read()
+        data = base64.b64encode(binary_data)
+        version_py_file = data.decode("utf-8")
+
     # get pymbolic whl
     with open(html_path+"/"+pymbolic_whl_file_name, "rb") as f:
         binary_data = f.read()
@@ -41,16 +56,21 @@ def setup() -> None:
     new_file_html = open(html_path+"/templates/newFile.html", "r").read()
     main_py = open(html_path+"/main.py", "r").read()
     main_py_env: environment.Template = Environment().from_string(main_py)
+
+    # insert main.py dependencies as strings
     main_py = main_py_env.render(
             new_file_html=new_file_html,
-            logpyle_whl_file_str=logpyle_whl_file_str,
             pymbolic_whl_file_str=pymbolic_whl_file_str,
-            logpyle_whl_file_name=logpyle_whl_file_name,
             pymbolic_whl_file_name=pymbolic_whl_file_name,
+            logpyle_py_file=logpyle_py_file,
+            runalyzer_py_file=runalyzer_py_file,
+            runalyzer_gather_py_file=runalyzer_gather_py_file,
+            version_py_file=version_py_file,
             )
     main_css = open(html_path+"/main.css", "r").read()
     main_js = open(html_path+"/main.js", "r").read()
 
+    # create HTMLalyzer as a string
     content = template.render(
             cssFile=main_css,
             pythonFile=main_py,

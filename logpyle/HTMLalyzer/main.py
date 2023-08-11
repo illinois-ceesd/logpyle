@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import json
+import os
 from typing import Any
 
 import js  # type: ignore
@@ -23,8 +24,10 @@ file_div = """
 {{ new_file_html }}
 """
 
-logpyle_whl_file_str = "{{ logpyle_whl_file_str }}"
-logpyle_whl_file_name = "{{ logpyle_whl_file_name }}"
+logpyle_py_file = "{{ logpyle_py_file }}"
+runalyzer_py_file = "{{ runalyzer_py_file }}"
+runalyzer_gather_py_file = "{{ runalyzer_gather_py_file }}"
+version_py_file = "{{ version_py_file }}"
 
 
 pymbolic_whl_file_str = "{{ pymbolic_whl_file_str }}"
@@ -32,19 +35,40 @@ pymbolic_whl_file_name = "{{ pymbolic_whl_file_name }}"
 
 
 async def import_logpyle() -> None:
-    # install pymbolic
+    # install pymbolic from whl file
     whl_base_64 = pymbolic_whl_file_str.encode("utf-8")
     whl_binary_data = base64.decodebytes(whl_base_64)
     with open(pymbolic_whl_file_name, "wb") as f:
         f.write(whl_binary_data)
     await micropip.install("emfs:"+pymbolic_whl_file_name)
 
-    # install logpyle
-    whl_base_64 = logpyle_whl_file_str.encode("utf-8")
-    whl_binary_data = base64.decodebytes(whl_base_64)
-    with open(logpyle_whl_file_name, "wb") as f:
-        f.write(whl_binary_data)
-    await micropip.install("emfs:"+logpyle_whl_file_name)
+    # install logpyle in ecmascript virtual filesystem
+    os.mkdir("./logpyle")
+    # copy __init__.py
+    py_base_64 = logpyle_py_file.encode("utf-8")
+    py_binary_data = base64.decodebytes(py_base_64)
+    with open("logpyle/__init__.py", "wb") as f:
+        f.write(py_binary_data)
+    # copy runalyzer.py
+    py_base_64 = runalyzer_py_file.encode("utf-8")
+    py_binary_data = base64.decodebytes(py_base_64)
+    with open("logpyle/runalyzer.py", "wb") as f:
+        f.write(py_binary_data)
+    # copy runalyzer_gather.py
+    py_base_64 = runalyzer_gather_py_file.encode("utf-8")
+    py_binary_data = base64.decodebytes(py_base_64)
+    with open("logpyle/runalyzer_gather.py", "wb") as f:
+        f.write(py_binary_data)
+    # copy version.py
+    py_base_64 = version_py_file.encode("utf-8")
+    py_binary_data = base64.decodebytes(py_base_64)
+    with open("logpyle/version.py", "wb") as f:
+        f.write(py_binary_data)
+
+
+def clear_term() -> None:
+    term = document.getElementById("terminal").children[0]
+    term.innerHTML = ""
 
 
 def add_file_func() -> None:
@@ -228,6 +252,8 @@ def print_table(event: Any) -> None:
 
     names = ["$" + s for s in names]
     query_args = ", ".join(names)
+    # shoud remake in the future to store the connection instead of
+    # re-gathering it every time the button is pressed
     run_db = make_wrapped_db(file_dict[id].names, True, True)
     run_db.print_cursor(run_db.q("select " + query_args))
 

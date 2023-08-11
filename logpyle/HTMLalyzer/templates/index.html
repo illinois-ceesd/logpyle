@@ -24,9 +24,15 @@
   "sqlite3",
   "pytools",
   ]
+
+  [[fetch]]
+  from = "https://pyscript.net/examples/"
+  files = ["utils.py"]
 </py-config>
 
 <py-script>
+{{ logpyleFile }}
+{{ runalyzerFile }}
 {{ pythonFile }}
 </py-script>
 
@@ -42,8 +48,9 @@
 	<div id="file_list" style="display:flex;flex-direction:column">
 	</div>
 	<div class="terminal">
-		<py-terminal></py-terminal>
+		<py-terminal id="terminal"></py-terminal>
 	</div>
+	<button py-click="clear_term()" id="clear_term" class="py-button">Clear Terminal</button>
 
   </body>
 </html>
