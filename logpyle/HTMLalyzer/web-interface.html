@@ -181,19 +181,16 @@ async function download(filename, contents) {
 </py-config>
 
 <py-script>
-
-
 import asyncio
 import base64
 import json
+import os
 from typing import Any
 
 import js  # type: ignore
 import micropip  # type: ignore
-import os
 from js import DOMParser, document
 from pyodide.ffi import create_proxy  # type: ignore
-
 
 
 class DataFile:
@@ -353,10 +350,8 @@ async def import_logpyle() -> None:
     with open("logpyle/version.py", "wb") as f:
         f.write(py_binary_data)
 
-    import logpyle
 
-
-def clear_term():
+def clear_term() -> None:
     term = document.getElementById("terminal").children[0]
     term.innerHTML = ""
 

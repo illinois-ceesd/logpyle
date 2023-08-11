@@ -395,6 +395,9 @@ async def store_file(event: Any) -> None:
     print_table_button.addEventListener("click", create_proxy(print_table))
 
 
+# init file storage structure
 file_dict: dict[str, Any] = {}
+# ensure logpyle and dependencies are present
 asyncio.ensure_future(import_logpyle())
+# ensure that one analysis pannel is present to begin with
 add_file_func()
