@@ -38,6 +38,7 @@ Basic Usage
 TODO
 
 * essentially what running .help says
+* plotting multiple runs by splitting run ids (look into schema)
 
 Advanced Features
 -----------------
