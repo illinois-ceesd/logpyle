@@ -57,6 +57,23 @@
 	border: 1px solid;
 }
 
+.plottingDiv {
+	display: flex;
+	flex-direction: column;
+	margin: 5px;
+	padding: 5px;
+	border-style: solid;
+	border-width: thin;
+}
+.tableDiv {
+	display: flex;
+	flex-direction: column;
+	margin: 5px;
+	padding: 5px;
+	border-style: solid;
+	border-width: thin;
+}
+
 .radioDiv {
 	display:flex;
 	flex-direction:row;
@@ -176,7 +193,7 @@ next_id = 1
 file_div = """
 <div class="newFile" id="{0}" style="display:flex;flex-direction:column">
 	<div class="inputFileDiv">
-		<label for="file{0}">Choose a Logpyle sqlite file to analyze:</label>
+		<label for="file{0}">Choose Logpyle sqlite file(s) to analyze:</label>
 		<br>
 		<input id="file{0}" name="file{0}" type="file" multiple style="margin:5px;padding=5px;">
 	</div>
@@ -210,7 +227,7 @@ file_div = """
     </div>
     <div id="interactive{0}" style="display:flex;flex-direction:row">
         <div id="menu{0}" style="display:flex;flex-direction:column">
-            <div id="plot{0}" style="display:flex;flex-direction:column;margin:5px;padding=5px;background-color:#C0C0C0">
+            <div id="plot{0}" class="plottingDiv">
 
 				<div>
 					Plotting:
@@ -243,7 +260,7 @@ file_div = """
                 </button>
             </div>
 
-            <div id="table{0}" style="display:flex;flex-direction:column;margin:5px;padding:5px;background-color:#C0C0C0">
+            <div id="table{0}" class="tableDiv">
 				<div id="tableHeader{0}" style="white-space:nowrap">
 
 					<label for="tableQuantitySelect{0}">Table Quantity:</label>
@@ -263,7 +280,7 @@ file_div = """
 						Download Table
 					</button>
 					<button id="tablePrintButton{0}" style="height:30px;padding:5px;width:fit-content;" param="{0}">
-						Print Table
+						Show Table
 					</button>
 
 				</div>
@@ -448,6 +465,9 @@ def download_table(event: Any) -> None:
     table_list = document.getElementById("tableList" + str(id))
     for li in table_list.children:
         names.append(li.children[0].innerHTML)
+    if len(names) == 0:
+        print("no quantities in table list")
+        return
 
     quantities = {}
     for name in names:
@@ -468,6 +488,22 @@ def download_table(event: Any) -> None:
 
 
 def print_table(event: Any) -> None:
+    from logpyle.runalyzer import make_wrapped_db
+    id = event.target.getAttribute("param")
+
+    names = []
+    table_list = document.getElementById("tableList" + str(id))
+    for li in table_list.children:
+        names.append(li.children[0].innerHTML)
+    if len(names) == 0:
+        print("no quantities in table list")
+        return
+
+    names = ["$" + s for s in names]
+    query_args = ", ".join(names)
+    run_db = make_wrapped_db(file_dict[id].names, True, True)
+    run_db.print_cursor(run_db.q("select " + query_args))
+
     pass
 
 
@@ -475,7 +511,6 @@ async def store_file(event: Any) -> None:
     global file_dict
     file_list = event.target.files.to_py()
     from js import Uint8Array, document
-    import os
 
     from logpyle.runalyzer import make_wrapped_db
     id = event.target.parentElement.parentElement.id
@@ -485,7 +520,6 @@ async def store_file(event: Any) -> None:
         with open(f1.name, "wb") as file:
             data = Uint8Array.new(await f1.arrayBuffer())
             file.write(bytearray(data))
-    print(os.listdir())
 
     names = [f1.name for f1 in file_list]
     file_dict[id] = DataFile(names)
@@ -612,11 +646,12 @@ async def store_file(event: Any) -> None:
 
 file_dict: dict[str, Any] = {}
 asyncio.ensure_future(import_logpyle())
+add_file_func()
 </py-script>
 
 	<div style="display: flex; background-color: lightblue">
 		<div style="margin:10px;padding:10px;">
-			<button py-click="add_file_func()" id="add-file" class="py-button">Add file</button>
+			<button py-click="add_file_func()" id="add-file" class="py-button">Add analysis pannel</button>
 		</div>
 		<div style="margin:10px;padding:10px;font-weight:bold;">
 			HTMLalizer

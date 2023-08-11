@@ -192,6 +192,9 @@ def download_table(event: Any) -> None:
     table_list = document.getElementById("tableList" + str(id))
     for li in table_list.children:
         names.append(li.children[0].innerHTML)
+    if len(names) == 0:
+        print("no quantities in table list")
+        return
 
     quantities = {}
     for name in names:
@@ -212,7 +215,21 @@ def download_table(event: Any) -> None:
 
 
 def print_table(event: Any) -> None:
-    pass
+    from logpyle.runalyzer import make_wrapped_db
+    id = event.target.getAttribute("param")
+
+    names = []
+    table_list = document.getElementById("tableList" + str(id))
+    for li in table_list.children:
+        names.append(li.children[0].innerHTML)
+    if len(names) == 0:
+        print("no quantities in table list")
+        return
+
+    names = ["$" + s for s in names]
+    query_args = ", ".join(names)
+    run_db = make_wrapped_db(file_dict[id].names, True, True)
+    run_db.print_cursor(run_db.q("select " + query_args))
 
 
 async def store_file(event: Any) -> None:
@@ -354,3 +371,4 @@ async def store_file(event: Any) -> None:
 
 file_dict: dict[str, Any] = {}
 asyncio.ensure_future(import_logpyle())
+add_file_func()

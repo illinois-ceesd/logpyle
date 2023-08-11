@@ -48,6 +48,23 @@
 	border: 1px solid;
 }
 
+.plottingDiv {
+	display: flex;
+	flex-direction: column;
+	margin: 5px;
+	padding: 5px;
+	border-style: solid;
+	border-width: thin;
+}
+.tableDiv {
+	display: flex;
+	flex-direction: column;
+	margin: 5px;
+	padding: 5px;
+	border-style: solid;
+	border-width: thin;
+}
+
 .radioDiv {
 	display:flex;
 	flex-direction:row;
