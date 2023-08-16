@@ -426,11 +426,6 @@ async def run_chart(event: Any) -> None:
             json.dumps(y_vals),
             )
 
-    # struct of quantities
-    # file_dict[id].quantities[q_name] = {"vals":vals, "id": q_id,
-    #                                     "units":q_unit, "desc":q_desc,
-    #                                     "rank_agg": q_rank_agg}
-
 
 async def add_table_list(event: Any) -> None:
     id = event.target.getAttribute("param")
@@ -685,6 +680,7 @@ file_dict: dict[str, Any] = {}
 asyncio.ensure_future(import_logpyle())
 # ensure that one analysis pannel is present to begin with
 add_file_func()
+
 </py-script>
 
 	<div style="display: flex; background-color: lightblue">

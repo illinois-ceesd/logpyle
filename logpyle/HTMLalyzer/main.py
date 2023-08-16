@@ -21,17 +21,17 @@ next_id = 1
 
 # this HTML string was imported from newFile.html
 file_div = """
-{{ new_file_html }}
+$new_file_html
 """
 
-logpyle_py_file = "{{ logpyle_py_file }}"
-runalyzer_py_file = "{{ runalyzer_py_file }}"
-runalyzer_gather_py_file = "{{ runalyzer_gather_py_file }}"
-version_py_file = "{{ version_py_file }}"
+logpyle_py_file = "$logpyle_py_file"
+runalyzer_py_file = "$runalyzer_py_file"
+runalyzer_gather_py_file = "$runalyzer_gather_py_file"
+version_py_file = "$version_py_file"
 
 
-pymbolic_whl_file_str = "{{ pymbolic_whl_file_str }}"
-pymbolic_whl_file_name = "{{ pymbolic_whl_file_name }}"
+pymbolic_whl_file_str = "$pymbolic_whl_file_str"
+pymbolic_whl_file_name = "$pymbolic_whl_file_name"
 
 
 async def import_logpyle() -> None:
@@ -141,11 +141,6 @@ async def run_chart(event: Any) -> None:
             json.dumps(x_vals),
             json.dumps(y_vals),
             )
-
-    # struct of quantities
-    # file_dict[id].quantities[q_name] = {"vals":vals, "id": q_id,
-    #                                     "units":q_unit, "desc":q_desc,
-    #                                     "rank_agg": q_rank_agg}
 
 
 async def add_table_list(event: Any) -> None:
