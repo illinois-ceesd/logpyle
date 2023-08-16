@@ -35,6 +35,15 @@ pymbolic_whl_file_name = "$pymbolic_whl_file_name"
 
 
 async def import_logpyle() -> None:
+    # Currently we are expecting to have pymbolic built from source
+    # to a whl file every so often. Micropip inside of pyodide can
+    # only install packages that have a pure python whl file in pypi.
+    # To build a new whl file, clone pymbolic and ensure that you have
+    # installed the build package.
+    # Inside of pymbolic, run python3 -m build --wheel
+    # This will generate a directory dist which will have your wheel file.
+    # Copy this into HTMLalyzer and remove the old version.
+
     # install pymbolic from whl file
     whl_base_64 = pymbolic_whl_file_str.encode("utf-8")
     whl_binary_data = base64.decodebytes(whl_base_64)
@@ -76,7 +85,7 @@ def add_file_func() -> None:
 
     file_list = document.getElementById("file_list")
     parser = DOMParser.new()
-    html = parser.parseFromString(file_div.format(str(next_id)), "text/html")
+    html = parser.parseFromString(file_div.format(id=str(next_id)), "text/html")
     file_list.appendChild(html.body)
 
     new_file = document.getElementById(str(next_id))
@@ -188,20 +197,6 @@ async def add_line(event: Any) -> None:
 
 async def remove_table_ele(event: Any) -> None:
     event.target.parentElement.remove()
-
-
-async def run_table(event: Any) -> None:
-    from logpyle.runalyzer import make_wrapped_db
-    id = event.target.getAttribute("param")
-    output = document.getElementById("output" + str(id))
-    output.id = "graph-area"
-    run_db = make_wrapped_db(file_dict[id].names, True, True)
-    query = "select $t_sim, $t_2step"
-    cursor = run_db.db.execute(run_db.mangle_sql(query))
-    columnnames = [column[0] for column in cursor.description]
-    run_db.plot_cursor(cursor, labels=columnnames)
-
-    output.id = "output" + str(id)
 
 
 def download_table(event: Any) -> None:

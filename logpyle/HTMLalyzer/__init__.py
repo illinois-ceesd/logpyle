@@ -6,6 +6,7 @@ def get_current_hash() -> str:
     import logpyle.HTMLalyzer as Html
 
     html_path = os.path.dirname(Html.__file__)
+
     # calculate hashes of files used to build html
     hashes_str = ""
     files = [
@@ -46,6 +47,7 @@ def setup() -> None:
             pymbolic_whl_path = "HTMLalyzer/" + s
     assert pymbolic_whl_file_name, "pymbolic .whl file not found"
 
+    # store pymbolic and source files as binary data in html file
     filenames_to_copy = [
             "__init__.py",
             "runalyzer.py",
@@ -54,11 +56,10 @@ def setup() -> None:
             pymbolic_whl_path,
             ]
     files_dict = {}
-
     for name in filenames_to_copy:
         with open(html_path+"/../"+name, "rb") as f:
             binary_data = f.read()
-            data = base64.b64encode(binary_data)
+            data = base64.b64encode(binary_data)  # insert as single line of text
             files_dict[name] = data.decode("utf-8")
 
     # get templating files

@@ -1,12 +1,12 @@
-<div class="newFile" id="{0}" style="display:flex;flex-direction:column">
+<div class="newFile" id="{id}" style="display:flex;flex-direction:column">
 	<div class="inputFileDiv">
-		<label for="file{0}">Choose Logpyle sqlite file(s) to analyze:</label>
+		<label for="file{id}">Choose Logpyle sqlite file(s) to analyze:</label>
 		<br>
-		<input id="file{0}" name="file{0}" type="file" multiple style="margin:5px;padding=5px;">
+		<input id="file{id}" name="file{id}" type="file" multiple style="margin:5px;padding=5px;">
 	</div>
 
-    <div class="constantsDiv " id="constants{0}">
-		<table class="constantsTable" id="constants_table{0}">
+	<div class="constantsDiv " id="constants{id}">
+		<table class="constantsTable" id="constants_table{id}">
 			<thead>
 				<tr class="constantsTr">
 					<th class="constantsTd">Constant</th>
@@ -17,8 +17,8 @@
 			</tbody>
         </table>
     </div>
-    <div class="quantitiesDiv " id="quantities{0}">
-		<table class="quantitiesTable" id="quantities_table{0}">
+	<div class="quantitiesDiv " id="quantities{id}">
+		<table class="quantitiesTable" id="quantities_table{id}">
 			<thead>
 				<tr class="quantitiesTr">
 					<th class="quantitiesTr">Quantity</th>
@@ -32,70 +32,70 @@
 			</tbody>
         </table>
     </div>
-    <div id="interactive{0}" style="display:flex;flex-direction:row">
-        <div id="menu{0}" style="display:flex;flex-direction:column">
-            <div id="plot{0}" class="plottingDiv">
+	<div id="interactive{id}" style="display:flex;flex-direction:row">
+		<div id="menu{id}" style="display:flex;flex-direction:column">
+			<div id="plot{id}" class="plottingDiv">
 
 				<div>
 					Plotting:
 				</div>
 
 				<div>
-					<label for="quantity1{0}">X-axis Quantity:</label>
-					<div id="xQuantity{0}" style="display:flex;flex-direction:column;margin:5px;padding=5px;">
-						<select name="quantity1_{0}" id="quantity1_{0}">
+					<label for="quantity1{id}">X-axis Quantity:</label>
+					<div id="xQuantity{id}" style="display:flex;flex-direction:column;margin:5px;padding=5px;">
+						<select name="quantity1_{id}" id="quantity1_{id}">
 						</select>
 					</div>
 				</div>
 
 				<div>
-					<label for="quantity2{0}">Y-axis Quantities:</label>
-					<div id="yQuantities{0}" style="display:flex;flex-direction:column;margin:5px;padding=5px;">
+					<label for="quantity2{id}">Y-axis Quantities:</label>
+					<div id="yQuantities{id}" style="display:flex;flex-direction:column;margin:5px;padding=5px;">
 						<div style="white-space:nowrap">
-							<select name="quantity2{0}" id="quantity2_{0}" name="q2">
+							<select name="quantity2{id}" id="quantity2_{id}" name="q2">
 							</select>
 							<input type="color">
 						</div>
 					</div>
 				</div>
-				<button id="addLineButton{0}" style="height:30px;margin:5px;padding:5px" param1="{0}">
+				<button id="addLineButton{id}" style="height:30px;margin:5px;padding:5px" param1="{id}">
 					Add Line to Plot
 				</button>
 
-				<button id="chartsButton{0}" style="height:30px;padding:5px" param="{0}">
+				<button id="chartsButton{id}" style="height:30px;padding:5px" param="{id}">
                     Create Chart
                 </button>
             </div>
 
-            <div id="table{0}" class="tableDiv">
-				<div id="tableHeader{0}" style="white-space:nowrap">
+			<div id="table{id}" class="tableDiv">
+				<div id="tableHeader{id}" style="white-space:nowrap">
 
-					<label for="tableQuantitySelect{0}">Table Quantity:</label>
-					<select name="tableQuantitySelect{0}" id="tableQuantitySelect{0}">
+					<label for="tableQuantitySelect{id}">Table Quantity:</label>
+					<select name="tableQuantitySelect{id}" id="tableQuantitySelect{id}">
 					</select>
 
-					<button id="tableButton{0}" style="height:30px;padding:5px;width:fit-content;" param="{0}">
+					<button id="tableButton{id}" style="height:30px;padding:5px;width:fit-content;" param="{id}">
 						Add to list
 					</button>
 
 				</div>
-				<ol id="tableList{0}" style="margin-top:0px">
+				<ol id="tableList{id}" style="margin-top:0px">
 
 				</ol>
-				<div id="tableFooter{0}" style="display:flex;flex-direction:row">
-					<button id="tableDownloadButton{0}" style="height:30px;padding:5px" param="{0}">
+				<div id="tableFooter{id}" style="display:flex;flex-direction:row">
+					<button id="tableDownloadButton{id}" style="height:30px;padding:5px" param="{id}">
 						Download Table
 					</button>
-					<button id="tablePrintButton{0}" style="height:30px;padding:5px;width:fit-content;" param="{0}">
+					<button id="tablePrintButton{id}" style="height:30px;padding:5px;width:fit-content;" param="{id}">
 						Show Table
 					</button>
 
 				</div>
             </div>
         </div>
-        <div id="output{0}" style="margin:5px;"></div>
+		<div id="output{id}" style="margin:5px;"></div>
 		<div style="flex-basis:100%">
-			<canvas id="chart{0}"></canvas>
+			<canvas id="chart{id}"></canvas>
 		</div>
     </div>
 </div>
