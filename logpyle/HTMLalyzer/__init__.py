@@ -1,14 +1,40 @@
-def setup() -> None:
+def get_current_hash() -> str:
     import base64
     import hashlib
     import os
 
+    import logpyle.HTMLalyzer as Html
+
+    html_path = os.path.dirname(Html.__file__)
+    # calculate hashes of files used to build html
+    hashes_str = ""
+    files = [
+            "__init__.py",
+            "runalyzer.py",
+            "runalyzer_gather.py",
+            "version.py",
+            ]
+
+    for file in files:
+        with open(html_path+"/../"+file, "rb") as f:
+            binary_data = f.read()
+            m = hashlib.sha256()
+            m.update(binary_data)
+            hash = m.digest()
+            hashes_str += file + ": " + base64.b64encode(hash).decode("utf-8") + "\n"
+
+    return hashes_str
+
+
+def setup() -> None:
+    import base64
+    import os
+
     from jinja2 import Environment, FileSystemLoader, environment
 
-    import logpyle.HTMLalyzer
-    from logpyle import HTMLalyzer
+    import logpyle.HTMLalyzer as Html
 
-    html_path = os.path.dirname(logpyle.HTMLalyzer.__file__)
+    html_path = os.path.dirname(Html.__file__)
 
     print("Building HTML file for HTMLalyzer!")
 
@@ -20,45 +46,27 @@ def setup() -> None:
             pymbolic_whl_file_name = s
     assert pymbolic_whl_file_name, "pymbolic .whl file not found"
 
-    hashes_str = ""
-
     # get logpyle
     with open(html_path+"/../__init__.py", "rb") as f:
         binary_data = f.read()
-        m = hashlib.sha256()
-        m.update(binary_data)
-        hash = m.digest()
-        hashes_str += "logpyle:" + base64.b64encode(hash).decode("utf-8") + "\n"
         data = base64.b64encode(binary_data)
         logpyle_py_file = data.decode("utf-8")
 
     # get runalyzer
     with open(html_path+"/../runalyzer.py", "rb") as f:
         binary_data = f.read()
-        m = hashlib.sha256()
-        m.update(binary_data)
-        hash = m.digest()
-        hashes_str += "runalyzer:" + base64.b64encode(hash).decode("utf-8") + "\n"
         data = base64.b64encode(binary_data)
         runalyzer_py_file = data.decode("utf-8")
 
     # get runalyzer_gather
     with open(html_path+"/../runalyzer_gather.py", "rb") as f:
         binary_data = f.read()
-        m = hashlib.sha256()
-        m.update(binary_data)
-        hash = m.digest()
-        hashes_str += "runalyzer_gather:" + base64.b64encode(hash).decode("utf-8") + "\n"
         data = base64.b64encode(binary_data)
         runalyzer_gather_py_file = data.decode("utf-8")
 
     # get version.py
     with open(html_path+"/../version.py", "rb") as f:
         binary_data = f.read()
-        m = hashlib.sha256()
-        m.update(binary_data)
-        hash = m.digest()
-        hashes_str += "version:" + base64.b64encode(hash).decode("utf-8") + "\n"
         data = base64.b64encode(binary_data)
         version_py_file = data.decode("utf-8")
 
@@ -70,12 +78,11 @@ def setup() -> None:
 
     # store file hashes
     with open(html_path+"/file_hashes.txt", "w") as f:
+        hashes_str = get_current_hash()
         f.write(hashes_str)
 
-    html_path = os.path.dirname(HTMLalyzer.__file__)
     enviroment = Environment(loader=FileSystemLoader(html_path+"/templates/"))
     template = enviroment.get_template("index.html")
-
 
     new_file_html = open(html_path+"/templates/newFile.html", "r").read()
     main_py = open(html_path+"/main.py", "r").read()
