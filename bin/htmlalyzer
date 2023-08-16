@@ -62,10 +62,6 @@ REBUILD HTMLALYZER TO PASS CHANGES THROUGH!!!
 run `htmlalyzer --build`
 *********************************************
               """)
-        print("SOURCE FILES HAVE BEEN MODIFIED!!!")
-        print("REBUILD HTMLALYZER TO PASS CHANGES THROUGH!!!")
-        print("run `htmlalyzer --build`")
-
 
     if args.build:
         logpyle.HTMLalyzer.setup()
