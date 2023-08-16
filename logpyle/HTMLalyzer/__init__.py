@@ -1,5 +1,6 @@
 def setup() -> None:
     import base64
+    import hashlib
     import os
 
     from jinja2 import Environment, FileSystemLoader, environment
@@ -19,27 +20,45 @@ def setup() -> None:
             pymbolic_whl_file_name = s
     assert pymbolic_whl_file_name, "pymbolic .whl file not found"
 
+    hashes_str = ""
+
     # get logpyle
     with open(html_path+"/../__init__.py", "rb") as f:
         binary_data = f.read()
+        m = hashlib.sha256()
+        m.update(binary_data)
+        hash = m.digest()
+        hashes_str += "logpyle:" + base64.b64encode(hash).decode("utf-8") + "\n"
         data = base64.b64encode(binary_data)
         logpyle_py_file = data.decode("utf-8")
 
     # get runalyzer
     with open(html_path+"/../runalyzer.py", "rb") as f:
         binary_data = f.read()
+        m = hashlib.sha256()
+        m.update(binary_data)
+        hash = m.digest()
+        hashes_str += "runalyzer:" + base64.b64encode(hash).decode("utf-8") + "\n"
         data = base64.b64encode(binary_data)
         runalyzer_py_file = data.decode("utf-8")
 
     # get runalyzer_gather
     with open(html_path+"/../runalyzer_gather.py", "rb") as f:
         binary_data = f.read()
+        m = hashlib.sha256()
+        m.update(binary_data)
+        hash = m.digest()
+        hashes_str += "runalyzer_gather:" + base64.b64encode(hash).decode("utf-8") + "\n"
         data = base64.b64encode(binary_data)
         runalyzer_gather_py_file = data.decode("utf-8")
 
     # get version.py
     with open(html_path+"/../version.py", "rb") as f:
         binary_data = f.read()
+        m = hashlib.sha256()
+        m.update(binary_data)
+        hash = m.digest()
+        hashes_str += "version:" + base64.b64encode(hash).decode("utf-8") + "\n"
         data = base64.b64encode(binary_data)
         version_py_file = data.decode("utf-8")
 
@@ -49,9 +68,14 @@ def setup() -> None:
         data = base64.b64encode(binary_data)
         pymbolic_whl_file_str = data.decode("utf-8")
 
+    # store file hashes
+    with open(html_path+"/file_hashes.txt", "w") as f:
+        f.write(hashes_str)
+
     html_path = os.path.dirname(HTMLalyzer.__file__)
     enviroment = Environment(loader=FileSystemLoader(html_path+"/templates/"))
     template = enviroment.get_template("index.html")
+
 
     new_file_html = open(html_path+"/templates/newFile.html", "r").read()
     main_py = open(html_path+"/main.py", "r").read()

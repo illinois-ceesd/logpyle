@@ -3,6 +3,8 @@
 
 def main() -> None:
     import argparse
+    import base64
+    import hashlib
     import os
     import webbrowser
 
@@ -15,6 +17,55 @@ def main() -> None:
     parser.add_argument("-b", "--build", action="store_true",
             help="Build the HTML file before opening it.")
     args = parser.parse_args()
+
+    # calculate hashes of files used to build html
+    hashes_str = ""
+
+    # get logpyle
+    with open(html_path+"/../__init__.py", "rb") as f:
+        binary_data = f.read()
+        m = hashlib.sha256()
+        m.update(binary_data)
+        hash = m.digest()
+        hashes_str += "logpyle:" + base64.b64encode(hash).decode("utf-8") + "\n"
+    # get runalyzer
+    with open(html_path+"/../runalyzer.py", "rb") as f:
+        binary_data = f.read()
+        m = hashlib.sha256()
+        m.update(binary_data)
+        hash = m.digest()
+        hashes_str += "runalyzer:" + base64.b64encode(hash).decode("utf-8") + "\n"
+    # get runalyzer_gather
+    with open(html_path+"/../runalyzer_gather.py", "rb") as f:
+        binary_data = f.read()
+        m = hashlib.sha256()
+        m.update(binary_data)
+        hash = m.digest()
+        hashes_str += "runalyzer_gather:" + base64.b64encode(hash).decode("utf-8") + "\n"
+    # get version.py
+    with open(html_path+"/../version.py", "rb") as f:
+        binary_data = f.read()
+        m = hashlib.sha256()
+        m.update(binary_data)
+        hash = m.digest()
+        hashes_str += "version:" + base64.b64encode(hash).decode("utf-8") + "\n"
+
+    # get stored hashes
+    with open(html_path+"/file_hashes.txt", "r") as f:
+        stored_hashes = f.read()
+
+    if stored_hashes != hashes_str and not args.build:
+        print("""
+*********************************************
+SOURCE FILES HAVE BEEN MODIFIED!!!
+REBUILD HTMLALYZER TO PASS CHANGES THROUGH!!!
+run `htmlalyzer --build`
+*********************************************
+              """)
+        print("SOURCE FILES HAVE BEEN MODIFIED!!!")
+        print("REBUILD HTMLALYZER TO PASS CHANGES THROUGH!!!")
+        print("run `htmlalyzer --build`")
+
 
     if args.build:
         logpyle.HTMLalyzer.setup()
