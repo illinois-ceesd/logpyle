@@ -27,6 +27,7 @@ def main() -> None:
     if stored_hashes != hashes_str and not args.build:
         print("Source files have been modified")
         print("Automatically rebuilding HTMLalyzer to pass changes through")
+        Html.setup()
 
     if args.build:
         Html.setup()
