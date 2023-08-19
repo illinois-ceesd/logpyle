@@ -141,7 +141,6 @@ jobs:
             run: |
                 curl -L -O https://tiker.net/ci-support-v0
                 . ci-support-v0
-                export EXTRA_INSTALL=mpi4py
                 build_py_project_in_venv
                 build_docs
 

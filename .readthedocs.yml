@@ -14,4 +14,4 @@ build:
     python: "3.11"
   jobs:
     post_install:
-      - pip install sphinx-copybutton furo mpi4py
+      - pip install sphinx-copybutton furo
