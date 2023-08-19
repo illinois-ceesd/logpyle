@@ -1,25 +1,31 @@
 #!/usr/bin/env python3
 
-from time import sleep
+import logging
 from random import uniform
-from logpyle import (LogManager, add_general_quantities,
-        add_simulation_quantities, add_run_info, IntervalTimer,
-        LogQuantity, set_dt)
-
+from time import sleep
+from typing import Any, Callable
 from warnings import warn
+
 from mpi4py import MPI
+
+from logpyle import (IntervalTimer, LogManager, LogQuantity,
+                     add_general_quantities, add_run_info,
+                     add_simulation_quantities, set_dt)
 
 
 class Fifteen(LogQuantity):
     @property
-    def default_aggregator(self):
+    def default_aggregator(self) -> Callable[..., Any]:  # type: ignore[override]
         return min
 
-    def __call__(self):
+    def __call__(self) -> int:
         return 15
 
 
-def main():
+logger = logging.getLogger(__name__)
+
+
+def main() -> None:
     logmgr = LogManager("mpi-log.sqlite", "wu", MPI.COMM_WORLD)
 
     # Set a run property
@@ -61,9 +67,12 @@ def main():
             with vis_timer.start_sub_timer():
                 sleep(0.05)
 
-        # Illustrate warnings capture
+        # Illustrate warnings/logging capture
         if uniform(0, 1) < 0.05:
             warn("Oof. Something went awry.")
+
+        if istep == 16:
+            logger.warning("test logging")
 
         logmgr.tick_after()
 

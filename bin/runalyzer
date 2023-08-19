@@ -1,31 +1,42 @@
 #! /usr/bin/env python
 
 
-def main():
-    import sys
+def main() -> None:
     import argparse
+    import sys
 
     parser = argparse.ArgumentParser(description="Analyze a logpyle database.")
     parser.add_argument("-m", "--mangle", action="store_true",
-            help="whether to try and mangle SQL queries")
+            help="(ignored)")
+    parser.add_argument("-n", "--nomangle", action="store_true",
+            help="disable mangling of SQL queries")
     parser.add_argument("-c", "--commands", action="store",
             help="commands to execute")
-    parser.add_argument("dbfile", help="database file to read")
-    parser.add_argument("scriptfile", nargs="?", help="script file to read")
+    parser.add_argument("dbfiles", nargs="+", type=str,
+                        help="database file(s) to read")
+    parser.add_argument("--script", type=str,
+                        help="script file to read")
     args = parser.parse_args()
 
-    from logpyle.runalyzer import make_wrapped_db, make_runalyzer_symbols
+    from logpyle.runalyzer import make_runalyzer_symbols, make_wrapped_db
 
-    if args.scriptfile:
-        db = make_wrapped_db(args.dbfile, mangle=args.mangle, interactive=False)
-        exec(compile(open(args.scriptfile).read(), args.scriptfile, "exec"),
+    if args.mangle:
+        from warnings import warn
+        warn("The -m/--mangle option is deprecated, mangling is enabled by "
+             "default. Disable mangling with -n/--nomangle.")
+
+    do_mangle = not args.nomangle
+
+    if args.script:
+        db = make_wrapped_db(args.dbfiles, mangle=do_mangle, interactive=False)
+        exec(compile(open(args.script).read(), args.script, "exec"),
                 make_runalyzer_symbols(db))
     elif args.commands:
-        db = make_wrapped_db(args.dbfile, mangle=args.mangle, interactive=False)
+        db = make_wrapped_db(args.dbfiles, mangle=do_mangle, interactive=False)
         exec(compile(args.commands, "--commands", "exec"),
                 make_runalyzer_symbols(db))
     else:
-        db = make_wrapped_db(args.dbfile, mangle=args.mangle, interactive=True)
+        db = make_wrapped_db(args.dbfiles, mangle=do_mangle, interactive=True)
         from logpyle.runalyzer import RunalyzerConsole
         cons = RunalyzerConsole(db)
         cons.interact("Runalyzer running on Python %s\n"

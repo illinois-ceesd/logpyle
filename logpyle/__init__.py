@@ -22,8 +22,10 @@ Built-in Log General-Purpose Quantities
 .. autoclass:: StepToStepDuration
 .. autoclass:: TimestepDuration
 .. autoclass:: InitTime
-.. autoclass:: CPUTime
+.. autoclass:: WallTime
 .. autoclass:: ETA
+.. autoclass:: MemoryHwm
+.. autoclass:: GCStats
 .. autofunction:: add_general_quantities
 
 Built-in Log Simulation-Related Quantities
@@ -32,6 +34,11 @@ Built-in Log Simulation-Related Quantities
 .. autoclass:: Timestep
 .. autofunction:: set_dt
 .. autofunction:: add_simulation_quantities
+
+
+Internal stuff that is only here because the documentation tool wants it
+------------------------------------------------------------------------
+.. autoclass:: _SubTimer
 """
 
 __copyright__ = "Copyright (C) 2009-2013 Andreas Kloeckner"
@@ -58,32 +65,27 @@ THE SOFTWARE.
 
 
 import logpyle.version
+
 __version__ = logpyle.version.VERSION_TEXT
 
 
 import logging
+
 logger = logging.getLogger(__name__)
 
-from typing import List, Callable, Union, Tuple, Optional, Dict
+from dataclasses import dataclass
+from sqlite3 import Connection
+from time import monotonic as time_monotonic
+from typing import (TYPE_CHECKING, Any, Callable, Dict, Generator, Iterable,
+                    List, Optional, Sequence, TextIO, Tuple, Type, Union, cast)
+
+from pymbolic.compiler import CompiledExpression  # type: ignore[import]
+from pymbolic.mapper.dependency import DependencyMapper  # type: ignore[import]
+from pymbolic.primitives import Expression  # type: ignore[import]
 from pytools.datatable import DataTable
 
-
-# {{{ timing function
-
-def time() -> float:
-    """Return elapsed CPU time, as a float, in seconds."""
-    import os
-    time_opt = os.environ.get("PYTOOLS_LOG_TIME") or "wall"
-    if time_opt == "wall":
-        from time import time
-        return time()
-    elif time_opt == "rusage":
-        from resource import getrusage, RUSAGE_SELF
-        return getrusage(RUSAGE_SELF).ru_utime
-    else:
-        raise RuntimeError("invalid timing method '%s'" % time_opt)
-
-# }}}
+if TYPE_CHECKING:
+    import mpi4py
 
 
 # {{{ abstract logging interface
@@ -101,7 +103,8 @@ class LogQuantity:
 
     sort_weight = 0
 
-    def __init__(self, name: str, unit: str = None, description: str = None) -> None:
+    def __init__(self, name: str, unit: Optional[str] = None,
+                 description: Optional[str] = None) -> None:
         """Create a new quantity.
 
         Parameters
@@ -128,7 +131,7 @@ class LogQuantity:
         """Perform updates required at every :class:`LogManager` tick."""
         pass
 
-    def __call__(self) -> Optional[float]:
+    def __call__(self) -> Any:
         """Return the current value of the diagnostic represented by this
         :class:`LogQuantity` or None if no value is available.
 
@@ -156,7 +159,8 @@ class PostLogQuantity(LogQuantity):
 
 
 class MultiLogQuantity:
-    """A source of a list of loggable scalars gathered at the start of each time step.
+    """A source of a list of loggable scalars gathered at the start of each time
+    step.
 
     Quantity values are gathered in :meth:`LogManager.tick_before`.
 
@@ -167,8 +171,9 @@ class MultiLogQuantity:
     """
     sort_weight = 0
 
-    def __init__(self, names: List[str], units: List[str] = None,
-                 descriptions: List[str] = None) -> None:
+    def __init__(self, names: List[str],
+                 units: Optional[Sequence[Optional[str]]] = None,
+                 descriptions: Optional[Sequence[Optional[str]]] = None) -> None:
         """Create a new quantity.
 
         Parameters
@@ -185,12 +190,14 @@ class MultiLogQuantity:
         self.names = names
 
         if units is None:
-            units = len(names) * [None]  # type: ignore
-        self.units = units
+            self.units: Sequence[Optional[str]] = len(names) * [None]
+        else:
+            self.units = units
 
         if descriptions is None:
-            descriptions = len(names) * [None]  # type: ignore
-        self.descriptions = descriptions
+            self.descriptions: Sequence[Optional[str]] = len(names) * [None]
+        else:
+            self.descriptions = descriptions
 
     @property
     def default_aggregators(self) -> List[None]:
@@ -201,7 +208,7 @@ class MultiLogQuantity:
         """Perform updates required at every :class:`LogManager` tick."""
         pass
 
-    def __call__(self) -> None:
+    def __call__(self) -> Iterable[Optional[float]]:
         """Return an iterable of the current values of the diagnostic represented
         by this :class:`MultiLogQuantity`.
 
@@ -225,37 +232,38 @@ class MultiPostLogQuantity(MultiLogQuantity, PostLogQuantity):
 
 
 class DtConsumer:
-    def __init__(self, dt) -> None:
-        self.dt = dt
+    def __init__(self) -> None:
+        self.dt: Optional[float] = None
 
-    def set_dt(self, dt) -> None:
+    def set_dt(self, dt: Optional[float]) -> None:
         self.dt = dt
 
 
 class TimeTracker(DtConsumer):
-    def __init__(self, dt: Optional[float], start: float = 0) -> None:
-        DtConsumer.__init__(self, dt)
+    def __init__(self, start: float = 0) -> None:
+        DtConsumer.__init__(self)
         self.t = start
 
     def tick(self) -> None:
-        self.t += self.dt
+        self.t += cast(float, self.dt)
 
 
 class SimulationLogQuantity(PostLogQuantity, DtConsumer):
     """A source of loggable scalars that needs to know the simulation timestep."""
 
-    def __init__(self, dt: Optional[float], name: str, unit: str = None,
-                 description: str = None) -> None:
+    def __init__(self, name: str, unit: Optional[str] = None,
+                 description: Optional[str] = None) -> None:
         PostLogQuantity.__init__(self, name, unit, description)
-        DtConsumer.__init__(self, dt)
+        DtConsumer.__init__(self)
 
 
 class PushLogQuantity(LogQuantity):
-    def __init__(self, name: str, unit: str = None, description: str = None) -> None:
+    def __init__(self, name: str, unit: Optional[str] = None,
+                 description: Optional[str] = None) -> None:
         LogQuantity.__init__(self, name, unit, description)
-        self.value = None
+        self.value: Optional[float] = None
 
-    def push_value(self, value) -> None:
+    def push_value(self, value: float) -> None:
         if self.value is not None:
             raise RuntimeError("can't push two values per cycle")
         self.value = value
@@ -268,8 +276,9 @@ class PushLogQuantity(LogQuantity):
 
 class CallableLogQuantityAdapter(LogQuantity):
     """Adapt a 0-ary callable as a :class:`LogQuantity`."""
-    def __init__(self, callable: Callable, name: str, unit: str = None,
-                 description: str = None) -> None:
+    def __init__(self, callable: Callable[[], float], name: str,
+                 unit: Optional[str] = None, description: Optional[str] = None) \
+                    -> None:
         self.callable = callable
         LogQuantity.__init__(self, name, unit, description)
 
@@ -281,21 +290,21 @@ class CallableLogQuantityAdapter(LogQuantity):
 
 # {{{ manager functionality
 
+@dataclass(frozen=True)
 class _GatherDescriptor:
-    def __init__(self, quantity: LogQuantity, interval: int) -> None:
-        self.quantity = quantity
-        self.interval = interval
+    quantity: LogQuantity
+    interval: int
 
 
+@dataclass(frozen=True)
 class _QuantityData:
-    def __init__(self, unit: str, description: str,
-                 default_aggregator: Callable) -> None:
-        self.unit = unit
-        self.description = description
-        self.default_aggregator = default_aggregator
+    unit: Optional[str]
+    description: Optional[str]
+    default_aggregator: Optional[Callable[..., Any]]
 
 
-def _join_by_first_of_tuple(list_of_iterables):
+def _join_by_first_of_tuple(list_of_iterables: List[Iterable[Any]]) \
+        -> Generator[Tuple[int, List[Any]], None, None]:
     loi = [i.__iter__() for i in list_of_iterables]
     if not loi:
         return
@@ -331,33 +340,16 @@ def _join_by_first_of_tuple(list_of_iterables):
 
 
 def _get_unique_id() -> str:
-    try:
-        from uuid import uuid1
-    except ImportError:
-        try:
-            import hashlib
-            checksum = hashlib.md5()
-        except ImportError:
-            # for Python << 2.5
-            import md5  # type: ignore
-            checksum = md5.new()
-
-        from random import Random
-        rng = Random()
-        rng.seed()
-        for i in range(20):
-            checksum.update(str(rng.randrange(1 << 30)).encode("utf-32"))
-        return checksum.hexdigest()
-    else:
-        return uuid1().hex
+    from uuid import uuid1
+    return uuid1().hex
 
 
-def _get_unique_suffix():
+def _get_unique_suffix() -> str:
     from datetime import datetime
     return "-" + datetime.utcnow().strftime("%Y%m%d-%H%M%S")
 
 
-def _set_up_schema(db_conn):
+def _set_up_schema(db_conn: Connection) -> int:
     # initialize new database
     db_conn.execute("""
       create table quantities (
@@ -369,21 +361,65 @@ def _set_up_schema(db_conn):
       create table constants (
         name text,
         value blob)""")
+
+    # schema_version < 2 is missing the 'rank' field.
+    # schema_version < 3 is missing the 'unixtime' field.
     db_conn.execute("""
       create table warnings (
         rank integer,
         step integer,
+        unixtime integer,
         message text,
         category text,
         filename text,
         lineno integer
         )""")
 
-    schema_version = 2
+    # schema_version < 3 does not have the logging table
+    db_conn.execute("""
+      create table logging (
+        rank integer,
+        step integer,
+        unixtime integer,
+        level text,
+        message text,
+        filename text,
+        lineno integer
+        )""")
+
+    schema_version = 3
     return schema_version
 
 
-from pytools import Record
+@dataclass
+class _DependencyData:
+    name: str
+    qdat: _QuantityData
+    agg_func: Callable[..., Any]
+    varname: str
+    expr: Expression
+    nonlocal_agg: bool
+    table: Optional[DataTable] = None
+
+
+@dataclass
+class _WatchInfo:
+    parsed: Expression
+    expr: Expression
+    dep_data: List[_DependencyData]
+    compiled: CompiledExpression
+    unit: Optional[str]
+    format: str
+
+
+@dataclass(frozen=True)
+class _LogWarningInfo:
+    tick_count: int
+    time: float
+    message: str
+    category: str
+    filename: str
+    lineno: int
 
 
 class LogManager:
@@ -394,7 +430,6 @@ class LogManager:
 
         tick_before()
         compute...
-        tick()
         tick_after()
 
         tick_before()
@@ -407,7 +442,7 @@ class LogManager:
     :meth:`tick_after` calls captures data for a single time state,
     namely that in which the data may have been *before* the "compute"
     step. However, some data (such as the length of the timestep taken
-    in a time-adpative method) may only be available *after* the completion
+    in a time-adaptive method) may only be available *after* the completion
     of the "compute..." stage, which is why :meth:`tick_after` exists.
 
     A :class:`LogManager` logs any number of named time series of floats to
@@ -428,13 +463,16 @@ class LogManager:
 
     .. automethod:: get_table
     .. automethod:: get_warnings
+    .. automethod:: get_logging
     .. automethod:: get_expr_dataset
     .. automethod:: get_joint_dataset
 
     .. rubric:: Configuration
 
     .. automethod:: capture_warnings
+    .. automethod:: capture_logging
     .. automethod:: add_watches
+    .. automethod:: set_watch_interval
     .. automethod:: set_constant
     .. automethod:: add_quantity
 
@@ -444,23 +482,27 @@ class LogManager:
     .. automethod:: tick_after
     """
 
-    def __init__(self, filename: str = None, mode: str = "r", mpi_comm=None,
-                 capture_warnings: bool = True, commit_interval: float = 90) -> None:
+    def __init__(self, filename: Optional[str] = None, mode: str = "r",
+                 mpi_comm: Optional["mpi4py.MPI.Comm"] = None,
+                 capture_warnings: bool = True, commit_interval: int = 90,
+                 watch_interval: float = 1.0,
+                 capture_logging: bool = True) -> None:
         """Initialize this log manager instance.
 
-        :param filename: If given, the filename to which this log is bound.
+        :arg filename: If given, the filename to which this log is bound.
           If this database exists, the current state is loaded from it.
-        :param mode: One of "w", "r" for write, read. "w" assumes that the
+        :arg mode: One of "w", "r" for write, read. "w" assumes that the
           database is initially empty. May also be "wu" to indicate that
           a unique filename should be chosen automatically. May also be "wo"
           to indicate that the file should be overwritten.
-        :arg mpi_comm: A `mpi4py.MPI.Comm`. If given, logs are
-            periodically synchronized to the head node, which then writes them
-            out to disk.
-        :param capture_warnings: Tap the Python warnings facility and save warnings
+        :arg mpi_comm: An optional :class:`mpi4py.MPI.Comm` object.
+          If given, logs are periodically synchronized to the head node,
+          which then writes them out to disk.
+        :arg capture_warnings: Tap the Python warnings facility and save warnings
           to the log file.
-        :param commit_interval: actually perform a commit only every N times a commit
+        :arg commit_interval: actually perform a commit only every N times a commit
           is requested.
+        :arg watch_interval: print watches every N seconds.
         """
 
         assert isinstance(mode, str), "mode must be a string"
@@ -477,10 +519,10 @@ class LogManager:
 
         self.constants: Dict[str, object] = {}
 
-        self.last_save_time = time()
+        self.last_save_time = time_monotonic()
 
         # self-timing
-        self.start_time = time()
+        self.start_time = time_monotonic()
         self.t_log: float = 0
 
         # parallel support
@@ -495,13 +537,16 @@ class LogManager:
             self.head_rank = 0
 
         # watch stuff
-        self.watches: List[Record] = []
-        self.next_watch_tick = 1
+        self.watches: List[_WatchInfo] = []
         self.have_nonlocal_watches = False
+
+        # Interval between printing watches, in seconds
+        self.set_watch_interval(watch_interval)
 
         # database binding
         import sqlite3 as sqlite
 
+        self.sqlite_filename: Optional[str] = None
         if filename is None:
             file_base = ":memory:"
             file_extension = ""
@@ -516,12 +561,15 @@ class LogManager:
 
             if mode == "wu" and not file_base == ":memory:":
                 if self.is_parallel:
+                    assert self.mpi_comm
                     suffix = self.mpi_comm.bcast(_get_unique_suffix(),
                                                  root=self.head_rank)
                 else:
                     suffix = _get_unique_suffix()
 
             filename = file_base + suffix + file_extension
+            if not file_base == ":memory:":
+                self.sqlite_filename = filename
 
             if mode == "wo":
                 import os
@@ -546,6 +594,7 @@ class LogManager:
 
                 # set globally unique run_id
                 if self.is_parallel:
+                    assert self.mpi_comm
                     self.set_constant("unique_run_id",
                             self.mpi_comm.bcast(_get_unique_id(),
                                 root=self.head_rank))
@@ -553,6 +602,7 @@ class LogManager:
                     self.set_constant("unique_run_id", _get_unique_id())
 
                 if self.is_parallel:
+                    assert self.mpi_comm
                     self.set_constant("rank_count", self.mpi_comm.Get_size())
                 else:
                     self.set_constant("rank_count", 1)
@@ -574,32 +624,44 @@ class LogManager:
 
             break
 
-        self.old_showwarning: Optional[Callable] = None
-        if capture_warnings:
+        # {{{ warnings/logging capture
+
+        self.warning_data: List[_LogWarningInfo] = []
+        self.old_showwarning: Optional[Callable[..., Any]] = None
+        if capture_warnings and self.mode[0] == "w":
             self.capture_warnings(True)
 
-    def capture_warnings(self, enable: bool = True) -> None:
-        def _showwarning(message, category, filename, lineno, file=None, line=None):
-            try:
-                self.old_showwarning(message, category, filename, lineno, file, line)
-            except TypeError:
-                # cater to Python 2.5 and earlier
-                self.old_showwarning(message, category, filename, lineno)
+        self.logging_data: List[_LogWarningInfo] = []
+        self.logging_handler: Optional[logging.Handler] = None
+        if capture_logging and self.mode[0] == "w":
+            self.capture_logging(True)
 
-            if self.schema_version >= 1 and self.mode[0] == "w":
-                if self.schema_version >= 2:
-                    self.db_conn.execute("insert into warnings values (?,?,?,?,?,?)",
-                            (self.rank, self.tick_count, str(message), str(category),
-                                filename, lineno))
-                else:
-                    self.db_conn.execute("insert into warnings values (?,?,?,?,?)",
-                            (self.tick_count, str(message), str(category),
-                                filename, lineno))
+        # }}}
+
+    def capture_warnings(self, enable: bool = True) -> None:
+        def _showwarning(message: Union[Warning, str], category: Type[Warning],
+                         filename: str, lineno: int, file: Optional[TextIO] = None,
+                         line: Optional[str] = None) -> None:
+            assert self.old_showwarning
+            self.old_showwarning(message, category, filename, lineno, file, line)
+
+            from time import time
+
+            self.warning_data.append(_LogWarningInfo(
+                tick_count=self.tick_count,
+                time=time(),
+                message=str(message),
+                category=str(category),
+                filename=filename,
+                lineno=lineno
+            ))
 
         import warnings
         if enable:
+            if self.schema_version < 3:
+                raise ValueError("Warnings capture needs at least schema_version 3, "
+                                f" got {self.schema_version}")
             if self.old_showwarning is None:
-                pass
                 self.old_showwarning = warnings.showwarning
                 warnings.showwarning = _showwarning
             else:
@@ -612,6 +674,57 @@ class LogManager:
             warnings.showwarning = self.old_showwarning
             self.old_showwarning = None
 
+    def capture_logging(self, enable: bool = True) -> None:
+        class LogpyleLogHandler(logging.Handler):
+            def __init__(self, mgr: LogManager) -> None:
+                logging.Handler.__init__(self)
+                self.mgr = mgr
+
+            def emit(self, record: logging.LogRecord) -> None:
+                from time import time
+                self.mgr.logging_data.append(
+                    _LogWarningInfo(tick_count=self.mgr.tick_count,
+                                time=time(),
+                                message=record.getMessage(),
+                                category=record.levelname,
+                                filename=record.pathname,
+                                lineno=record.lineno))
+
+        root_logger = logging.getLogger()
+
+        if enable:
+            if self.schema_version < 3:
+                raise ValueError("Logging capture needs at least schema_version 3, "
+                                f" got {self.schema_version}")
+            if self.mode[0] == "w" and self.logging_handler is None:
+                self.logging_handler = LogpyleLogHandler(self)
+                root_logger.addHandler(self.logging_handler)
+            elif self.logging_handler:
+                from warnings import warn
+                warn("Logging capture already enabled")
+        else:
+            if self.logging_handler:
+                root_logger.removeHandler(self.logging_handler)
+            self.logging_handler = None
+
+    def get_logging(self) -> DataTable:
+        # Match the table set up by _set_up_schema
+        columns = ["rank", "step", "unixtime", "level", "message", "filename",
+                   "lineno"]
+
+        result = DataTable(columns)
+
+        if self.schema_version < 3:
+            from warnings import warn
+            warn("This database lacks a 'logging' table")
+            return result
+
+        for row in self.db_conn.execute(
+                "select %s from logging" % (", ".join(columns))):
+            result.insert_row(row)
+
+        return result
+
     def _load(self) -> None:
         if self.mpi_comm and self.mpi_comm.rank != self.head_rank:
             return
@@ -620,7 +733,7 @@ class LogManager:
         for name, value in self.db_conn.execute("select name, value from constants"):
             self.constants[name] = loads(value)
 
-        self.schema_version = self.constants.get("schema_version", 0)
+        self.schema_version = cast(int, self.constants.get("schema_version", 0))
 
         self.is_parallel = bool(self.constants["is_parallel"])
 
@@ -634,6 +747,9 @@ class LogManager:
         if self.old_showwarning is not None:
             self.capture_warnings(False)
 
+        if self.logging_handler:
+            self.capture_logging(False)
+
         self.save()
         self.db_conn.close()
 
@@ -641,7 +757,8 @@ class LogManager:
         if q_name not in self.quantity_data:
             raise KeyError("invalid quantity name '%s'" % q_name)
 
-        result = DataTable(["step", "rank", "value"])
+        result = DataTable(
+            ["step", "rank", "value"])
 
         for row in self.db_conn.execute(
                 "select step, rank, value from %s" % q_name):
@@ -650,9 +767,13 @@ class LogManager:
         return result
 
     def get_warnings(self) -> DataTable:
+        # Match the table set up by _set_up_schema
         columns = ["step", "message", "category", "filename", "lineno"]
         if self.schema_version >= 2:
             columns.insert(0, "rank")
+
+            if self.schema_version >= 3:
+                columns.insert(2, "unixtime")
 
         result = DataTable(columns)
 
@@ -665,7 +786,7 @@ class LogManager:
     def add_watches(self, watches: List[Union[str, Tuple[str, str]]]) -> None:
         """Add quantities that are printed after every time step.
 
-        :param watches:
+        :arg watches:
             List of expressions to watch. Each element can either be
             a string of the expression to watch, or a tuple of the expression
             and a format string. In the format string, you can use the custom
@@ -673,10 +794,6 @@ class LogManager:
             watch expression, value, and unit should be printed. The default format
             string for each watch is ``{display}={value:g}{unit}``.
         """
-        from pytools import Record
-
-        class WatchInfo(Record):
-            pass
 
         default_format = "{display}={value:g}{unit} | "
 
@@ -699,16 +816,28 @@ class LogManager:
             self.have_nonlocal_watches = self.have_nonlocal_watches or \
                     any(dd.nonlocal_agg for dd in dep_data)
 
-            from pymbolic import compile  # type: ignore
+            from pymbolic import compile  # type: ignore[import]
             compiled = compile(parsed, [dd.varname for dd in dep_data])
 
-            watch_info = WatchInfo(parsed=parsed, expr=expr, dep_data=dep_data,
-                    compiled=compiled, unit=unit, format=fmt)
+            watch_info = _WatchInfo(parsed=parsed, expr=expr, dep_data=dep_data,
+                                    compiled=compiled, unit=unit, format=fmt)
 
             self.watches.append(watch_info)
 
-    def set_constant(self, name: str, value: object) -> None:
-        """Make a named, constant value available in the log."""
+    def set_watch_interval(self, interval: float) -> None:
+        """Set the interval (in seconds) between the time watches are printed.
+
+        :arg interval: watch printing interval in seconds.
+        """
+        self.watch_interval = interval
+        self.next_watch_tick = self.tick_count + 1
+
+    def set_constant(self, name: str, value: Any) -> None:
+        """Make a named, constant value available in the log.
+
+        :arg name: the name of the constant.
+        :arg value: the value of the constant.
+        """
         existed = name in self.constants
         self.constants[name] = value
 
@@ -737,7 +866,20 @@ class LogManager:
             print("while adding datapoint for '%s':" % name)
             raise
 
-    def _gather_for_descriptor(self, gd) -> None:
+    def _update_t_log(self, name: str, value: float) -> None:
+        if value is None:
+            return
+
+        self.last_values[name] = value
+
+        try:
+            self.db_conn.execute(f"update {name} set value = {float(value)} \
+                where rank = {self.rank} and step = {self.tick_count}")
+        except Exception:
+            print("while adding datapoint for '%s':" % name)
+            raise
+
+    def _gather_for_descriptor(self, gd: _GatherDescriptor) -> None:
         if self.tick_count % gd.interval == 0:
             q_value = gd.quantity()
             if isinstance(gd.quantity, MultiLogQuantity):
@@ -746,36 +888,21 @@ class LogManager:
             else:
                 self._insert_datapoint(gd.quantity.name, q_value)
 
-    def tick(self) -> None:
-        """Record data points from each added :class:`LogQuantity`.
-
-        May also checkpoint data to disk, and/or synchronize data points
-        to the head rank.
-        """
-        from warnings import warn
-        warn("LogManager.tick() is deprecated. "
-                "Use LogManager.tick_{before,after}().",
-                DeprecationWarning)
-
-        self.tick_before()
-        self.tick_after()
-
     def tick_before(self) -> None:
         """Record data points from each added :class:`LogQuantity` that
         is not an instance of :class:`PostLogQuantity`. Also, invoke
         :meth:`PostLogQuantity.prepare_for_tick` on :class:`PostLogQuantity`
         instances.
         """
-        tick_start_time = time()
+        tick_start_time = time_monotonic()
 
         for gd in self.before_gather_descriptors:
             self._gather_for_descriptor(gd)
 
         for gd in self.after_gather_descriptors:
-            from typing import cast
             cast(PostLogQuantity, gd.quantity).prepare_for_tick()
 
-        self.t_log = time() - tick_start_time
+        self.t_log = time_monotonic() - tick_start_time
 
     def tick_after(self) -> None:
         """Record data points from each added :class:`LogQuantity` that
@@ -783,7 +910,7 @@ class LogManager:
 
         May also checkpoint data to disk.
         """
-        tick_start_time = time()
+        tick_start_time = time_monotonic()
 
         for gd_lst in [self.before_gather_descriptors,
                 self.after_gather_descriptors]:
@@ -792,8 +919,6 @@ class LogManager:
 
         for gd in self.after_gather_descriptors:
             self._gather_for_descriptor(gd)
-
-        self.tick_count += 1
 
         if tick_start_time - self.start_time > 15*60:
             save_interval = 5*60
@@ -804,10 +929,17 @@ class LogManager:
             self.save()
 
         # print watches
-        if self.tick_count == self.next_watch_tick:
+        if self.tick_count+1 >= self.next_watch_tick:
             self._watch_tick()
 
-        self.t_log += time() - tick_start_time
+        self.t_log += time_monotonic() - tick_start_time
+
+        # Adjust log update time(s), t_log
+        for gd in self.after_gather_descriptors:
+            if isinstance(gd.quantity, LogUpdateDuration):
+                self._update_t_log(gd.quantity.name, gd.quantity())
+
+        self.tick_count += 1
 
     def _commit(self) -> None:
         self.commit_countdown -= 1
@@ -815,7 +947,30 @@ class LogManager:
             self.commit_countdown = self.commit_interval
             self.db_conn.commit()
 
+    def save_logging(self) -> None:
+        for log in self.logging_data:
+            self.db_conn.execute(
+                "insert into logging values (?,?,?,?,?,?,?)",
+                (self.rank, log.tick_count, log.time,
+                log.category, log.message, log.filename,
+                log.lineno))
+
+        self.logging_data = []
+
+    def save_warnings(self) -> None:
+        for w in self.warning_data:
+            self.db_conn.execute(
+                "insert into warnings values (?,?,?,?,?,?,?)",
+                (self.rank, w.tick_count, w.time, w.message,
+                    w.category, w.filename, w.lineno))
+
+        self.warning_data = []
+
     def save(self) -> None:
+        if self.mode[0] == "w":
+            self.save_logging()
+            self.save_warnings()
+
         from sqlite3 import OperationalError
         try:
             self.db_conn.commit()
@@ -823,12 +978,17 @@ class LogManager:
             from warnings import warn
             warn("encountered sqlite error during commit: %s" % e)
 
-        self.last_save_time = time()
+        self.last_save_time = time_monotonic()
 
     def add_quantity(self, quantity: LogQuantity, interval: int = 1) -> None:
-        """Add an object derived from :class:`LogQuantity` to this manager."""
+        """Add a :class:`LogQuantity` to this manager.
 
-        def add_internal(name, unit, description, def_agg):
+        :arg quantity: add the specified :class:`LogQuantity`.
+        :arg interval: interval (in time steps) when to gather this quantity.
+        """
+
+        def add_internal(name: str, unit: Optional[str], description: Optional[str],
+                         def_agg: Optional[Callable[..., Any]]) -> None:
             logger.debug("add log quantity '%s'" % name)
 
             if name in self.quantity_data:
@@ -865,7 +1025,11 @@ class LogManager:
                     quantity.unit, quantity.description,
                     quantity.default_aggregator)
 
-    def get_expr_dataset(self, expression, description=None, unit=None):
+    def get_expr_dataset(self, expression: Expression,
+                         description: Optional[str] = None,
+                         unit: Optional[str] = None) \
+                            -> Tuple[Union[str, Any], Union[str, Any, None],
+                                     List[Tuple[int, Any]]]:
         """Prepare a time-series dataset for a given expression.
 
         :arg expression: A :mod:`pymbolic` expression that may involve
@@ -876,10 +1040,10 @@ class LogManager:
           is a list of tuples ``(tick_nbr, value)``.
 
         Aggregators are specified as follows:
-        - ``qty.min``, ``qty.max``, ``qty.avg``, ``qty.sum``, ``qty.norm2``,
-        ``qty.median``
-        - ``qty[rank_nbr]``
-        - ``qty.loc``
+            - ``qty.min``, ``qty.max``, ``qty.avg``, ``qty.sum``, ``qty.norm2``,
+              ``qty.median``
+            - ``qty[rank_nbr]``
+            - ``qty.loc``
         """
 
         parsed = self._parse_expr(expression)
@@ -889,11 +1053,12 @@ class LogManager:
         for dd in dep_data:
             table = self.get_table(dd.name)
             table.sort(["step"])
-            dd.table = table.aggregated(["step"], "value", dd.agg_func).data
+            dd.table = table.aggregated(["step"],  # type: ignore
+                                        "value", dd.agg_func).data
 
         # evaluate unit and description, if necessary
         if unit is None:
-            from pymbolic import substitute, parse
+            from pymbolic import parse, substitute
 
             unit_dict = {dd.varname: dd.qdat.unit for dd in dep_data}
             from pytools import all
@@ -912,7 +1077,8 @@ class LogManager:
 
         data = []
 
-        for key, values in _join_by_first_of_tuple(dd.table for dd in dep_data):
+        for key, values in _join_by_first_of_tuple(
+                [dd.table for dd in dep_data if dd.table]):
             try:
                 data.append((key, compiled(*values)))
             except ZeroDivisionError:
@@ -920,7 +1086,7 @@ class LogManager:
 
         return (description, unit, data)
 
-    def get_joint_dataset(self, expressions):
+    def get_joint_dataset(self, expressions: Sequence[Expression]) -> List[Any]:
         """Return a joint data set for a list of expressions.
 
         :arg expressions: a list of either strings representing
@@ -953,10 +1119,13 @@ class LogManager:
 
         return zipped_dubs
 
-    def get_plot_data(self, expr_x, expr_y, min_step=None, max_step=None):
+    def get_plot_data(self, expr_x: Expression, expr_y: Expression,
+                      min_step: Optional[int] = None,
+                      max_step: Optional[int] = None) \
+                            -> Tuple[Tuple[Any, str, str], Tuple[Any, str, str]]:
         """Generate plot-ready data.
 
-        :return: ``(data_x, descr_x, unit_x), (data_y, descr_y, unit_y)``
+        :returns: ``(data_x, descr_x, unit_x), (data_y, descr_y, unit_y)``
         """
         (descr_x, descr_y), (unit_x, unit_y), data = \
                 self.get_joint_dataset([expr_x, expr_y])
@@ -976,18 +1145,19 @@ class LogManager:
         return (data_x, descr_x, unit_x), \
                (data_y, descr_y, unit_y)
 
-    def write_datafile(self, filename, expr_x, expr_y) -> None:
-        (data_x, label_x), (data_y, label_y) = self.get_plot_data(
+    def write_datafile(self, filename: str, expr_x: Expression,
+                       expr_y: Expression) -> None:
+        (data_x, label_x, _), (data_y, label_y, _) = self.get_plot_data(
                 expr_x, expr_y)
 
         outf = open(filename, "w")
-        outf.write(f"# {label_x} vs. {label_y}")
+        outf.write(f"# {label_x} vs. {label_y}\n")
         for dx, dy in zip(data_x, data_y):
             outf.write("{}\t{}\n".format(repr(dx), repr(dy)))
         outf.close()
 
-    def plot_matplotlib(self, expr_x, expr_y) -> None:
-        from matplotlib.pyplot import xlabel, ylabel, plot  # type: ignore
+    def plot_matplotlib(self, expr_x: Expression, expr_y: Expression) -> None:
+        from matplotlib.pyplot import plot, xlabel, ylabel
 
         (data_x, descr_x, unit_x), (data_y, descr_y, unit_y) = \
                 self.get_plot_data(expr_x, expr_y)
@@ -998,7 +1168,7 @@ class LogManager:
 
     # {{{ private functionality
 
-    def _parse_expr(self, expr):
+    def _parse_expr(self, expr: Expression) -> Any:
         from pymbolic import parse, substitute
         parsed = parse(expr)
 
@@ -1007,21 +1177,20 @@ class LogManager:
 
         return parsed
 
-    def _get_expr_dep_data(self, parsed):
+    def _get_expr_dep_data(self, parsed: Expression) \
+            -> Tuple[Expression, List[_DependencyData]]:
         class Nth:
-            def __init__(self, n):
+            def __init__(self, n: int) -> None:
                 self.n = n
 
-            def __call__(self, lst):
+            def __call__(self, lst: List[Any]) -> Any:
                 return lst[self.n]
-
-        from pymbolic.mapper.dependency import DependencyMapper  # type: ignore
 
         deps = DependencyMapper(include_calls=False)(parsed)
 
         # gather information on aggregation expressions
         dep_data = []
-        from pymbolic.primitives import Variable, Lookup, Subscript  # type: ignore
+        from pymbolic.primitives import Lookup, Subscript, Variable
         for dep_idx, dep in enumerate(deps):
             nonlocal_agg = True
 
@@ -1073,20 +1242,25 @@ class LogManager:
 
             qdat = self.quantity_data[name]
 
-            class DependencyData(Record):
-                pass
+            assert agg_func
 
-            this_dep_data = DependencyData(name=name, qdat=qdat, agg_func=agg_func,
+            this_dep_data = _DependencyData(name=name, qdat=qdat, agg_func=agg_func,
                     varname="logvar%d" % dep_idx, expr=dep,
                     nonlocal_agg=nonlocal_agg)
             dep_data.append(this_dep_data)
 
         # substitute in the "logvar" variable names
-        from pymbolic import var, substitute
+        from pymbolic import substitute, var
         parsed = substitute(parsed,
                 {dd.expr: var(dd.varname) for dd in dep_data})
 
         return parsed, dep_data
+
+    def _calculate_next_watch_tick(self) -> None:
+        ticks_per_interval = (self.tick_count
+                              / max(1, time_monotonic()-self.start_time)
+                              * self.watch_interval)
+        self.next_watch_tick = self.tick_count + int(max(1, ticks_per_interval))
 
     def _watch_tick(self) -> None:
         """Print the watches after a tick."""
@@ -1102,12 +1276,14 @@ class LogManager:
             gathered_data = [data_block]
 
         if self.rank == self.head_rank:
-            values: Dict[str, list] = {}
+            assert gathered_data
+
+            values: Dict[str, List[Optional[float]]] = {}
             for data_block in gathered_data:
                 for name, value in data_block.items():
                     values.setdefault(name, []).append(value)
 
-            def compute_watch_str(watch):
+            def compute_watch_str(watch: _WatchInfo) -> str:
                 display = watch.expr
                 unit = watch.unit if watch.unit not in ["1", None] else ""
                 value = watch.compiled(
@@ -1117,14 +1293,13 @@ class LogManager:
                     return f"{watch.format}".format(display=display, value=value,
                                                     unit=unit)
                 except ZeroDivisionError:
-                    return "%s:div0" % watch.display
+                    return f"{display}:div0"
             if self.watches:
                 print("".join(
                         compute_watch_str(watch) for watch in self.watches),
                       flush=True)
 
-        ticks_per_sec = self.tick_count/max(1, time()-self.start_time)
-        self.next_watch_tick = self.tick_count + int(max(1, ticks_per_sec))
+        self._calculate_next_watch_tick()
 
         if self.mpi_comm is not None and self.have_nonlocal_watches:
             self.next_watch_tick = self.mpi_comm.bcast(
@@ -1138,26 +1313,29 @@ class LogManager:
 # {{{ actual data loggers
 
 class _SubTimer:
-    def __init__(self, itimer) -> None:
+    def __init__(self, itimer: "IntervalTimer") -> None:
         self.itimer = itimer
-        self.start_time = time()
-        self.elapsed = 0
+        self.elapsed = 0.0
 
-    def stop(self):
-        self.elapsed += time() - self.start_time
+    def start(self) -> "_SubTimer":
+        self.start_time = time_monotonic()
+        return self
+
+    def stop(self) -> "_SubTimer":
+        self.elapsed += time_monotonic() - self.start_time
         del self.start_time
         return self
 
     def __enter__(self) -> None:
-        pass
+        self.start()
 
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.stop()
         self.submit()
 
     def submit(self) -> None:
         self.itimer.add_time(self.elapsed)
-        del self.elapsed
+        self.elapsed = 0
 
 
 class IntervalTimer(PostLogQuantity):
@@ -1165,19 +1343,25 @@ class IntervalTimer(PostLogQuantity):
     sub-timers, or by explicitly calling :meth:`add_time`.
 
     .. automethod:: __init__
+    .. automethod:: get_sub_timer
     .. automethod:: start_sub_timer
     .. automethod:: add_time
     """
 
-    def __init__(self, name: str, description: str = None) -> None:
+    def __init__(self, name: str, description: Optional[str] = None) -> None:
         LogQuantity.__init__(self, name, "s", description)
         self.elapsed: float = 0
 
-    def start_sub_timer(self):
+    def get_sub_timer(self) -> _SubTimer:
         return _SubTimer(self)
 
+    def start_sub_timer(self) -> _SubTimer:
+        sub_timer = _SubTimer(self)
+        sub_timer.start()
+        return sub_timer
+
     def add_time(self, t: float) -> None:
-        self.start_time = time()
+        self.start_time = time_monotonic()
         self.elapsed += t
 
     def __call__(self) -> float:
@@ -1186,13 +1370,11 @@ class IntervalTimer(PostLogQuantity):
         return result
 
 
-class LogUpdateDuration(LogQuantity):
+class LogUpdateDuration(PostLogQuantity):
     """Records how long the last log update in :class:`LogManager` took.
 
     .. automethod:: __init__
     """
-
-    # FIXME this is off by one tick
 
     def __init__(self, mgr: LogManager, name: str = "t_log") -> None:
         LogQuantity.__init__(self, name, "s", "Time spent updating the log")
@@ -1210,14 +1392,15 @@ class EventCounter(PostLogQuantity):
     .. automethod:: transfer
     """
 
-    def __init__(self, name: str = "interval", description: str = None) -> None:
+    def __init__(self, name: str = "interval",
+                 description: Optional[str] = None) -> None:
         PostLogQuantity.__init__(self, name, "1", description)
         self.events = 0
 
     def add(self, n: int = 1) -> None:
         self.events += n
 
-    def transfer(self, counter) -> None:
+    def transfer(self, counter: Any) -> None:
         self.events += counter.pop()
 
     def prepare_for_tick(self) -> None:
@@ -1228,8 +1411,10 @@ class EventCounter(PostLogQuantity):
         return result
 
 
-def time_and_count_function(f, timer, counter=None, increment=1) -> Callable:
-    def inner_f(*args, **kwargs):
+def time_and_count_function(f: Callable[..., Any], timer: IntervalTimer,
+                            counter: Optional[EventCounter] = None,
+                            increment: int = 1) -> Callable[..., Any]:
+    def inner_f(*args: Any, **kwargs: Any) -> Any:
         if counter is not None:
             counter.add(increment)
         sub_timer = timer.start_sub_timer()
@@ -1255,9 +1440,18 @@ class TimestepCounter(LogQuantity):
 
 
 class StepToStepDuration(PostLogQuantity):
-    """Records the CPU time between invocations of
-    :meth:`LogManager.tick_before` and
-    :meth:`LogManager.tick_after`.
+    """Records the wall time between the starts of consecutive time steps, i.e.,
+    the wall time between :meth:`LogManager.tick_before` of step x and
+    :meth:`LogManager.tick_before` of step x+1. The value stored is the value for
+    step x+1.
+
+    .. note::
+
+        In most cases, this quantity should approximately match ``t_step`` +
+        ``t_log``. If it does not, it might indicate that the application
+        performs operations outside :meth:`LogManager.tick_before` and
+        :meth:`LogManager.tick_after`, or that some other time is not being
+        accounted for.
 
     .. automethod:: __init__
     """
@@ -1269,7 +1463,7 @@ class StepToStepDuration(PostLogQuantity):
 
     def prepare_for_tick(self) -> None:
         self.last2_start_time = self.last_start_time
-        self.last_start_time = time()
+        self.last_start_time = time_monotonic()
 
     def __call__(self) -> Optional[float]:
         if self.last2_start_time is None or self.last_start_time is None:
@@ -1279,9 +1473,8 @@ class StepToStepDuration(PostLogQuantity):
 
 
 class TimestepDuration(PostLogQuantity):
-    """Records the CPU time between the starts of time steps.
-    :meth:`LogManager.tick_before` and
-    :meth:`LogManager.tick_after`.
+    """Records the wall time between invocations of :meth:`LogManager.tick_before`
+    and :meth:`LogManager.tick_after`, i.e., the duration of the time step.
 
     .. automethod:: __init__
     """
@@ -1295,10 +1488,11 @@ class TimestepDuration(PostLogQuantity):
         PostLogQuantity.__init__(self, name, "s", "Time step duration")
 
     def prepare_for_tick(self) -> None:
-        self.last_start = time()
+        self.last_start = time_monotonic()
 
     def __call__(self) -> float:
-        now = time()
+        now = time_monotonic()
+        assert hasattr(self, "last_start"), "tick_after called without tick_before"
         result = now - self.last_start
         del self.last_start
         return result
@@ -1315,16 +1509,14 @@ class InitTime(LogQuantity):
     def __init__(self, name: str = "t_init") -> None:
         LogQuantity.__init__(self, name, "s", "Init time")
 
-        import os
         try:
-            import psutil  # type: ignore
+            import psutil
         except ModuleNotFoundError:
             from warnings import warn
             warn("Measuring the init time requires the 'psutil' module.")
             self.done = True
         else:
-            p = psutil.Process(os.getpid())
-            self.start_time = p.create_time()
+            self.create_time = psutil.Process().create_time()
             self.done = False
 
     def __call__(self) -> Optional[float]:
@@ -1332,22 +1524,28 @@ class InitTime(LogQuantity):
             return None
 
         self.done = True
-        now = time()
-        return now - self.start_time
+        from time import time
+
+        # Can't use time_monotonic() here since that does *not* return
+        # the time since the UNIX epoch (like time() and
+        # psutil.Process.create_time() do), but from another (undefined)
+        # reference point.
+        return time() - self.create_time
 
 
-class CPUTime(LogQuantity):
-    """Records (monotonically increasing) CPU time.
+class WallTime(LogQuantity):
+    """Records (monotonically increasing) wall time since the quantity was
+    initialized.
 
     .. automethod:: __init__
     """
-    def __init__(self, name: str = "t_cpu") -> None:
+    def __init__(self, name: str = "t_wall") -> None:
         LogQuantity.__init__(self, name, "s", "Wall time")
 
-        self.start = time()
+        self.start = time_monotonic()
 
     def __call__(self) -> float:
-        return time()-self.start
+        return time_monotonic()-self.start
 
 
 class ETA(LogQuantity):
@@ -1360,12 +1558,12 @@ class ETA(LogQuantity):
 
         self.steps = 0
         self.total_steps = total_steps
-        self.start = time()
+        self.start = time_monotonic()
 
     def __call__(self) -> float:
         fraction_done = self.steps/self.total_steps
         self.steps += 1
-        time_spent = time()-self.start
+        time_spent = time_monotonic()-self.start
         if fraction_done > 1e-9:
             return time_spent/fraction_done-time_spent
         else:
@@ -1377,19 +1575,19 @@ def add_general_quantities(mgr: LogManager) -> None:
 
     mgr.add_quantity(TimestepDuration())
     mgr.add_quantity(StepToStepDuration())
-    mgr.add_quantity(CPUTime())
+    mgr.add_quantity(WallTime())
     mgr.add_quantity(LogUpdateDuration(mgr))
     mgr.add_quantity(TimestepCounter())
     mgr.add_quantity(InitTime())
+    mgr.add_quantity(MemoryHwm())
 
 
 class SimulationTime(TimeTracker, LogQuantity):
     """Record (monotonically increasing) simulation time."""
 
-    def __init__(self, dt: Optional[float], name: str = "t_sim",
-                 start: float = 0) -> None:
+    def __init__(self, name: str = "t_sim", start: float = 0) -> None:
         LogQuantity.__init__(self, name, "s", "Simulation Time")
-        TimeTracker.__init__(self, dt, start)
+        TimeTracker.__init__(self, start)
 
     def __call__(self) -> float:
         return self.t
@@ -1398,16 +1596,19 @@ class SimulationTime(TimeTracker, LogQuantity):
 class Timestep(SimulationLogQuantity):
     """Record the magnitude of the simulated time step."""
 
-    def __init__(self, dt: Optional[float], name: str = "dt",
-                 unit: str = "s") -> None:
-        SimulationLogQuantity.__init__(self, dt, name, unit, "Simulation Timestep")
+    def __init__(self, name: str = "dt", unit: str = "s") -> None:
+        SimulationLogQuantity.__init__(self, name, unit, "Simulation Timestep")
 
-    def __call__(self) -> float:
+    def __call__(self) -> Optional[float]:
         return self.dt
 
 
 def set_dt(mgr: LogManager, dt: float) -> None:
-    """Set the simulation timestep on :class:`LogManager` ``mgr`` to ``dt``."""
+    """Set the simulation timestep on :class:`LogManager` ``mgr`` to ``dt``.
+
+    :arg mgr: the :class:`LogManager` instance.
+    :arg dt: the simulation timestep.
+    """
 
     for gd_lst in [mgr.before_gather_descriptors,
             mgr.after_gather_descriptors]:
@@ -1416,15 +1617,13 @@ def set_dt(mgr: LogManager, dt: float) -> None:
                 gd.quantity.set_dt(dt)
 
 
-def add_simulation_quantities(mgr: LogManager, dt: float = None) -> None:
-    """Add :class:`LogQuantity` objects relating to simulation time."""
-    if dt is not None:
-        from warnings import warn
-        warn("Specifying dt ahead of time is a deprecated practice. "
-                "Use logpyle.set_dt() instead.")
+def add_simulation_quantities(mgr: LogManager) -> None:
+    """Add :class:`LogQuantity` objects relating to simulation time.
 
-    mgr.add_quantity(SimulationTime(dt))
-    mgr.add_quantity(Timestep(dt))
+    :arg mgr: the :class:`LogManager` instance.
+    """
+    mgr.add_quantity(SimulationTime())
+    mgr.add_quantity(Timestep())
 
 
 def add_run_info(mgr: LogManager) -> None:
@@ -1443,6 +1642,86 @@ def add_run_info(mgr: LogManager) -> None:
     from time import localtime, strftime, time
     mgr.set_constant("date", strftime("%a, %d %b %Y %H:%M:%S %Z", localtime()))
     mgr.set_constant("unixtime", time())
+
+
+class MemoryHwm(PostLogQuantity):
+    """Record (monotonically increasing) memory high water mark (HWM) in MBytes."""
+    def __init__(self, name: str = "memory_usage_hwm") -> None:
+        PostLogQuantity.__init__(self, name, "MByte", "Memory High Water Mark")
+        import os
+        if os.uname().sysname == "Linux":
+            self.fac = 1024
+        elif os.uname().sysname == "Darwin":
+            self.fac = 1024*1024
+        else:
+            raise ValueError("MemoryHwm is only supported on Linux/Mac.")
+
+    def __call__(self) -> float:
+        from resource import RUSAGE_SELF, getrusage
+        res = getrusage(RUSAGE_SELF)
+        return res.ru_maxrss / self.fac
+
+
+class GCStats(MultiPostLogQuantity):
+    """Record Garbage Collection statistics.
+
+    Information regarding the meaning of these values can be found at:
+        - https://docs.python.org/3/library/gc.html
+        - https://alex.dzyoba.com/blog/arc-vs-gc
+
+          ..  # noqa: E501
+        - https://stackoverflow.com/questions/64561488/pythons-gc-get-objects-from-get-count
+        - https://github.com/python/cpython/blob/main/Modules/gcmodule.c
+    """
+    def __init__(self) -> None:
+        names = [  # gc.isenabled():
+                  "gc_isenabled",
+                   # gc.get_count():
+                  "gc_count_gen0", "gc_count_gen1", "gc_count_gen2",
+                   # gc.get_stats():
+                  "gc_collections_gen0", "gc_collected_gen0",
+                  "gc_uncollectable_gen0",
+                  "gc_collections_gen1", "gc_collected_gen1",
+                  "gc_uncollectable_gen1",
+                  "gc_collections_gen2", "gc_collected_gen2",
+                  "gc_uncollectable_gen2",
+                 ]
+
+        units = ["bool",
+                 "1", "1", "1",
+                 "1", "1", "1", "1", "1", "1", "1", "1", "1"]
+
+        descriptions = ["Is automatic GC enabled?",
+                        "GC count gen0", "GC count gen1", "GC count gen2",
+                        "GC collections gen0", "GC objects collected gen0",
+                        "GC objects uncollectable gen0",
+                        "GC collections gen1", "GC objects collected gen1",
+                        "GC objects uncollectable gen1",
+                        "GC collections gen2", "GC objects collected gen2",
+                        "GC objects uncollectable gen2",
+                        ]
+
+        assert len(names) == len(units) == len(descriptions) == 13
+
+        super().__init__(names, cast(List[Optional[str]], units),
+                         cast(List[Optional[str]], descriptions))
+
+    def __call__(self) -> Iterable[Optional[float]]:
+        import gc
+
+        enabled = gc.isenabled()
+        counts = gc.get_count()
+        stats = gc.get_stats()
+
+        return [enabled,
+                counts[0], counts[1], counts[2],
+                stats[0]["collections"], stats[0]["collected"],
+                stats[0]["uncollectable"],
+                stats[1]["collections"], stats[1]["collected"],
+                stats[1]["uncollectable"],
+                stats[2]["collections"], stats[2]["collected"],
+                stats[2]["uncollectable"]
+                ]
 
 # }}}
 
