@@ -70,6 +70,7 @@ __version__ = logpyle.version.VERSION_TEXT
 
 
 import logging
+import sys
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +85,7 @@ from pymbolic.mapper.dependency import DependencyMapper  # type: ignore[import]
 from pymbolic.primitives import Expression  # type: ignore[import]
 from pytools.datatable import DataTable
 
-if TYPE_CHECKING:
+if TYPE_CHECKING and not getattr(sys, "_BUILDING_SPHINX_DOCS", False):
     import mpi4py
 
 
