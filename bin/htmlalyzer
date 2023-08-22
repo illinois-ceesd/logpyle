@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#!/usr/bin/env python
 
 
 def main() -> None:
@@ -25,15 +25,16 @@ def main() -> None:
 
     # build match
     if stored_hashes != hashes_str and not args.build:
-        print("Source files have been modified")
-        print("Automatically rebuilding HTMLalyzer to pass changes through")
+        print("Source files have been modified, rebuilding HTMLalyzer.")
         Html.setup()
 
     if args.build:
         Html.setup()
 
-    print("Attempting to open HTML file in your web browser of choice!")
-    webbrowser.open_new_tab(html_path+"/web-interface.html")
+    html_file = html_path + "/web-interface.html"
+
+    print(f"Attempting to open '{html_file}' in your web browser.")
+    webbrowser.open_new_tab("file://" + html_file)
 
 
 if __name__ == "__main__":
