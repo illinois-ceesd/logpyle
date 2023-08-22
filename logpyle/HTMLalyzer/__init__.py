@@ -9,11 +9,15 @@ def get_current_hash() -> str:
 
     # calculate hashes of files used to build html
     hashes_str = ""
+
+    # File paths are relative to 'logpyle/logpyle'.
     files = [
             "__init__.py",
             "runalyzer.py",
             "runalyzer_gather.py",
             "version.py",
+            "HTMLalyzer/templates/index.html",
+            "HTMLalyzer/templates/newFile.html",
             ]
 
     for file in files:
@@ -36,7 +40,7 @@ def setup() -> None:
 
     html_path = os.path.dirname(Html.__file__)
 
-    print("Building HTML file for HTMLalyzer!")
+    print("Building HTML file for HTMLalyzer.")
 
     # gather whl filenames
     html_files = os.listdir(html_path)
@@ -104,7 +108,7 @@ def setup() -> None:
         hashes_str = get_current_hash()
         f.write(hashes_str)
 
-    print("HTML file build successfully!!!")
+    print("HTML file build successfully.")
 
 
 if __name__ == "__main__":
