@@ -3,4 +3,5 @@ runalyzer.py: kfl1OmR5oW71KdlHVqMbmxS5KM+ohQyaM1D0jDl2bzw=
 runalyzer_gather.py: Y2TocxyjNl4dgSv0nxCkez6v3LuDIBI200vU77f3osA=
 version.py: yHeiIctD0/561VpDo27qBIdhmFUrS2S5jP1ytCYyVEg=
 HTMLalyzer/templates/index.html: 702/SxlQ4LF9Q7Cv7FQsN8+AdsC66lkDAN64hGoUAF8=
-HTMLalyzer/templates/newFile.html: mf/8eFFSFMuy4Fd//PHE2CDQUxa4uPwn+7bfJ3N5mJY=
+HTMLalyzer/templates/newFile.html: 6zUWBnIATyhRWqVIf1ek8VQXjVA2XGcE0wmXhs1Q7uU=
+HTMLalyzer/main.css: E2k0S3FV4y3lVkY4njRkqFrAp1TnLFMTxv9Kg//pY+Q=

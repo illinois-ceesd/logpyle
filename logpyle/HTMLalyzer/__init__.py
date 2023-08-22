@@ -18,6 +18,7 @@ def get_current_hash() -> str:
             "version.py",
             "HTMLalyzer/templates/index.html",
             "HTMLalyzer/templates/newFile.html",
+            "HTMLalyzer/main.css",
             ]
 
     for file in files:
