@@ -89,12 +89,7 @@ def add_file_func() -> None:
     file_list.appendChild(html.body)
 
     new_file = document.getElementById(str(next_id))
-    if next_id % 2 == 0:
-        # grey minus some green
-        new_file.style.backgroundColor = "#B0A8B0"
-    else:
-        # grey minus some blue
-        new_file.style.backgroundColor = "#B0B0A8"
+    new_file.style.backgroundColor = "#E0E0E0"
 
     # attach listener to new file input
     input = document.getElementById("file" + str(next_id))
