@@ -200,7 +200,7 @@ jobs:
         - name: Run
           run: |
             pip install -e .
-            python -m pip install pymbolic psutil matplotlib Jinja2
+            python -m pip install pymbolic psutil matplotlib
 
             # open default html
             htmlalyzer

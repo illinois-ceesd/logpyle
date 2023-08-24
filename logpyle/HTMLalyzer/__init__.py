@@ -32,7 +32,7 @@ def get_current_hash() -> str:
     return hashes_str
 
 
-def setup() -> None:
+def build() -> None:
     import base64
     import os
     from string import Template
@@ -100,7 +100,7 @@ def setup() -> None:
             )
 
     # write html file to logpyle/HTMLalyzer/
-    filename = "web-interface.html"
+    filename = "htmlalyzer.html"
     with open(html_path+"/"+filename, mode="w", encoding="utf-8") as message:
         message.write(content)
 
@@ -113,4 +113,4 @@ def setup() -> None:
 
 
 if __name__ == "__main__":
-    setup()
+    build()
