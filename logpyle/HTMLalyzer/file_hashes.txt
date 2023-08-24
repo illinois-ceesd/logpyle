@@ -5,3 +5,5 @@ version.py: yHeiIctD0/561VpDo27qBIdhmFUrS2S5jP1ytCYyVEg=
 HTMLalyzer/templates/index.html: kl6hpnnKBqliPkSwSdyr/ZCml5waEk2AV9SA3CkGojs=
 HTMLalyzer/templates/newFile.html: 6zUWBnIATyhRWqVIf1ek8VQXjVA2XGcE0wmXhs1Q7uU=
 HTMLalyzer/main.css: pQisVXJaPP7I3tjl3eydyHqCQhfSgo7ywQn0PhXEKFQ=
+HTMLalyzer/main.js: kJ6fwgVoJ5rBNG+xpcrZ2MAzarlOk3qsDo+Ca+r+nUw=
+HTMLalyzer/main.py: rfO7DswlNyBXnMNmSMLHO620GB7mbAi9yaFw1zv2zps=
