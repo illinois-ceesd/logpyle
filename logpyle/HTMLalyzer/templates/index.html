@@ -1,0 +1,48 @@
+<html>
+  <head>
+    <title>web-interface</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="https://pyscript.net/latest/pyscript.css" />
+    <script defer src="https://pyscript.net/latest/pyscript.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.min.js"></script>
+<style>
+$cssFile
+</style>
+  </head>
+  <body>
+
+<script>
+$jsFile
+</script>
+
+
+<py-config>
+  packages = [
+  "matplotlib",
+  "sqlite3",
+  "pytools",
+  ]
+</py-config>
+
+<py-script>
+$pythonFile
+</py-script>
+
+	<div style="display: flex; background-color: lightblue">
+		<div style="margin:10px;padding:10px;">
+			<button py-click="add_file_func()" id="add-file" class="py-button">Add analysis panel</button>
+		</div>
+		<div style="margin:10px;padding:10px;font-weight:bold;">
+			HTMLalyzer
+		</div>
+	</div>
+
+	<div id="file_list" style="display:flex;flex-direction:column">
+	</div>
+	<div class="terminal">
+		<py-terminal id="terminal"></py-terminal>
+	</div>
+	<button py-click="clear_term()" id="clear_term" class="py-button">Clear Terminal</button>
+
+  </body>
+</html>
