@@ -1,0 +1,41 @@
+#!/usr/bin/env python
+
+
+def main() -> None:
+    import argparse
+    import os
+    import webbrowser
+
+    import logpyle.HTMLalyzer as Html
+
+    html_path = os.path.dirname(Html.__file__)
+
+    parser = argparse.ArgumentParser(description="""Analyze a logpyle database
+                                     with a web based GUI.""")
+    parser.add_argument("-b", "--build", action="store_true",
+            help="Build the HTML file before opening it.")
+    args = parser.parse_args()
+
+    # calculate hashes of files used to build html
+    hashes_str = Html.get_current_hash()
+
+    # get stored hashes
+    with open(html_path+"/file_hashes.txt", "r") as f:
+        stored_hashes = f.read()
+
+    # build match
+    if stored_hashes != hashes_str and not args.build:
+        print("Source files have been modified, rebuilding HTMLalyzer.")
+        Html.build()
+
+    if args.build:
+        Html.build()
+
+    html_file = html_path + "/htmlalyzer.html"
+
+    print(f"Attempting to open '{html_file}' in your web browser.")
+    webbrowser.open_new_tab("file://" + html_file)
+
+
+if __name__ == "__main__":
+    main()

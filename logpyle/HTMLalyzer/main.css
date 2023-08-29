@@ -1,0 +1,87 @@
+.constantsDiv {
+	max-height: 150px;
+	width: fit-content;
+	overflow: auto;
+	margin-top: 20px;
+	padding: 5px;
+	padding-top: 0px;
+	max-width: 100%;
+}
+.constantsTable {
+	width: fit-content;
+	border-collapse: collapse;
+}
+.constantsTable thead th{
+	position: sticky;
+	top: 1px;
+	background-color: #E0E0E0;
+	border: 1px solid;
+}
+.constantsTr {
+	border: 1px solid;
+}
+.constantsTd {
+	border: 1px solid;
+	white-space: nowrap;
+	text-align: left;
+}
+.quantitiesDiv {
+	max-height: 150px;
+	width: fit-content;
+	overflow: auto;
+	margin-top: 20px;
+	padding: 5px;
+	padding-top: 0px;
+}
+.quantitiesTable {
+	border: 1px solid;
+	width: fit-content;
+	border-collapse: collapse;
+}
+.quantitiesTable thead th{
+	position: sticky;
+	top: 0px;
+	background-color: #E0E0E0;
+}
+.quantitiesTr {
+	border: 1px solid;
+}
+.quantitiesTd {
+	border: 1px solid;
+}
+
+.plottingDiv {
+	display: flex;
+	flex-direction: column;
+	margin: 5px;
+	padding: 5px;
+	border-style: solid;
+	border-width: thin;
+}
+.tableDiv {
+	display: flex;
+	flex-direction: column;
+	margin: 5px;
+	padding: 5px;
+	border-style: solid;
+	border-width: thin;
+}
+
+.radioDiv {
+	display:flex;
+	flex-direction:row;
+}
+
+.terminal {
+	max-height: 150px;
+	overflow: auto;
+	margin: 0px;
+}
+.py-terminal {
+	min-height: 10em;
+	background-color: black;
+	color: white;
+	padding: 0px;
+	margin: 0px;
+	overflow: auto;
+}

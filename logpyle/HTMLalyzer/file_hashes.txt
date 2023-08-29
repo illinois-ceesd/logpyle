@@ -1,0 +1,9 @@
+__init__.py: 9KWUHGyVljNkOdJc1i20owUJYN8KOP4jHmWCdt0l/8A=
+runalyzer.py: kfl1OmR5oW71KdlHVqMbmxS5KM+ohQyaM1D0jDl2bzw=
+runalyzer_gather.py: Y2TocxyjNl4dgSv0nxCkez6v3LuDIBI200vU77f3osA=
+version.py: yHeiIctD0/561VpDo27qBIdhmFUrS2S5jP1ytCYyVEg=
+HTMLalyzer/templates/index.html: kl6hpnnKBqliPkSwSdyr/ZCml5waEk2AV9SA3CkGojs=
+HTMLalyzer/templates/newFile.html: 6zUWBnIATyhRWqVIf1ek8VQXjVA2XGcE0wmXhs1Q7uU=
+HTMLalyzer/main.css: pQisVXJaPP7I3tjl3eydyHqCQhfSgo7ywQn0PhXEKFQ=
+HTMLalyzer/main.js: kJ6fwgVoJ5rBNG+xpcrZ2MAzarlOk3qsDo+Ca+r+nUw=
+HTMLalyzer/main.py: rfO7DswlNyBXnMNmSMLHO620GB7mbAi9yaFw1zv2zps=

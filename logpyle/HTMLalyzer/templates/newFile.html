@@ -1,0 +1,102 @@
+<div class="newFile" id="{id}" style="display:flex;flex-direction:column">
+	<div class="inputFileDiv">
+		<label for="file{id}">Choose Logpyle sqlite file(s) to analyze:</label>
+		<br>
+		<input id="file{id}" name="file{id}" type="file" multiple style="margin:5px;padding=5px;">
+	</div>
+
+	<div class="constantsDiv " id="constants{id}">
+		<table class="constantsTable" id="constants_table{id}">
+			<thead>
+				<tr class="constantsTr">
+					<th class="constantsTd">Constant</th>
+					<th class="constantsTd">Value</th>
+				</tr>
+			</thead>
+			<tbody>
+			</tbody>
+        </table>
+    </div>
+	<div class="quantitiesDiv " id="quantities{id}">
+		<table class="quantitiesTable" id="quantities_table{id}">
+			<thead>
+				<tr class="quantitiesTr">
+					<th class="quantitiesTr">Quantity</th>
+					<th class="quantitiesTr">Unit</th>
+					<th class="quantitiesTr">Description</th>
+					<th class="quantitiesTr">ID</th>
+					<th class="quantitiesTr">Rank aggregator</th>
+				</tr>
+			</thead>
+			<tbody>
+			</tbody>
+        </table>
+    </div>
+	<div id="interactive{id}" style="display:flex;flex-direction:row">
+		<div id="menu{id}" style="display:flex;flex-direction:column">
+			<div id="plot{id}" class="plottingDiv">
+
+				<div>
+					Plotting:
+				</div>
+
+				<div>
+					<label for="quantity1{id}">X-axis Quantity:</label>
+					<div id="xQuantity{id}" style="display:flex;flex-direction:column;margin:5px;padding=5px;">
+						<select name="quantity1_{id}" id="quantity1_{id}">
+						</select>
+					</div>
+				</div>
+
+				<div>
+					<label for="quantity2{id}">Y-axis Quantities:</label>
+					<div id="yQuantities{id}" style="display:flex;flex-direction:column;margin:5px;padding=5px;">
+						<div style="white-space:nowrap">
+							<select name="quantity2{id}" id="quantity2_{id}" name="q2">
+							</select>
+							<input type="color">
+						</div>
+					</div>
+				</div>
+				<button id="addLineButton{id}" style="height:30px;margin:5px;padding:5px" param1="{id}">
+					Add Line to Plot
+				</button>
+
+				<button id="chartsButton{id}" style="height:30px;padding:5px" param="{id}">
+                    Create Chart
+                </button>
+            </div>
+
+			<div id="table{id}" class="tableDiv">
+				<div id="tableHeader{id}" style="white-space:nowrap">
+
+					<label for="tableQuantitySelect{id}">Table Quantity:</label>
+					<select name="tableQuantitySelect{id}" id="tableQuantitySelect{id}">
+					</select>
+
+					<button id="tableButton{id}" style="height:30px;padding:5px;width:fit-content;" param="{id}">
+						Add to list
+					</button>
+
+				</div>
+				<ol id="tableList{id}" style="margin-top:0px">
+
+				</ol>
+				<div id="tableFooter{id}" style="display:flex;flex-direction:row">
+					<button id="tableDownloadButton{id}" style="height:30px;padding:5px" param="{id}">
+						Download Table
+					</button>
+					<button id="tablePrintButton{id}" style="height:30px;padding:5px;width:fit-content;" param="{id}">
+						Show Table
+					</button>
+
+				</div>
+            </div>
+        </div>
+		<div id="output{id}" style="margin:5px;"></div>
+		<div style="flex-basis:100%">
+			<canvas id="chart{id}"></canvas>
+		</div>
+    </div>
+</div>
+
