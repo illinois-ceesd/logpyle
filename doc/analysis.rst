@@ -143,10 +143,10 @@ in a script to be executed after loading the database.
 
     # script.py
 
-    db.print_cursor(db.q("select * from warnings"))'
-    db.print_cursor(db.q("select * from warnings"))'
-    db.print_cursor(db.q("select * from logging"))'
-    db.print_cursor(db.q("select * from logging"))'
+    db.print_cursor(db.q("select * from warnings"))
+    db.print_cursor(db.q("select * from warnings"))
+    db.print_cursor(db.q("select * from logging"))
+    db.print_cursor(db.q("select * from logging"))
 
 >>> runalyzer summary.sqlite --script script.py
 
