@@ -124,7 +124,26 @@ Plotting multiple runs
 
 Plotting multiple runs by splitting run ids (look into schema)
 
-TODO
+To print constant run data of multiple runs that have been gathered, run the following
+command:
+
+>>> db.print_cursor(q("select * from runs"))
+
+With the ids generated at time of gathering for each respective run, you may peel
+out data from each run or multiple runs by specifying its id(s).
+
+>>> .plot select $step,$dt where id=1
+
+Running this command will plot dt(y) by step(x) from the first run given at time
+of gathering.
+
+You may also pull out data from multiple runs by relaxing the constant in the where
+clause.
+
+>>> .plot select $step,$dt where id=1 or id=2
+
+Running this command will plot dt(y) by step(x) from the first two runs given at time
+of gathering.
 
 Issuing commands to Runalyzer
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
