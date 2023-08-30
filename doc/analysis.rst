@@ -117,11 +117,38 @@ Basic Usage
 
 Advanced Features
 -----------------
+
+
+Plotting multiple runs
+^^^^^^^^^^^^^^^^^^^^^^
+
+Plotting multiple runs by splitting run ids (look into schema)
+
 TODO
 
-* plotting multiple runs by splitting run ids (look into schema)
-* running with the script flag
-* running with the issuing raw commands
+Issuing commands to Runalyzer
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When running runalyzer, a common use case is to run a single command before
+exiting. This can be accomplished by issuing the command as a string argument
+to runalyzer.
+
+>>> runalyzer summary.sqlite --command 'db.print_cursor(db.q("select $t_init.max"))'
+
+When the user requires multiple commands to be issued,
+In order to support issuing multiple commands, runalyzer allows the user to pass
+in a script to be executed after loading the database.
+
+.. code-block:: python
+
+    # script.py
+
+    db.print_cursor(db.q("select * from warnings"))'
+    db.print_cursor(db.q("select * from warnings"))'
+    db.print_cursor(db.q("select * from logging"))'
+    db.print_cursor(db.q("select * from logging"))'
+
+>>> runalyzer summary.sqlite --script script.py
 
 
 
@@ -140,6 +167,10 @@ HTMLalyzer
 ``htmlalyzer`` is a GUI for quickly analyzing files :mod:`logpyle` sqlite files. It
 features plotting multiple quantities together and analyzing multiple runs
 at the same time.
+
+.. image:: html_screenshot_1.png
+  :width: 400
+  :alt: Screenshot of HTMLalyzer
 
 HTMLalyzer uses PyScript, a framework that runs python in the browser and
 runs Pyodide, CPython compiled to WebAssembly.
