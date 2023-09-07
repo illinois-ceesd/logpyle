@@ -686,51 +686,50 @@ def test_single_rank_aggregator(basic_logmgr, agg, data, expected):
     assert result[-1][-1][-1] == expected
 
 
-# # TODO currently calls unimplemented function
-# def test_EventCounter(basic_logmgr: LogManager):
-#     # the event counter should keep track of events that occur
-#     # during the timestep
+def test_eventcounter(basic_logmgr: LogManager):
+    # the event counter should keep track of events that occur
+    # during the timestep
 
-#     counter1 = EventCounter("num_events1")
-#     counter2 = EventCounter("num_events2")
+    counter1 = EventCounter("num_events1")
+    counter2 = EventCounter("num_events2")
 
-#     basic_logmgr.add_quantity(counter1)
+    basic_logmgr.add_quantity(counter1)
 
-#     n = 21
-#     basic_logmgr.tick_before()
+    n = 21
+    basic_logmgr.tick_before()
 
-#     for i in range(n):
-#         counter1.add()
+    for i in range(n):
+        counter1.add()
 
-#     print(counter1.events)
-#     assert counter1.events == n
+    print(counter1.events)
+    assert counter1.events == n
 
-#     basic_logmgr.tick_after()
+    basic_logmgr.tick_after()
 
-#     # transfer counter1's count to counter2's
-#     basic_logmgr.tick_before()
+    # transfer counter1's count to counter2's
+    basic_logmgr.tick_before()
 
-#     # at the beggining of tick, counter should clear
-#     print(counter1.events)
-#     assert counter1.events == 0
+    # at the beggining of tick, counter should clear
+    print(counter1.events)
+    assert counter1.events == 0
 
-#     for i in range(n):
-#         if i % 3 == 0:
-#             counter1.add()
+    for i in range(n):
+        if i % 3 == 0:
+            counter1.add()
 
-#     counter2.transfer(counter1)
+    counter2.transfer(counter1)
 
-#     assert counter1.events == 0
-#     assert counter2.events == n
+    assert counter1.events == 0
+    assert counter2.events == n / 3
 
-#     for i in range(n):
-#         if i % 3 == 0:
-#             counter2.add()
+    for i in range(n):
+        if i % 3 == 0:
+            counter2.add()
 
-#     print(counter2.events)
-#     assert counter2.events == 2 * n
+    print(counter2.events)
+    assert counter2.events == 2 * n / 3
 
-#     basic_logmgr.tick_after()
+    basic_logmgr.tick_after()
 
 
 # # TODO
