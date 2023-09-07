@@ -30,7 +30,7 @@ Running the script
 Describing Schema
 -----------------
 
-``constants``
+``.constants``
     Show a list of (constant) run properties
 
     Parameters:
@@ -39,7 +39,7 @@ Describing Schema
     Ex:
         >>> .constants
 
-``quantities``
+``.quantities``
     Show a list of time-dependent quantities
 
     Parameters:
@@ -48,7 +48,7 @@ Describing Schema
     Ex:
         >>> .quantities
 
-``warnings``
+``.warnings``
     Show a list of warnings
 
     Parameters:
@@ -57,7 +57,7 @@ Describing Schema
     Ex:
         >>> .warnings
 
-``logging``
+``.logging``
     Show a list of logging messages
 
     Parameters:
@@ -77,7 +77,7 @@ to a quantity, precede its name with a ``$``, under the hood, this ensures that
 the quantity is gathered from all present run_ids.
 
 
-``q SQL``
+``.q SQL``
     Execute a (potentially mangled) query
 
     Parameters:
@@ -91,7 +91,7 @@ the quantity is gathered from all present run_ids.
             >>> .q select date, machine
 
 
-``plot SQL``
+``.plot SQL``
     Plot results of (potentially mangled) query.
     Result sets can be (x, y) or (x, y, descr1, descr2, ...),
     in which case a new plot will be started for each
@@ -103,7 +103,7 @@ the quantity is gathered from all present run_ids.
     ex:
         >>> .plot select $step, $dt
 
-``scatter SQL``
+``.scatter SQL``
     Make scatterplot results of (potentially mangled) query.
     Result sets can have between two and four columns
     for (x, y, size, color).
@@ -113,7 +113,7 @@ the quantity is gathered from all present run_ids.
     Ex:
         >>> .scatter select $step, $dt
 
-``help``
+``.help``
     Show a help message
 
     Parameters:
@@ -170,8 +170,6 @@ in a script to be executed after loading the database.
     # script.py
 
     db.print_cursor(db.q("select * from warnings"))
-    db.print_cursor(db.q("select * from warnings"))
-    db.print_cursor(db.q("select * from logging"))
     db.print_cursor(db.q("select * from logging"))
 
 >>> runalyzer summary.sqlite --script script.py
