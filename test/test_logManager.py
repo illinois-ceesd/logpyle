@@ -750,48 +750,48 @@ def test_single_rank_aggregator(basic_logmgr, agg, data, expected):
 #         basic_logmgr.capture_logging(False)
 
 
-# # TODO currently crashes when no timesteps are present
-# def test_empty_plot_data(basic_logmgr: LogManager):
-#     add_general_quantities(basic_logmgr)
+# TODO currently crashes when no timesteps are present
+def test_empty_plot_data(basic_logmgr: LogManager):
+    add_general_quantities(basic_logmgr)
 
-#     # there should be zero step
-#     data0 = basic_logmgr.get_plot_data("t_wall", "t_wall")
-#     print(data0)
-#     assert len(data0[0][0]) == 0
+    # there should be zero step
+    data0 = basic_logmgr.get_plot_data("t_wall", "t_wall")
+    print(data0)
+    assert len(data0[0][0]) == 0
 
-#     basic_logmgr.tick_before()
-#     # do something ...
-#     basic_logmgr.tick_after()
+    basic_logmgr.tick_before()
+    # do something ...
+    basic_logmgr.tick_after()
 
-#     # there should be one step
-#     data1 = basic_logmgr.get_plot_data("t_wall", "t_wall")
-#     print(data1)
-#     assert len(data1[0][0]) == 1
+    # there should be one step
+    data1 = basic_logmgr.get_plot_data("t_wall", "t_wall")
+    print(data1)
+    assert len(data1[0][0]) == 1
 
-#     basic_logmgr.tick_before()
-#     # do something ...
-#     basic_logmgr.tick_after()
+    basic_logmgr.tick_before()
+    # do something ...
+    basic_logmgr.tick_after()
 
-#     # there should be two steps
-#     data2 = basic_logmgr.get_plot_data("t_wall", "t_wall")
-#     print(data2)
-#     assert len(data2[0][0]) == 2
+    # there should be two steps
+    data2 = basic_logmgr.get_plot_data("t_wall", "t_wall")
+    print(data2)
+    assert len(data2[0][0]) == 2
 
-#     basic_logmgr.tick_before()
-#     # do something ...
-#     basic_logmgr.tick_after()
+    basic_logmgr.tick_before()
+    # do something ...
+    basic_logmgr.tick_after()
 
-#     # there should be three steps
-#     data3 = basic_logmgr.get_plot_data("t_wall", "t_wall")
-#     print(data3)
-#     assert len(data3[0][0]) == 3
+    # there should be three steps
+    data3 = basic_logmgr.get_plot_data("t_wall", "t_wall")
+    print(data3)
+    assert len(data3[0][0]) == 3
 
-#     # first two of three steps should be taken
-#     data0_1 = basic_logmgr.get_plot_data("t_wall", "t_wall", 0, 1)
-#     print(data0_1)
-#     assert len(data0_1) == 2
+    # first two of three steps should be taken
+    data0_1 = basic_logmgr.get_plot_data("t_wall", "t_wall", 0, 1)
+    print(data0_1)
+    assert len(data0_1) == 2
 
-#     # last two of three steps should be taken
-#     data1_2 = basic_logmgr.get_plot_data("t_wall", "t_wall", 1, 2)
-#     print(data1_2)
-#     assert len(data1_2) == 2
+    # last two of three steps should be taken
+    data1_2 = basic_logmgr.get_plot_data("t_wall", "t_wall", 1, 2)
+    print(data1_2)
+    assert len(data1_2) == 2
