@@ -70,6 +70,13 @@ Describing Schema
 Basic Usage
 -----------
 
+Magic commands are how we reduce our complex SQL schema to a friendly CLI
+interface. When processing a command with mangling/magic enabled (Default
+behavior), the command can be issued by preceding it with a ``.``. When referring
+to a quantity, precede its name with a ``$``, under the hood, this ensures that
+the quantity is gathered from all present run_ids.
+
+
 ``q SQL``
     Execute a (potentially mangled) query
 
@@ -77,11 +84,11 @@ Basic Usage
         SQL
 
     Ex:
-        Grabbing quantities
-        >>> .q select $step, $dt
+        Grabbing quantities:
+            >>> .q select $step, $dt
 
-        Grabbing constants
-        >>> .q select date, machine
+        Grabbing constants:
+            >>> .q select date, machine
 
 
 ``plot SQL``
