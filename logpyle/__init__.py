@@ -1403,7 +1403,7 @@ class EventCounter(PostLogQuantity):
     def add(self, n: int = 1) -> None:
         self.events += n
 
-    def transfer(self, counter: Any) -> None:
+    def transfer(self, counter: "EventCounter") -> None:
         self.events += counter.pop()
 
     def pop(self) -> int:
