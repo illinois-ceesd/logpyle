@@ -1392,7 +1392,6 @@ class EventCounter(PostLogQuantity):
     .. automethod:: add
     .. automethod:: transfer
     .. automethod:: pop
-    .. automethod:: prepare_for_tick
     """
 
     def __init__(self, name: str = "interval",
