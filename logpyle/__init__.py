@@ -1391,6 +1391,7 @@ class EventCounter(PostLogQuantity):
     .. automethod:: __init__
     .. automethod:: add
     .. automethod:: transfer
+    .. automethod:: pop
     """
 
     def __init__(self, name: str = "interval",
@@ -1401,8 +1402,13 @@ class EventCounter(PostLogQuantity):
     def add(self, n: int = 1) -> None:
         self.events += n
 
-    def transfer(self, counter: Any) -> None:
+    def transfer(self, counter: "EventCounter") -> None:
         self.events += counter.pop()
+
+    def pop(self) -> int:
+        events = self.events
+        self.events = 0
+        return events
 
     def prepare_for_tick(self) -> None:
         self.events = 0
