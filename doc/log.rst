@@ -131,6 +131,7 @@ and usage becomes::
 (Full example code can be found in
 :download:`examples/optional-log.py <../examples/optional-log.py>` in the logpyle
 source distribution.)
+Check out the :doc:`analysis` section for further information.
 
 
 .. no-doctest
