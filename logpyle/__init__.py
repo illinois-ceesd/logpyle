@@ -309,7 +309,13 @@ def _join_by_first_of_tuple(list_of_iterables: List[Iterable[Any]]) \
     loi = [i.__iter__() for i in list_of_iterables]
     if not loi:
         return
-    key_vals = [next(iter) for iter in loi]
+
+    # every iterator must have >= 1 object
+    try:
+        key_vals = [next(iter) for iter in loi]
+    except StopIteration:
+        return
+
     keys = [kv[0] for kv in key_vals]
     values = [kv[1] for kv in key_vals]
     target_key = max(keys)
