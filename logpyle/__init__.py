@@ -309,7 +309,13 @@ def _join_by_first_of_tuple(list_of_iterables: List[Iterable[Any]]) \
     loi = [i.__iter__() for i in list_of_iterables]
     if not loi:
         return
-    key_vals = [next(iter) for iter in loi]
+
+    # every iterator must have >= 1 object
+    try:
+        key_vals = [next(iter) for iter in loi]
+    except StopIteration:
+        return
+
     keys = [kv[0] for kv in key_vals]
     values = [kv[1] for kv in key_vals]
     target_key = max(keys)
@@ -1391,6 +1397,7 @@ class EventCounter(PostLogQuantity):
     .. automethod:: __init__
     .. automethod:: add
     .. automethod:: transfer
+    .. automethod:: pop
     """
 
     def __init__(self, name: str = "interval",
@@ -1401,8 +1408,13 @@ class EventCounter(PostLogQuantity):
     def add(self, n: int = 1) -> None:
         self.events += n
 
-    def transfer(self, counter: Any) -> None:
+    def transfer(self, counter: "EventCounter") -> None:
         self.events += counter.pop()
+
+    def pop(self) -> int:
+        events = self.events
+        self.events = 0
+        return events
 
     def prepare_for_tick(self) -> None:
         self.events = 0
