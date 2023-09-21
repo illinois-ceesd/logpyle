@@ -23,16 +23,16 @@ When running ``runalyzer`` without gathering sqlite files together,
 ``runalyzer`` will `auto gather` these files together and create an
 in memory database as if ``runalyzer-gather`` had been run.
 
+SQL mangling is how we reduce our complex SQL schema to a friendly CLI
+interface. When referring to a quantity, precede its name with a ``$``, under
+the hood, this ensures that the quantity is gathered from all present run_ids.
 
-Magic commands are how we reduce our complex SQL schema to a friendly CLI
-interface. When processing a command with mangling/magic enabled (Default
-behavior), the command can be issued by preceding it with a ``.``. When referring
-to a quantity, precede its name with a ``$``, under the hood, this ensures that
-the quantity is gathered from all present run_ids.
+.. note:: Mangling is enabled by default. Disable mangling by passing -n/--non-mangled
+   into runalyzer.
 
-
-
-
+Magic refers to the usage of customized commands to operate on our mangled and
+non-mangled SQL queries. To issue a magic command, preceding it with a ``.``.
+This will issue a command to runalyzer instead of refering to a python symbol.
 
 Running the script
 ------------------
@@ -185,6 +185,11 @@ Runalyzer-gather
 ================
 ``runalyzer-gather`` takes in sqlite files from :mod:`logpyle` and combines them
 all into a single sqlite summary file readable by ``runalyzer``.
+
+This serves as a great method of combining distributed-memory runs together for
+storage and analysis without needing to keep track of many non-centralized files.
+Additionally, preserving all run data in a single file is greatly beneficial to
+any version control system.
 
 Running the script
 ------------------
