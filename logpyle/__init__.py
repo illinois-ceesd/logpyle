@@ -666,7 +666,9 @@ class LogManager:
                 self.old_showwarning = warnings.showwarning
                 warnings.showwarning = _showwarning
             else:
-                raise RuntimeError("Warnings capture was enabled twice")
+                # raise RuntimeError("Warnings capture was enabled twice")
+                from warnings import warn
+                warn("Warnings capture already enabled")
         else:
             if self.old_showwarning is None:
                 raise RuntimeError(
