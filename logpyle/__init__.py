@@ -678,9 +678,9 @@ class LogManager:
             if self.old_showwarning is None:
                 from warnings import warn
                 warn("Warnings capture already disabled")
-
-            warnings.showwarning = self.old_showwarning
-            self.old_showwarning = None
+            else:
+                warnings.showwarning = self.old_showwarning
+                self.old_showwarning = None
 
     def capture_logging(self, enable: bool = True) -> None:
         class LogpyleLogHandler(logging.Handler):
