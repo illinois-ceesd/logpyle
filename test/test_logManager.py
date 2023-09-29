@@ -740,15 +740,6 @@ def test_eventcounter(basic_logmgr: LogManager):
     basic_logmgr.tick_after()
 
 
-# # TODO
-# # currently not raising
-# def test_double_enable_logging(basic_logmgr: LogManager):
-#     # default is enabled
-#     with pytest.warns(UserWarning):
-#         basic_logmgr.capture_logging(True)
-
-
-
 # TODO currently crashes when no timesteps are present
 def test_empty_plot_data(basic_logmgr: LogManager):
     add_general_quantities(basic_logmgr)

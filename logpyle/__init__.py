@@ -677,7 +677,7 @@ class LogManager:
         else:
             if self.old_showwarning is None:
                 from warnings import warn
-                warn("Warnings capture already enabled")
+                warn("Warnings capture already disabled")
 
             warnings.showwarning = self.old_showwarning
             self.old_showwarning = None
