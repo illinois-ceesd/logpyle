@@ -715,7 +715,7 @@ class LogManager:
                 root_logger.removeHandler(self.logging_handler)
             elif self.logging_handler is None:
                 from warnings import warn
-                warn("Warnings capture already enabled")
+                warn("Logging capture already enabled")
 
             self.logging_handler = None
 
