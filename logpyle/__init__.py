@@ -672,13 +672,12 @@ class LogManager:
                 self.old_showwarning = warnings.showwarning
                 warnings.showwarning = _showwarning
             else:
-                # raise RuntimeError("Warnings capture was enabled twice")
                 from warnings import warn
                 warn("Warnings capture already enabled")
         else:
             if self.old_showwarning is None:
-                raise RuntimeError(
-                        "Warnings capture was disabled, but never enabled")
+                from warnings import warn
+                warn("Warnings capture already enabled")
 
             warnings.showwarning = self.old_showwarning
             self.old_showwarning = None
@@ -714,6 +713,10 @@ class LogManager:
         else:
             if self.logging_handler:
                 root_logger.removeHandler(self.logging_handler)
+            elif self.logging_handler is None:
+                from warnings import warn
+                warn("Warnings capture already enabled")
+
             self.logging_handler = None
 
     def get_logging(self) -> DataTable:

@@ -437,22 +437,30 @@ def test_set_dt(basic_logmgr: LogManager):
 
 def test_double_enable_warnings(basic_logmgr: LogManager):
     # default is enabled
-    with pytest.raises(RuntimeError):
+    with pytest.warns(UserWarning):
         basic_logmgr.capture_warnings(True)
 
 
 def test_double_disable_warnings(basic_logmgr: LogManager):
     # default is enabled
     basic_logmgr.capture_warnings(False)
-    with pytest.raises(RuntimeError):
+    with pytest.warns(UserWarning):
         basic_logmgr.capture_warnings(False)
 
 
-# tests double enable logging as is (strange asymmetry with warnings)
 def test_double_enable_logging(basic_logmgr: LogManager):
     # default is enabled
     with pytest.warns(UserWarning):
         basic_logmgr.capture_logging(True)
+
+
+# TODO
+# currently not raising
+def test_double_disable_logging(basic_logmgr: LogManager):
+    # default is enabled
+    basic_logmgr.capture_logging(False)
+    with pytest.warns(UserWarning):
+        basic_logmgr.capture_logging(False)
 
 
 def test_double_add_quantity(basic_logmgr: LogManager):
@@ -736,17 +744,9 @@ def test_eventcounter(basic_logmgr: LogManager):
 # # currently not raising
 # def test_double_enable_logging(basic_logmgr: LogManager):
 #     # default is enabled
-#     with pytest.raises(RuntimeError):
+#     with pytest.warns(UserWarning):
 #         basic_logmgr.capture_logging(True)
 
-
-# # TODO
-# # currently not raising
-# def test_double_disable_logging(basic_logmgr: LogManager):
-#     # default is enabled
-#     basic_logmgr.capture_logging(False)
-#     with pytest.raises(RuntimeError):
-#         basic_logmgr.capture_logging(False)
 
 
 # TODO currently crashes when no timesteps are present
