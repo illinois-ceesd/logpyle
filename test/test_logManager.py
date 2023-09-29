@@ -686,51 +686,50 @@ def test_single_rank_aggregator(basic_logmgr, agg, data, expected):
     assert result[-1][-1][-1] == expected
 
 
-# # TODO currently calls unimplemented function
-# def test_EventCounter(basic_logmgr: LogManager):
-#     # the event counter should keep track of events that occur
-#     # during the timestep
+def test_eventcounter(basic_logmgr: LogManager):
+    # the event counter should keep track of events that occur
+    # during the timestep
 
-#     counter1 = EventCounter("num_events1")
-#     counter2 = EventCounter("num_events2")
+    counter1 = EventCounter("num_events1")
+    counter2 = EventCounter("num_events2")
 
-#     basic_logmgr.add_quantity(counter1)
+    basic_logmgr.add_quantity(counter1)
 
-#     n = 21
-#     basic_logmgr.tick_before()
+    n = 21
+    basic_logmgr.tick_before()
 
-#     for i in range(n):
-#         counter1.add()
+    for i in range(n):
+        counter1.add()
 
-#     print(counter1.events)
-#     assert counter1.events == n
+    print(counter1.events)
+    assert counter1.events == n
 
-#     basic_logmgr.tick_after()
+    basic_logmgr.tick_after()
 
-#     # transfer counter1's count to counter2's
-#     basic_logmgr.tick_before()
+    # transfer counter1's count to counter2's
+    basic_logmgr.tick_before()
 
-#     # at the beggining of tick, counter should clear
-#     print(counter1.events)
-#     assert counter1.events == 0
+    # at the beggining of tick, counter should clear
+    print(counter1.events)
+    assert counter1.events == 0
 
-#     for i in range(n):
-#         if i % 3 == 0:
-#             counter1.add()
+    for i in range(n):
+        if i % 3 == 0:
+            counter1.add()
 
-#     counter2.transfer(counter1)
+    counter2.transfer(counter1)
 
-#     assert counter1.events == 0
-#     assert counter2.events == n
+    assert counter1.events == 0
+    assert counter2.events == n / 3
 
-#     for i in range(n):
-#         if i % 3 == 0:
-#             counter2.add()
+    for i in range(n):
+        if i % 3 == 0:
+            counter2.add()
 
-#     print(counter2.events)
-#     assert counter2.events == 2 * n
+    print(counter2.events)
+    assert counter2.events == 2 * n / 3
 
-#     basic_logmgr.tick_after()
+    basic_logmgr.tick_after()
 
 
 # # TODO
@@ -750,48 +749,48 @@ def test_single_rank_aggregator(basic_logmgr, agg, data, expected):
 #         basic_logmgr.capture_logging(False)
 
 
-# # TODO currently crashes when no timesteps are present
-# def test_empty_plot_data(basic_logmgr: LogManager):
-#     add_general_quantities(basic_logmgr)
+# TODO currently crashes when no timesteps are present
+def test_empty_plot_data(basic_logmgr: LogManager):
+    add_general_quantities(basic_logmgr)
 
-#     # there should be zero step
-#     data0 = basic_logmgr.get_plot_data("t_wall", "t_wall")
-#     print(data0)
-#     assert len(data0[0][0]) == 0
+    # there should be zero step
+    data0 = basic_logmgr.get_plot_data("t_wall", "t_wall")
+    print(data0)
+    assert len(data0[0][0]) == 0
 
-#     basic_logmgr.tick_before()
-#     # do something ...
-#     basic_logmgr.tick_after()
+    basic_logmgr.tick_before()
+    # do something ...
+    basic_logmgr.tick_after()
 
-#     # there should be one step
-#     data1 = basic_logmgr.get_plot_data("t_wall", "t_wall")
-#     print(data1)
-#     assert len(data1[0][0]) == 1
+    # there should be one step
+    data1 = basic_logmgr.get_plot_data("t_wall", "t_wall")
+    print(data1)
+    assert len(data1[0][0]) == 1
 
-#     basic_logmgr.tick_before()
-#     # do something ...
-#     basic_logmgr.tick_after()
+    basic_logmgr.tick_before()
+    # do something ...
+    basic_logmgr.tick_after()
 
-#     # there should be two steps
-#     data2 = basic_logmgr.get_plot_data("t_wall", "t_wall")
-#     print(data2)
-#     assert len(data2[0][0]) == 2
+    # there should be two steps
+    data2 = basic_logmgr.get_plot_data("t_wall", "t_wall")
+    print(data2)
+    assert len(data2[0][0]) == 2
 
-#     basic_logmgr.tick_before()
-#     # do something ...
-#     basic_logmgr.tick_after()
+    basic_logmgr.tick_before()
+    # do something ...
+    basic_logmgr.tick_after()
 
-#     # there should be three steps
-#     data3 = basic_logmgr.get_plot_data("t_wall", "t_wall")
-#     print(data3)
-#     assert len(data3[0][0]) == 3
+    # there should be three steps
+    data3 = basic_logmgr.get_plot_data("t_wall", "t_wall")
+    print(data3)
+    assert len(data3[0][0]) == 3
 
-#     # first two of three steps should be taken
-#     data0_1 = basic_logmgr.get_plot_data("t_wall", "t_wall", 0, 1)
-#     print(data0_1)
-#     assert len(data0_1) == 2
+    # first two of three steps should be taken
+    data0_1 = basic_logmgr.get_plot_data("t_wall", "t_wall", 0, 1)
+    print(data0_1)
+    assert len(data0_1) == 2
 
-#     # last two of three steps should be taken
-#     data1_2 = basic_logmgr.get_plot_data("t_wall", "t_wall", 1, 2)
-#     print(data1_2)
-#     assert len(data1_2) == 2
+    # last two of three steps should be taken
+    data1_2 = basic_logmgr.get_plot_data("t_wall", "t_wall", 1, 2)
+    print(data1_2)
+    assert len(data1_2) == 2
