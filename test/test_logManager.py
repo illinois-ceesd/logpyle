@@ -454,8 +454,6 @@ def test_double_enable_logging(basic_logmgr: LogManager):
         basic_logmgr.capture_logging(True)
 
 
-# TODO
-# currently not raising
 def test_double_disable_logging(basic_logmgr: LogManager):
     # default is enabled
     basic_logmgr.capture_logging(False)
