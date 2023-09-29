@@ -171,6 +171,7 @@ jobs:
 
         - name: Run tests
           run: |
+            set -x
             sudo apt-get update && sudo apt-get install -y libopenmpi-dev
             pip install -e .
             python -m pip install pytest pytest-cov pymbolic psutil matplotlib mpi4py
@@ -179,14 +180,16 @@ jobs:
             python -m pytest --durations=0 --tb=native -rxsw --cov-report term --cov-report json:new_cov.json --cov=logpyle test/
 
             # get main's test coverage
-            git clone https://github.com/illinois-ceesd/logpyle.git logpyle_main
             pip uninstall logpyle -y
-            pip install -e logpyle_main/
-            python -m pytest --durations=0 --tb=native -rxsw --cov-report term --cov-report json:old_cov.json --cov=logpyle logpyle_main/test/
+            cd ..
+            git clone https://github.com/illinois-ceesd/logpyle.git logpyle_main
+            cd logpyle_main
+            pip install -e .
+            python -m pytest --durations=0 --tb=native -rxsw --cov-report term --cov-report json:old_cov.json --cov=logpyle test/
 
             # ensure that coverage can only increase
             cd test
-            python -c 'from conftest import assert_cov; assert_cov("../old_cov.json", "../new_cov.json")'
+            python -c 'from logpyle.test.conftest import assert_cov; assert_cov("../../logpyle/old_cov.json", "../new_cov.json")'
     html:
         name: HTMLalyzer
         runs-on: ubuntu-latest
