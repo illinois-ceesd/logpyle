@@ -1,0 +1,54 @@
+#! /usr/bin/env python
+
+import sqlite3
+
+
+def main() -> None:
+    import sys
+    from optparse import OptionParser
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Analyze a logpyle database.")
+    parser.add_argument("dbfiles", nargs="+", type=str,
+                        help="database file(s) to read")
+    parser.add_argument("--suffix", type=str,
+                        help="""a suffix to append to the filename of the
+                        newly upgraded database file""")
+
+    args = parser.parse_args()
+
+    if not args.suffix:
+        args.suffix = "_upgrade"
+
+    for dbfile in args.dbfiles:
+        new_db = upgrade_db(dbfile, suffix=args.suffix)
+
+        new_db.commit()
+
+
+def upgrade_db(dbfile: str, suffix: str) -> sqlite3.Connection:
+
+    old_conn = sqlite3.connect(dbfile)
+
+    desc = old_conn.execute("select * from quantities").description
+    print(desc)
+
+    # upgrade from V1/V0
+    if (len(old_conn.execute("select * from quantities").description) == 0):
+        pass
+
+    # upgrade from V2
+    if (len(old_conn.execute("select * from quantities").description) == 0):
+        pass
+
+    # seperate the filename and the extention
+    filename, file_ext = dbfile.rsplit('.', 1)
+    new_conn = sqlite3.connect(filename + suffix + file_ext)
+
+    # insert and modify new_conn data
+
+    return new_conn
+
+
+if __name__ == "__main__":
+    main()
