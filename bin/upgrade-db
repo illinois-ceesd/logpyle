@@ -8,7 +8,7 @@ def main() -> None:
     from optparse import OptionParser
     import argparse
 
-    parser = argparse.ArgumentParser(description="Analyze a logpyle database.")
+    parser = argparse.ArgumentParser(description="Upgrade an existing database file to version 3")
     parser.add_argument("dbfiles", nargs="+", type=str,
                         help="database file(s) to read")
     parser.add_argument("--suffix", type=str,
