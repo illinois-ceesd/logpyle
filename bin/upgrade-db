@@ -34,12 +34,12 @@ def upgrade_gathered_db(dbfile: str, suffix: str) -> sqlite3.Connection:
     print(warning_columns)
 
     # seperate the filename and the extention
-    filename, file_ext = dbfile.rsplit('.', 1)
+    filename, file_ext = dbfile.rsplit(".", 1)
 
     new_conn_name = filename + suffix + "." + file_ext
 
-    with open(dbfile, 'rb') as f:
-        with open(new_conn_name, 'wb') as f1:
+    with open(dbfile, "rb") as f:
+        with open(new_conn_name, "wb") as f1:
             f1.write(f.read())
 
     new_conn = sqlite3.connect(new_conn_name)
@@ -49,7 +49,7 @@ def upgrade_gathered_db(dbfile: str, suffix: str) -> sqlite3.Connection:
     print(f"Upgrading {new_conn_name} to schema version 3")
 
     # ensure that warnings table has unixtime column
-    if ('unixtime' not in warning_columns):
+    if ("unixtime" not in warning_columns):
         print("Adding a unixtime column in the warnings table")
         new_conn.execute("""
                          ALTER TABLE warnings
@@ -57,7 +57,7 @@ def upgrade_gathered_db(dbfile: str, suffix: str) -> sqlite3.Connection:
                          """)
 
     # ensure that warnings table has rank column
-    if ('rank' not in warning_columns):
+    if ("rank" not in warning_columns):
         print("Adding a rank column in the warnings table")
         new_conn.execute("""
                          ALTER TABLE warnings
