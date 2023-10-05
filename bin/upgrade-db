@@ -53,7 +53,7 @@ def upgrade_gathered_db(dbfile: str, suffix: str) -> sqlite3.Connection:
         print("Adding a unixtime column in the warnings table")
         new_conn.execute("""
                          ALTER TABLE warnings
-                            ADD unixtime integer;
+                            ADD unixtime integer DEFAULT -1;
                          """)
 
     # ensure that warnings table has rank column
@@ -61,10 +61,10 @@ def upgrade_gathered_db(dbfile: str, suffix: str) -> sqlite3.Connection:
         print("Adding a rank column in the warnings table")
         new_conn.execute("""
                          ALTER TABLE warnings
-                            ADD rank integer;
+                            ADD rank integer DEFAULT -1;
                          """)
 
-    print("Creating a logging table")
+    print("Ensuring a logging table exists")
     new_conn.execute("""
       CREATE TABLE IF NOT EXISTS logging (
         run_id integer,
