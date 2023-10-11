@@ -81,7 +81,8 @@ from typing import (TYPE_CHECKING, Any, Callable, Dict, Generator, Iterable,
                     List, Optional, Sequence, TextIO, Tuple, Type, Union, cast)
 
 from pymbolic.compiler import CompiledExpression  # type: ignore[import-untyped]
-from pymbolic.mapper.dependency import DependencyMapper  # type: ignore[import-untyped]
+from pymbolic.mapper.dependency import (  # type: ignore[import-untyped]
+    DependencyMapper)
 from pymbolic.primitives import Expression  # type: ignore[import-untyped]
 from pytools.datatable import DataTable
 
