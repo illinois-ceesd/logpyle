@@ -77,12 +77,11 @@ logger = logging.getLogger(__name__)
 from dataclasses import dataclass
 from sqlite3 import Connection
 from time import monotonic as time_monotonic
-from typing import (TYPE_CHECKING, Any, Callable, Dict, Generator, Iterable,
-                    List, Optional, Sequence, TextIO, Tuple, Type, Union, cast)
+from typing import (TYPE_CHECKING, Any, Callable, Dict, Generator, Iterable, List,
+                    Optional, Sequence, TextIO, Tuple, Type, Union, cast)
 
-from pymbolic.compiler import CompiledExpression  # type: ignore[import-untyped]  # noqa: I001,E501
-from pymbolic.mapper.dependency import DependencyMapper  # type: ignore[import-untyped]  # noqa: I001,E501
-from pymbolic.primitives import Expression  # type: ignore[import-untyped]  # noqa: I001,E501
+from pymbolic.compiler import CompiledExpression  # type: ignore[import-untyped]
+from pymbolic.primitives import Expression  # type: ignore[import-untyped]
 from pytools.datatable import DataTable
 
 if TYPE_CHECKING and not getattr(sys, "_BUILDING_SPHINX_DOCS", False):
@@ -1198,7 +1197,8 @@ class LogManager:
             def __call__(self, lst: List[Any]) -> Any:
                 return lst[self.n]
 
-        deps = DependencyMapper(include_calls=False)(parsed)
+        import pymbolic.mapper.dependency as pmd  # type: ignore[import-untyped]
+        deps = pmd.DependencyMapper(include_calls=False)(parsed)
 
         # gather information on aggregation expressions
         dep_data = []

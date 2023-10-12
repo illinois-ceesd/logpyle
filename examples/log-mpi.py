@@ -8,9 +8,8 @@ from warnings import warn
 
 from mpi4py import MPI
 
-from logpyle import (IntervalTimer, LogManager, LogQuantity,
-                     add_general_quantities, add_run_info,
-                     add_simulation_quantities, set_dt)
+from logpyle import (IntervalTimer, LogManager, LogQuantity, add_general_quantities,
+                     add_run_info, add_simulation_quantities, set_dt)
 
 
 class Fifteen(LogQuantity):

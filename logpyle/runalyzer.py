@@ -18,8 +18,8 @@ logger = logging.getLogger(__name__)
 from dataclasses import dataclass
 from itertools import product
 from sqlite3 import Connection, Cursor
-from typing import (Any, Callable, Dict, Generator, List, Optional, Sequence,
-                    Set, Tuple, Type, Union)
+from typing import (Any, Callable, Dict, Generator, List, Optional, Sequence, Set,
+                    Tuple, Type, Union)
 
 from pytools import Table
 

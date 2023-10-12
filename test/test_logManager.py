@@ -8,8 +8,7 @@ from pymbolic.primitives import Variable
 
 from logpyle import (EventCounter, IntervalTimer, LogManager, LogQuantity,
                      PushLogQuantity, add_general_quantities, add_run_info,
-                     add_simulation_quantities, set_dt,
-                     time_and_count_function)
+                     add_simulation_quantities, set_dt, time_and_count_function)
 
 
 def test_start_time_has_past(basic_logmgr: LogManager):
@@ -519,7 +518,7 @@ def test_time_and_count_function(basic_logmgr: LogManager):
     basic_logmgr.tick_before()
 
     n = 10
-    for i in range(n):
+    for _ in range(n):
         time_and_count_function(func_to_be_timed, timer, counter)(0.1)
 
     basic_logmgr.tick_after()
@@ -613,7 +612,7 @@ def test_write_datafile(basic_logmgr: LogManager):
 
     n = 20
 
-    for i in range(n):
+    for _ in range(n):
         basic_logmgr.tick_before()
         # do something ...
         basic_logmgr.tick_after()
@@ -644,7 +643,7 @@ def test_plot_matplotlib(basic_logmgr: LogManager):
 
     n = 20
 
-    for i in range(n):
+    for _ in range(n):
         basic_logmgr.tick_before()
         # do something ...
         basic_logmgr.tick_after()
@@ -704,7 +703,7 @@ def test_eventcounter(basic_logmgr: LogManager):
     n = 21
     basic_logmgr.tick_before()
 
-    for i in range(n):
+    for _ in range(n):
         counter1.add()
 
     print(counter1.events)
