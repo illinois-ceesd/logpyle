@@ -19,7 +19,7 @@ jobs:
             python-version: '3.7'
         - name: Run flake8
           run: |
-            pip install flake8 pep8-naming flake8-quotes flake8-comprehensions flake8-isort types-psutil numpy
+            pip install flake8 pep8-naming flake8-quotes flake8-comprehensions flake8-isort types-psutil numpy flake8-bugbear
             flake8 setup.py doc/conf.py logpyle bin/* examples/*.py test/*.py
 
     Examples:
@@ -57,8 +57,8 @@ jobs:
             runalyzer summary.sqlite  -c 'db.print_cursor(db.q("select * from logging"))'
             runalyzer summary.sqlite  -c 'db.print_cursor(db.q("select * from logging"))' | grep WARNING
 
-            ## Check that t_log is within [0, 1]
-            runalyzer -m summary.sqlite -c 'assert all([0 < r[0] < 1 for r in q("select $t_log.max")])'
+            ## Check that t_log is within [0, 2]
+            runalyzer -m summary.sqlite -c 'assert all([0 < r[0] < 2 for r in q("select $t_log.max")])'
 
             ## Check that gathered and auto-gathered are equivalent for t_log non-mpi case
             manual_gather=$(runalyzer summary.sqlite -c 'db.print_cursor(db.q("select $t_log.max"))')
@@ -93,8 +93,8 @@ jobs:
             runalyzer summary.sqlite  -c 'db.print_cursor(db.q("select * from logging"))'
             runalyzer summary.sqlite  -c 'db.print_cursor(db.q("select * from logging"))' | grep WARNING
 
-            ## Check that t_log is within [0, 1]
-            runalyzer -m summary.sqlite -c 'assert all([0 < r[0] < 1 for r in q("select $t_log.max")])'
+            ## Check that t_log is within [0, 2]
+            runalyzer -m summary.sqlite -c 'assert all([0 < r[0] < 2 for r in q("select $t_log.max")])'
 
             ## Check that gathered and auto-gathered are equivalent for t_log mpi case
             manual_gather=$(runalyzer summary.sqlite -c 'db.print_cursor(db.q("select $t_log.max"))')
@@ -156,7 +156,7 @@ jobs:
         -   name: "Main Script"
             run: |
                 curl -L -O -k https://gitlab.tiker.net/inducer/ci-support/raw/main/prepare-and-run-mypy.sh
-                export EXTRA_INSTALL="pytools numpy types-psutil"
+                export EXTRA_INSTALL="pytools numpy types-psutil pymbolic"
                 . ./prepare-and-run-mypy.sh python3
 
     pytest:

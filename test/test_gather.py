@@ -2,8 +2,7 @@ import logging
 import os
 from warnings import warn
 
-from logpyle import (LogManager, LogQuantity, add_general_quantities,
-                     add_run_info)
+from logpyle import LogManager, LogQuantity, add_general_quantities, add_run_info
 from logpyle.runalyzer import make_wrapped_db
 
 

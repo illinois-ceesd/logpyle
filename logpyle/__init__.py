@@ -77,12 +77,11 @@ logger = logging.getLogger(__name__)
 from dataclasses import dataclass
 from sqlite3 import Connection
 from time import monotonic as time_monotonic
-from typing import (TYPE_CHECKING, Any, Callable, Dict, Generator, Iterable,
-                    List, Optional, Sequence, TextIO, Tuple, Type, Union, cast)
+from typing import (TYPE_CHECKING, Any, Callable, Dict, Generator, Iterable, List,
+                    Optional, Sequence, TextIO, Tuple, Type, Union, cast)
 
-from pymbolic.compiler import CompiledExpression  # type: ignore[import]
-from pymbolic.mapper.dependency import DependencyMapper  # type: ignore[import]
-from pymbolic.primitives import Expression  # type: ignore[import]
+from pymbolic.compiler import CompiledExpression  # type: ignore[import-untyped]
+from pymbolic.primitives import Expression  # type: ignore[import-untyped]
 from pytools.datatable import DataTable
 
 if TYPE_CHECKING and not getattr(sys, "_BUILDING_SPHINX_DOCS", False):
@@ -828,7 +827,7 @@ class LogManager:
             self.have_nonlocal_watches = self.have_nonlocal_watches or \
                     any(dd.nonlocal_agg for dd in dep_data)
 
-            from pymbolic import compile  # type: ignore[import]
+            from pymbolic import compile  # type: ignore[import-untyped]
             compiled = compile(parsed, [dd.varname for dd in dep_data])
 
             watch_info = _WatchInfo(parsed=parsed, expr=expr, dep_data=dep_data,
@@ -1198,7 +1197,8 @@ class LogManager:
             def __call__(self, lst: List[Any]) -> Any:
                 return lst[self.n]
 
-        deps = DependencyMapper(include_calls=False)(parsed)
+        import pymbolic.mapper.dependency as pmd  # type: ignore[import-untyped]
+        deps = pmd.DependencyMapper(include_calls=False)(parsed)
 
         # gather information on aggregation expressions
         dep_data = []

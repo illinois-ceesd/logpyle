@@ -218,8 +218,7 @@ following:
                 raise OSError("file '%s' not found" % cmd)
 
     if did_plot:
-        from matplotlib.pyplot import (axis, grid, legend, rc, savefig, show,
-                                       title)
+        from matplotlib.pyplot import axis, grid, legend, rc, savefig, show, title
         if options.legend_expr or options.legend_descr:
             if options.small_legend:
                 from matplotlib.font_manager import FontProperties
