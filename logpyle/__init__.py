@@ -80,10 +80,9 @@ from time import monotonic as time_monotonic
 from typing import (TYPE_CHECKING, Any, Callable, Dict, Generator, Iterable,
                     List, Optional, Sequence, TextIO, Tuple, Type, Union, cast)
 
-from pymbolic.compiler import CompiledExpression  # type: ignore[import-untyped]
-from pymbolic.mapper.dependency import (  # type: ignore[import-untyped]
-    DependencyMapper)
-from pymbolic.primitives import Expression  # type: ignore[import-untyped]
+from pymbolic.compiler import CompiledExpression  # type: ignore[import-untyped]  # noqa: I001,E501
+from pymbolic.mapper.dependency import DependencyMapper  # type: ignore[import-untyped]  # noqa: I001,E501
+from pymbolic.primitives import Expression  # type: ignore[import-untyped]  # noqa: I001,E501
 from pytools.datatable import DataTable
 
 if TYPE_CHECKING and not getattr(sys, "_BUILDING_SPHINX_DOCS", False):
