@@ -490,7 +490,7 @@ class LogManager:
 
     def __init__(self, filename: Optional[str] = None, mode: str = "r",
                  mpi_comm: Optional["mpi4py.MPI.Comm"] = None,
-                 capture_warnings: bool = True, commit_interval: int = 90,
+                 capture_warnings: bool = True,
                  watch_interval: float = 1.0,
                  capture_logging: bool = True) -> None:
         """Initialize this log manager instance.
@@ -506,9 +506,9 @@ class LogManager:
           which then writes them out to disk.
         :arg capture_warnings: Tap the Python warnings facility and save warnings
           to the log file.
-        :arg commit_interval: actually perform a commit only every N times a commit
-          is requested.
         :arg watch_interval: print watches every N seconds.
+        :arg capture_warnings: Tap the Python logging facility and save logging
+          messages to the log file.
         """
 
         assert isinstance(mode, str), "mode must be a string"
@@ -519,9 +519,6 @@ class LogManager:
         self.before_gather_descriptors: List[_GatherDescriptor] = []
         self.after_gather_descriptors: List[_GatherDescriptor] = []
         self.tick_count = 0
-
-        self.commit_interval = commit_interval
-        self.commit_countdown = commit_interval
 
         self.constants: Dict[str, object] = {}
 
@@ -862,8 +859,6 @@ class LogManager:
             self.db_conn.execute("insert into constants values (?,?)",
                     (name, value))
 
-        self._commit()
-
     def _insert_datapoint(self, name: str, value: Optional[float]) -> None:
         if value is None:
             return
@@ -931,12 +926,9 @@ class LogManager:
         for gd in self.after_gather_descriptors:
             self._gather_for_descriptor(gd)
 
-        if tick_start_time - self.start_time > 15*60:
-            save_interval = 5*60
-        else:
-            save_interval = 15
+        save_interval_seconds = 10
 
-        if tick_start_time > self.last_save_time + save_interval:
+        if tick_start_time > self.last_save_time + save_interval_seconds:
             self.save()
 
         # print watches
@@ -951,12 +943,6 @@ class LogManager:
                 self._update_t_log(gd.quantity.name, gd.quantity())
 
         self.tick_count += 1
-
-    def _commit(self) -> None:
-        self.commit_countdown -= 1
-        if self.commit_countdown <= 0:
-            self.commit_countdown = self.commit_interval
-            self.db_conn.commit()
 
     def save_logging(self) -> None:
         for log in self.logging_data:
@@ -978,6 +964,7 @@ class LogManager:
         self.warning_data = []
 
     def save(self) -> None:
+        logger.debug("saving log data...")
         if self.mode[0] == "w":
             self.save_logging()
             self.save_warnings()
@@ -986,6 +973,8 @@ class LogManager:
         try:
             self.db_conn.commit()
         except OperationalError as e:
+            # Even when encountering a commit error, we want to continue
+            # running the application.
             from warnings import warn
             warn("encountered sqlite error during commit: %s" % e)
 
@@ -1013,8 +1002,6 @@ class LogManager:
             self.db_conn.execute("""create table %s
               (step integer, rank integer, value real)""" % name)
 
-            self._commit()
-
         gd = _GatherDescriptor(quantity, interval)
         if isinstance(quantity, PostLogQuantity):
             gd_list = self.after_gather_descriptors
@@ -1035,6 +1022,8 @@ class LogManager:
             add_internal(quantity.name,
                     quantity.unit, quantity.description,
                     quantity.default_aggregator)
+
+        self.save()
 
     def get_expr_dataset(self, expression: Expression,
                          description: Optional[str] = None,
