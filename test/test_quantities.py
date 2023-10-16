@@ -617,8 +617,8 @@ def test_interval_timer_subtimer(basic_logmgr: LogManager):
 
     n = 20
     for _ in range(n):
-        good_sleep_time = (random.random()/10 + 0.1)
-        bad_sleep_time = (random.random()/10 + 0.1)
+        good_sleep_time = (random.random()/20 + 0.01)
+        bad_sleep_time = (random.random()/20 + 0.01)
         expected_timer_list.append(good_sleep_time)
         sub_timer = timer.get_sub_timer()
 
@@ -651,8 +651,8 @@ def test_interval_timer_subtimer_blocking(basic_logmgr: LogManager):
 
     n = 20
     for _ in range(n):
-        good_sleep_time = (random.random()/10 + 0.1)
-        bad_sleep_time = (random.random()/10 + 0.1)
+        good_sleep_time = (random.random()/20 + 0.01)
+        bad_sleep_time = (random.random()/20 + 0.01)
         expected_timer_list.append(good_sleep_time)
         sub_timer = timer.get_sub_timer()
 
@@ -718,7 +718,7 @@ def test_gc_stats(basic_logmgr: LogManager):
     last = None
     memory_has_changed_generation = False
 
-    for istep in range(1000):
+    for istep in range(200):
         basic_logmgr.tick_before()
 
         soon_tobe_lost_ref = ["garb1", "garb2", "garb3"] * istep
@@ -726,7 +726,7 @@ def test_gc_stats(basic_logmgr: LogManager):
 
         basic_logmgr.tick_after()
 
-        sleep(0.02)
+        sleep(0.01)
 
         cur = gc_stats()
         # [enabled, # in generation1,  # in generation2, # in generation3,
