@@ -964,7 +964,6 @@ class LogManager:
         self.warning_data = []
 
     def save(self) -> None:
-        logger.debug("saving log data...")
         if self.mode[0] == "w":
             self.save_logging()
             self.save_warnings()
