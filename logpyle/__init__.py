@@ -1232,8 +1232,13 @@ class LogManager:
                 elif agg_name == "max":
                     agg_func = max
                 elif agg_name == "avg":
-                    from statistics import fmean
-                    agg_func = fmean
+                    try:
+                        from statistics import fmean
+                        agg_func = fmean
+                    except ImportError:
+                        # fmean is Python 3.8+ only
+                        from statistics import mean
+                        agg_func = mean
                 elif agg_name == "median":
                     from statistics import median
                     agg_func = median

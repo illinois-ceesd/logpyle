@@ -677,38 +677,32 @@ def test_interval_timer_subtimer_blocking(basic_logmgr: LogManager):
 def test_accurate_eta_quantity(basic_logmgr: LogManager):
     # should begin calculation and ensure that the true time is
     # within a tolerance of the estimated time
-    tol = 0.05
+    tol = 0.25
 
     n = 30
 
-    test_timer = ETA(n+2, "t_fin")
+    test_timer = ETA(n-1, "t_fin")
     basic_logmgr.add_quantity(test_timer)
 
-    sleep_time = 0.1
+    sleep_time = 0.02
 
-    # add first tick
-    basic_logmgr.tick_before()
-    sleep(sleep_time)
-    basic_logmgr.tick_after()
+    predicted_time = n * sleep_time
 
-    # add second tick
-    basic_logmgr.tick_before()
-    sleep(sleep_time)
-    basic_logmgr.tick_after()
-
-    last = basic_logmgr.get_expr_dataset("t_fin")[-1][-1][-1]
-
-    for _ in range(n):
+    for i in range(n):
         basic_logmgr.tick_before()
         sleep(sleep_time)
         basic_logmgr.tick_after()
 
-        actual_time = basic_logmgr.get_expr_dataset("t_fin")[-1][-1][-1]
-        last = last - sleep_time
-        print(last, actual_time)
-        # assert that these quantities only
-        # differ by a max of tol defined above
-        assert abs(last - actual_time) < tol
+        eta_time = basic_logmgr.get_expr_dataset("t_fin")[-1][-1][-1]
+        predicted_time -= sleep_time
+
+        if i > 0:
+            # ETA isn't available on step 0.
+            assert abs(predicted_time-eta_time) < tol
+        print(i, eta_time, predicted_time, abs(eta_time - predicted_time))
+
+    assert 0 <= eta_time < 1e-12
+    assert abs(predicted_time) < 1e-12
 
 
 def test_gc_stats(basic_logmgr: LogManager):

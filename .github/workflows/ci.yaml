@@ -8,7 +8,7 @@ on:
         - cron:  '5 0 * * *'
 
 jobs:
-    Flake8:
+    flake8:
         runs-on: ubuntu-latest
         steps:
         - uses: actions/checkout@v3
@@ -19,15 +19,15 @@ jobs:
             python-version: '3.7'
         - name: Run flake8
           run: |
-            pip install flake8 pep8-naming flake8-quotes flake8-comprehensions flake8-isort types-psutil numpy flake8-bugbear
+            pip install -U flake8 pep8-naming flake8-quotes flake8-comprehensions flake8-isort types-psutil numpy flake8-bugbear
             flake8 setup.py doc/conf.py logpyle bin/* examples/*.py test/*.py
 
-    Examples:
+    examples:
         runs-on: ${{ matrix.os }}
         strategy:
           fail-fast: true
           matrix:
-            python-version: ['3.7', '3.8', '3.9', '3.10', '3.x']
+            python-version: ['3.7', '3.8', '3.9', '3.10', '3.11', '3.12', '3.x']
             os: [ubuntu-latest, macos-latest]
 
         steps:
@@ -129,7 +129,6 @@ jobs:
 
 
     docs:
-        name: Documentation
         runs-on: ubuntu-latest
         steps:
         -   uses: actions/checkout@v3
@@ -145,7 +144,6 @@ jobs:
                 build_docs
 
     mypy:
-        name: Mypy
         runs-on: ubuntu-latest
         steps:
         -   uses: actions/checkout@v3
@@ -160,7 +158,6 @@ jobs:
                 . ./prepare-and-run-mypy.sh python3
 
     pytest:
-        name: Pytest
         runs-on: ubuntu-latest
         steps:
         - uses: actions/checkout@v3
@@ -174,25 +171,42 @@ jobs:
             set -x
             sudo apt-get update && sudo apt-get install -y libopenmpi-dev
             pip install -e .
-            python -m pip install pytest pytest-cov pymbolic psutil matplotlib mpi4py
+            python -m pip install pytest pymbolic psutil matplotlib mpi4py
 
             # run current test coverage
-            python -m pytest --durations=0 --tb=native -rxsw --cov-report term --cov-report json:new_cov.json --cov=logpyle test/
+            python -m pytest --durations=5 --tb=native -rxsw test/
 
-            # get main's test coverage
-            pip uninstall logpyle -y
-            cd ..
-            git clone https://github.com/illinois-ceesd/logpyle.git logpyle_main
-            cd logpyle_main
-            pip install -e .
-            python -m pytest --durations=0 --tb=native -rxsw --cov-report term --cov-report json:old_cov.json --cov=logpyle test/
+    coverage:
+      runs-on: ubuntu-latest
+      steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+            python-version: '3.x'
+      - name: Compare coverage with 'main' branch
+        run: |
+          set -x
+          sudo apt-get update && sudo apt-get install -y libopenmpi-dev
+          pip install -e .
+          python -m pip install pytest pytest-cov pymbolic psutil matplotlib mpi4py
 
-            # ensure that coverage can only increase
-            cd test
-            ls -l ..
-            python -c 'from conftest import assert_cov; assert_cov("../old_cov.json", "../../logpyle/new_cov.json")'
-    html:
-        name: HTMLalyzer
+          # run current test coverage
+          python -m pytest --durations=0 --tb=native -rxsw --cov-report term --cov-report json:new_cov.json --cov=logpyle test/
+
+          # get main's test coverage
+          pip uninstall logpyle -y
+          cd ..
+          git clone https://github.com/illinois-ceesd/logpyle.git logpyle_main
+          cd logpyle_main
+          pip install -e .
+          python -m pytest --durations=0 --tb=native -rxsw --cov-report term --cov-report json:old_cov.json --cov=logpyle test/
+
+          # ensure that coverage can only increase
+          cd test
+          ls -l ..
+          python -c 'from conftest import assert_cov; assert_cov("../old_cov.json", "../../logpyle/new_cov.json")'
+
+    htmlalyzer:
         runs-on: ubuntu-latest
         steps:
         - uses: actions/checkout@v3
