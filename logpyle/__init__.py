@@ -1234,10 +1234,11 @@ class LogManager:
                 elif agg_name == "avg":
                     try:
                         from statistics import fmean
+                        agg_func = fmean
                     except ImportError:
                         # fmean is Python 3.8+ only
-                        from statistics import mean as fmean
-                    agg_func = fmean
+                        from statistics import mean
+                        agg_func = mean
                 elif agg_name == "median":
                     from statistics import median
                     agg_func = median
