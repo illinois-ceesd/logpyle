@@ -699,10 +699,9 @@ def test_accurate_eta_quantity(basic_logmgr: LogManager):
         if i > 0:
             # ETA isn't available on step 0.
             assert abs(predicted_time-eta_time) < tol
-        print(i, f"{eta_time=}", f"{predicted_time=}",
-              abs(eta_time - predicted_time))
+        print(i, eta_time, predicted_time, abs(eta_time - predicted_time))
 
-    assert eta_time >= 0 and eta_time < 1e-12
+    assert 0 <= eta_time < 1e-12
     assert abs(predicted_time) < 1e-12
 
 
