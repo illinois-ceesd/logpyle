@@ -697,7 +697,8 @@ class LogManager:
         # }}}
 
     def __del__(self) -> None:
-        atexit.unregister(self.atexit_close_function)
+        if hasattr(self, "atexit_close_function"):
+            atexit.unregister(self.atexit_close_function)
 
     def capture_warnings(self, enable: bool = True) -> None:
         def _showwarning(message: Union[Warning, str], category: Type[Warning],
