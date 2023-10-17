@@ -504,11 +504,17 @@ class LogManager:
         :arg mpi_comm: An optional :class:`mpi4py.MPI.Comm` object.
           If given, logs are periodically synchronized to the head node,
           which then writes them out to disk.
-        :arg capture_warnings: Tap the Python warnings facility and save warnings
-          to the log file.
+        :arg capture_warnings: Tap the Python :mod:`warnings` facility and save
+          warnings to the log file. Note that when multiple :class:`LogManager`
+          instances have warnings capture enabled, the warnings will be saved
+          to all instances.
         :arg commit_interval: actually perform a commit only every N times a commit
           is requested.
         :arg watch_interval: print watches every N seconds.
+        :arg capture_logging: Tap the Python :mod:`logging` facility and save
+          logging messages to the log file. Note that when multiple
+          :class:`LogManager` instances have logging capture enabled, the
+          logging messages will be saved to all instances.
         """
 
         assert isinstance(mode, str), "mode must be a string"
