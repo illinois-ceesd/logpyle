@@ -68,7 +68,7 @@ import logpyle.version
 
 __version__ = logpyle.version.VERSION_TEXT
 
-
+import atexit
 import logging
 import sys
 
@@ -641,8 +641,10 @@ class LogManager:
 
         # }}}
 
-        import atexit
         atexit.register(self.close)
+
+    def __del__(self) -> None:
+        atexit.unregister(self.close)
 
     def capture_warnings(self, enable: bool = True) -> None:
         def _showwarning(message: Union[Warning, str], category: Type[Warning],
@@ -755,6 +757,8 @@ class LogManager:
                     unit, description, loads(def_agg))
 
     def close(self) -> None:
+        atexit.unregister(self.close)
+
         if self.old_showwarning is not None:
             self.capture_warnings(False)
 
