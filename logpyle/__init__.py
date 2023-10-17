@@ -727,8 +727,8 @@ class LogManager:
             self.logging_handler = None
 
     def get_logging(self) -> DataTable:
-        """Return a :class:`DataTable` of :mod:`logging` messages logged by
-        this :class:`LogManager` instance."""
+        """Return a :class:`~pytools.datatable.DataTable` of :mod:`logging`
+        messages logged by this :class:`LogManager` instance."""
         # Match the table set up by _set_up_schema
         columns = ["rank", "step", "unixtime", "level", "message", "filename",
                    "lineno"]
@@ -776,8 +776,8 @@ class LogManager:
         self.db_conn.close()
 
     def get_table(self, q_name: str) -> DataTable:
-        """Return a :class:`DataTable` of the data logged for the quantity
-        *q_name*."""
+        """Return a :class:`~pytools.datatable.DataTable` of the data logged
+        for the quantity *q_name*."""
         if q_name not in self.quantity_data:
             raise KeyError("invalid quantity name '%s'" % q_name)
 
@@ -791,8 +791,8 @@ class LogManager:
         return result
 
     def get_warnings(self) -> DataTable:
-        """Return a :class:`DataTable` of warnings logged by this
-        :class:`LogManager` instance."""
+        """Return a :class:`~pytools.datatable.DataTable` of warnings logged by
+        this :class:`LogManager` instance."""
         # Match the table set up by _set_up_schema
         columns = ["step", "message", "category", "filename", "lineno"]
         if self.schema_version >= 2:
