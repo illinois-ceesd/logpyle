@@ -651,6 +651,7 @@ class LogManager:
         # }}}
 
     def capture_warnings(self, enable: bool = True) -> None:
+        """Enable or disable :mod:`warnings` capture."""
         def _showwarning(message: Union[Warning, str], category: Type[Warning],
                          filename: str, lineno: int, file: Optional[TextIO] = None,
                          line: Optional[str] = None) -> None:
@@ -688,6 +689,7 @@ class LogManager:
                 self.old_showwarning = None
 
     def capture_logging(self, enable: bool = True) -> None:
+        """Enable or disable :mod:`logging` capture."""
         class LogpyleLogHandler(logging.Handler):
             def __init__(self, mgr: LogManager) -> None:
                 logging.Handler.__init__(self)
@@ -725,6 +727,8 @@ class LogManager:
             self.logging_handler = None
 
     def get_logging(self) -> DataTable:
+        """Return a :class:`DataTable` of :mod:`logging` messages logged by
+        this :class:`LogManager` instance."""
         # Match the table set up by _set_up_schema
         columns = ["rank", "step", "unixtime", "level", "message", "filename",
                    "lineno"]
@@ -761,6 +765,7 @@ class LogManager:
                     unit, description, loads(def_agg))
 
     def close(self) -> None:
+        """Close this :class:`LogManager` instance."""
         if self.old_showwarning is not None:
             self.capture_warnings(False)
 
@@ -771,6 +776,8 @@ class LogManager:
         self.db_conn.close()
 
     def get_table(self, q_name: str) -> DataTable:
+        """Return a :class:`DataTable` of the data logged for the quantity
+        *q_name*."""
         if q_name not in self.quantity_data:
             raise KeyError("invalid quantity name '%s'" % q_name)
 
@@ -784,6 +791,8 @@ class LogManager:
         return result
 
     def get_warnings(self) -> DataTable:
+        """Return a :class:`DataTable` of warnings logged by this
+        :class:`LogManager` instance."""
         # Match the table set up by _set_up_schema
         columns = ["step", "message", "category", "filename", "lineno"]
         if self.schema_version >= 2:
@@ -964,7 +973,7 @@ class LogManager:
             self.commit_countdown = self.commit_interval
             self.db_conn.commit()
 
-    def save_logging(self) -> None:
+    def _save_logging(self) -> None:
         for log in self.logging_data:
             self.db_conn.execute(
                 "insert into logging values (?,?,?,?,?,?,?)",
@@ -974,7 +983,7 @@ class LogManager:
 
         self.logging_data = []
 
-    def save_warnings(self) -> None:
+    def _save_warnings(self) -> None:
         for w in self.warning_data:
             self.db_conn.execute(
                 "insert into warnings values (?,?,?,?,?,?,?)",
@@ -984,9 +993,10 @@ class LogManager:
         self.warning_data = []
 
     def save(self) -> None:
+        """Commit the current state of the log."""
         if self.mode[0] == "w":
-            self.save_logging()
-            self.save_warnings()
+            self._save_logging()
+            self._save_warnings()
 
         from sqlite3 import OperationalError
         try:
