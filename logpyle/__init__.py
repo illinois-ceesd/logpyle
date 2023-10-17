@@ -504,11 +504,15 @@ class LogManager:
         :arg mpi_comm: An optional :class:`mpi4py.MPI.Comm` object.
           If given, logs are periodically synchronized to the head node,
           which then writes them out to disk.
-        :arg capture_warnings: Tap the Python warnings facility and save warnings
-          to the log file.
+        :arg capture_warnings: Tap the Python :mod:`warnings` facility and save
+          warnings to the log file. Note that when multiple :class:`LogManager`
+          instances have warnings capture enabled, the warnings will be saved
+          to all instances.
         :arg watch_interval: print watches every N seconds.
-        :arg capture_warnings: Tap the Python logging facility and save logging
-          messages to the log file.
+        :arg capture_logging: Tap the Python :mod:`logging` facility and save
+          logging messages to the log file. Note that when multiple
+          :class:`LogManager` instances have logging capture enabled, the
+          logging messages will be saved to all instances.
         """
 
         assert isinstance(mode, str), "mode must be a string"
@@ -581,7 +585,8 @@ class LogManager:
                 except OSError:
                     pass
 
-            self.db_conn = sqlite.connect(filename, timeout=30)
+            db_conn = sqlite.connect(filename, timeout=30)
+            self.db_conn = db_conn
             self.mode = mode
             try:
                 self.db_conn.execute("select * from quantities;")
@@ -629,22 +634,70 @@ class LogManager:
 
         # {{{ warnings/logging capture
 
-        self.warning_data: List[_LogWarningInfo] = []
+        warning_data: List[_LogWarningInfo] = []
+        self.warning_data = warning_data
         self.old_showwarning: Optional[Callable[..., Any]] = None
         if capture_warnings and self.mode[0] == "w":
             self.capture_warnings(True)
 
-        self.logging_data: List[_LogWarningInfo] = []
+        logging_data: List[_LogWarningInfo] = []
+        self.logging_data = logging_data
         self.logging_handler: Optional[logging.Handler] = None
         if capture_logging and self.mode[0] == "w":
             self.capture_logging(True)
 
         # }}}
 
-        atexit.register(self.close)
+        # {{{ atexit handling
+
+        def atexit_close() -> None:
+            # Note: This function can not reference 'self', otherwise
+            # atexit will hold a reference to the LogManager instance,
+            # keeping that instance alive.
+            rank = mpi_comm.rank if mpi_comm else 0
+
+            def atexit_save_logging() -> None:
+                nonlocal logging_data
+                for log in logging_data:
+                    db_conn.execute(
+                        "insert into logging values (?,?,?,?,?,?,?)",
+                        (rank, log.tick_count, log.time,
+                        log.category, log.message, log.filename,
+                        log.lineno))
+
+                logging_data = []
+
+            def atexit_save_warnings() -> None:
+                nonlocal warning_data
+                for w in warning_data:
+                    db_conn.execute(
+                        "insert into warnings values (?,?,?,?,?,?,?)",
+                        (rank, w.tick_count, w.time, w.message,
+                            w.category, w.filename, w.lineno))
+
+                warning_data = []
+
+            atexit_save_logging()
+            atexit_save_warnings()
+
+            from sqlite3 import OperationalError
+            try:
+                db_conn.commit()
+            except OperationalError as e:
+                # Even when encountering a commit error, we want to continue
+                # running the application.
+                from warnings import warn
+                warn("encountered sqlite error during commit: %s" % e)
+
+            db_conn.close()
+
+        self.atexit_close_function = atexit_close
+        atexit.register(atexit_close)
+
+        # }}}
 
     def __del__(self) -> None:
-        atexit.unregister(self.close)
+        atexit.unregister(self.atexit_close_function)
 
     def capture_warnings(self, enable: bool = True) -> None:
         def _showwarning(message: Union[Warning, str], category: Type[Warning],
@@ -757,7 +810,7 @@ class LogManager:
                     unit, description, loads(def_agg))
 
     def close(self) -> None:
-        atexit.unregister(self.close)
+        atexit.unregister(self.atexit_close_function)
 
         if self.old_showwarning is not None:
             self.capture_warnings(False)

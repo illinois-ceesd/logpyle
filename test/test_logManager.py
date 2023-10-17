@@ -803,16 +803,22 @@ def test_close() -> None:
         atexit.unregister(c)
         return atexit_funcs
 
-    # {{{ test1 - save and close
+    # {{{ test 1 - save and close
 
     logmgr = LogManager(None, "wo")
 
-    assert logmgr.close in get_atexit_functions()
+    assert logmgr.atexit_close_function in get_atexit_functions()
+    # Also check that the function name is not in the list of atexit functions,
+    # to cross-check with the 'delete' case below.
+    atexit_funcs = [f.__name__ for f in get_atexit_functions()]
+    assert "atexit_close" in atexit_funcs
 
     logmgr.save()
     logmgr.close()
 
-    assert logmgr.close not in get_atexit_functions()
+    assert logmgr.atexit_close_function not in get_atexit_functions()
+    atexit_funcs = [f.__name__ for f in get_atexit_functions()]
+    assert "atexit_close" not in atexit_funcs
 
     with pytest.raises(sqlite3.ProgrammingError):
         logmgr.save()
@@ -824,16 +830,20 @@ def test_close() -> None:
 
     # {{{ test 2 - delete
 
-    logmgr2 = LogManager(None, "wo")
-    assert logmgr2.close in get_atexit_functions()
+    # Logging/warnings capture keep the logmgr instance alive even after
+    # deleting the object, so disable them.
+    logmgr2 = LogManager(None, "wo", capture_warnings=False,
+                                     capture_logging=False)
+
+    assert logmgr2.atexit_close_function in get_atexit_functions()
+    atexit_funcs = [f.__name__ for f in get_atexit_functions()]
+    assert "atexit_close" in atexit_funcs
 
     del logmgr2
 
-    atexit_funcs = [f.__name__ for f in get_atexit_functions()]
-    print(atexit_funcs)
+    print(get_atexit_functions())
 
-    # FIXME: 'del logmgr' does not actually delete the logmgr object,
-    # due to the atexit holding a reference to its close method.
-    # assert "close" not in atexit_funcs
+    atexit_funcs = [f.__name__ for f in get_atexit_functions()]
+    assert "atexit_close" not in atexit_funcs
 
     # }}}
