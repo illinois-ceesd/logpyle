@@ -1,6 +1,7 @@
 import logging
 from time import monotonic as time_monotonic
 from time import sleep
+from typing import Any
 from warnings import warn
 
 import pytest
@@ -782,3 +783,55 @@ def test_empty_plot_data(basic_logmgr: LogManager):
     data1_2 = basic_logmgr.get_plot_data("t_wall", "t_wall", 1, 2)
     print(data1_2)
     assert len(data1_2) == 2
+
+
+def test_close() -> None:
+    # Test various closing/saving/atexit -related functionality
+    import atexit
+    import sqlite3
+
+    def get_atexit_functions():
+        # Based on https://stackoverflow.com/a/63029332/1250282
+        atexit_funcs = []
+
+        class AtexitCapture:
+            def __eq__(self, other: Any) -> bool:
+                atexit_funcs.append(other)
+                return False
+
+        c = AtexitCapture()
+        atexit.unregister(c)
+        return atexit_funcs
+
+    # {{{ test1 - save and close
+
+    logmgr = LogManager(None, "wo")
+
+    assert logmgr.close in get_atexit_functions()
+
+    logmgr.save()
+    logmgr.close()
+
+    assert logmgr.close not in get_atexit_functions()
+
+    with pytest.raises(sqlite3.ProgrammingError):
+        logmgr.save()
+
+    with pytest.raises(sqlite3.ProgrammingError):
+        logmgr.close()
+
+    # }}}
+
+    # {{{ test 2 - delete
+
+    logmgr2 = LogManager(None, "wo")
+    assert logmgr2.close in get_atexit_functions()
+
+    del logmgr2
+
+    atexit_funcs = [f.__name__ for f in get_atexit_functions()]
+    print(atexit_funcs)
+
+    assert "close" not in atexit_funcs
+
+    # }}}
