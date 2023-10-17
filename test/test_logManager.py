@@ -223,6 +223,7 @@ def test_existing_database_with_overwrite():
     with pytest.raises(KeyError):
         print(logmgr.get_expr_dataset("t_wall"))
 
+    logmgr.close()
     os.remove(filename)
 
 
@@ -287,10 +288,13 @@ def test_in_memory_logmanager():
     logmgr.save()
     logmgr.close()
 
+    logmgr = LogManager(None, "wo")
+
     with pytest.raises(KeyError):
-        logmgr = LogManager(None, "wo")
         val = logmgr.get_expr_dataset("t_wall")
         print(val)
+
+    logmgr.close()
 
 
 def test_reading_in_memory_logmanager():
@@ -308,7 +312,7 @@ def test_reading_in_memory_logmanager():
     logmgr.save()
     logmgr.close()
 
-    # attempt to read saved db, ensure this fails as it shouldnt be saved
+    # attempt to read saved db, ensure this fails as it shouldn't be saved
     with pytest.raises(RuntimeError):
         logmgr = LogManager(None, "r")
         val = logmgr.get_expr_dataset("t_wall")
@@ -364,7 +368,7 @@ def test_unique_suffix():
     os.remove(db_name2)
 
 
-def test_read_nonexistant_database():
+def test_read_nonexistent_database():
     import os
 
     fake_file_name = "THIS_LOG_SHOULD_BE_DELETED_AND_DOES_NOT_EXIST"
