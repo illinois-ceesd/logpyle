@@ -26,35 +26,35 @@ def test_basic_warning():
         warn("Oof. Something went awry.", UserWarning)
 
 
-def test_logging_warnings_from_warnings_module(basic_logmgr: LogManager):
-    first_warning_message = "Not a warning: First warning message!!!"
+def test_warnings_capture_from_warnings_module(basic_logmgr: LogManager):
+    first_warning_message = "Not a warning: First warning message"
     first_warning_type = UserWarning
 
     basic_logmgr.tick_before()
     warn(first_warning_message, first_warning_type)
     basic_logmgr.tick_after()
 
-    # ensure that the warning was caught properly
+    # ensure that the warning was captured properly
     print(basic_logmgr.warning_data[0])
     assert basic_logmgr.warning_data[0].message == first_warning_message
     assert basic_logmgr.warning_data[0].category == str(first_warning_type)
     assert basic_logmgr.warning_data[0].tick_count == 0
 
-    second_warning_message = "Not a warning: Second warning message!!!"
+    second_warning_message = "Not a warning: Second warning message"
     second_warning_type = UserWarning
 
     basic_logmgr.tick_before()
     warn(second_warning_message, second_warning_type)
     basic_logmgr.tick_after()
 
-    # ensure that the warning was caught properly
+    # ensure that the warning was captured properly
     print(basic_logmgr.warning_data[1])
     assert basic_logmgr.warning_data[1].message == second_warning_message
     assert basic_logmgr.warning_data[1].category == str(second_warning_type)
     assert basic_logmgr.warning_data[1].tick_count == 1
 
     # save warnings to database
-    basic_logmgr.save_warnings()
+    basic_logmgr._save_warnings()
 
     # ensure that warnings are of the correct form
     message_ind = basic_logmgr.get_warnings().column_names.index("message")
@@ -70,47 +70,47 @@ def test_logging_warnings_from_warnings_module(basic_logmgr: LogManager):
     assert data[1][step_ind] == 1
 
 
-def test_logging_warnings_from_logging_module(basic_logmgr: LogManager):
+def test_logging_capture_from_logging_module(basic_logmgr: LogManager):
     logger = logging.getLogger(__name__)
 
-    first_warning_message = "Not a warning: First warning message!!!"
+    first_logging_message = "First logging message"
 
     basic_logmgr.tick_before()
-    logger.warning(first_warning_message)
+    logger.warning(first_logging_message)
     basic_logmgr.tick_after()
 
-    # ensure that the warning was caught properly
+    # ensure that the logging message was captured properly
     print(basic_logmgr.logging_data)
-    assert basic_logmgr.logging_data[0].message == first_warning_message
+    assert basic_logmgr.logging_data[0].message == first_logging_message
     assert basic_logmgr.logging_data[0].category == "WARNING"
     assert basic_logmgr.logging_data[0].tick_count == 0
 
-    second_warning_message = "Not a warning: Second warning message!!!"
+    second_logging_message = "Second logging message"
 
     basic_logmgr.tick_before()
-    logger.warning(second_warning_message)
+    logger.warning(second_logging_message)
     basic_logmgr.tick_after()
 
-    # ensure that the warning was caught properly
+    # ensure that the logging message was captured properly
     print(basic_logmgr.logging_data[1])
-    assert basic_logmgr.logging_data[1].message == second_warning_message
+    assert basic_logmgr.logging_data[1].message == second_logging_message
     assert basic_logmgr.logging_data[1].category == "WARNING"
     assert basic_logmgr.logging_data[1].tick_count == 1
 
-    # save warnings to database
-    basic_logmgr.save_logging()
+    # save logging to database
+    basic_logmgr._save_logging()
 
-    # ensure that warnings are of the correct form
+    # ensure that logging messages are of the correct form
     message_ind = basic_logmgr.get_logging().column_names.index("message")
     step_ind = basic_logmgr.get_logging().column_names.index("step")
     data = basic_logmgr.get_logging().data
 
-    # ensure the first warning has been saved correctly
-    assert data[0][message_ind] == first_warning_message
+    # ensure the first logging message has been saved correctly
+    assert data[0][message_ind] == first_logging_message
     assert data[0][step_ind] == 0
 
-    # ensure the second warning has been saved correctly
-    assert data[1][message_ind] == second_warning_message
+    # ensure the second logging message has been saved correctly
+    assert data[1][message_ind] == second_logging_message
     assert data[1][step_ind] == 1
 
 
