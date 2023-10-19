@@ -789,8 +789,7 @@ def test_empty_plot_data(basic_logmgr: LogManager):
     assert len(data1_2) == 2
 
 
-def test_close() -> None:
-    # Test various closing/saving/atexit -related functionality
+def test_atexit() -> None:
     import atexit
     import sqlite3
 
@@ -807,47 +806,21 @@ def test_close() -> None:
         atexit.unregister(c)
         return atexit_funcs
 
-    # {{{ test 1 - save and close
+    # {{{
 
     logmgr = LogManager(None, "wo")
 
-    assert logmgr.atexit_close_function in get_atexit_functions()
-    # Also check that the function name is not in the list of atexit functions,
-    # to cross-check with the 'delete' case below.
-    atexit_funcs = [f.__name__ for f in get_atexit_functions()]
-    assert "atexit_close" in atexit_funcs
+    assert logmgr.save in get_atexit_functions()
 
     logmgr.save()
     logmgr.close()
 
-    assert logmgr.atexit_close_function not in get_atexit_functions()
-    atexit_funcs = [f.__name__ for f in get_atexit_functions()]
-    assert "atexit_close" not in atexit_funcs
+    assert logmgr.save not in get_atexit_functions()
 
     with pytest.raises(sqlite3.ProgrammingError):
         logmgr.save()
 
     with pytest.raises(sqlite3.ProgrammingError):
         logmgr.close()
-
-    # }}}
-
-    # {{{ test 2 - delete
-
-    # Logging/warnings capture keep the logmgr instance alive even after
-    # deleting the object, so disable them.
-    logmgr2 = LogManager(None, "wo", capture_warnings=False,
-                                     capture_logging=False)
-
-    assert logmgr2.atexit_close_function in get_atexit_functions()
-    atexit_funcs = [f.__name__ for f in get_atexit_functions()]
-    assert "atexit_close" in atexit_funcs
-
-    del logmgr2
-
-    print(get_atexit_functions())
-
-    atexit_funcs = [f.__name__ for f in get_atexit_functions()]
-    assert "atexit_close" not in atexit_funcs
 
     # }}}
