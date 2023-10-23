@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import sys
+
 # -- General configuration ------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
@@ -101,3 +103,6 @@ intersphinx_mapping = {
     "pytools": ("https://documen.tician.de/pytools/", None),
     "mpi4py": ("https://mpi4py.readthedocs.io/en/stable/", None),
 }
+
+
+sys._BUILDING_SPHINX_DOCS = True

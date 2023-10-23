@@ -3,8 +3,8 @@
 Tutorial
 ========
 
-How do I use this?
-------------------
+How do I use logpyle?
+---------------------
 
 Consider this example of a 'simulation' logging various quantities:
 
@@ -14,35 +14,41 @@ Consider this example of a 'simulation' logging various quantities:
 :download:`examples/log.py <../examples/log.py>` in the logpyle
 source distribution.)
 
-Running this script will give you a file ``mylog.dat``. Note how log quantities
+Running this script will give you a file ``log.sqlite``. Note how log quantities
 given as "watches" are also periodically logged to the console.
 
 To analyze this data, we need some tools that are distributed as part of this
 package.
 
-To prepare this data set for analysis, run ``runalyzer-gather`` as a script::
+You may use ``runalyzer`` to analyze the log file::
 
-    $ runalyzer-gather summary.dat mylog.dat
+    $ runalyzer log.sqlite
+    Creating an in memory database from provided files
     Scanning...          [########################################] ETA ?
     Importing...         [########################################] ETA ?
-
-This step may look unnecessary here, but it serves two important functions:
-
-- If you would like to compare data from multiple runs, you can simply
-  add data files from multiple runs and analyze them side-by-side.
-- For distributed-memory runs, you can likewise gve data sets from
-  multiple ranks to be gathered in a single file for centralized analysis.
-- As well as, naturally, any combination of the above.
-
-After this, you may use ``runalyzer`` (also in  this package) to analyze
-the summary file::
-
-    # -m enables '$quantity' in SQL
-    $ runalyzer -m summary.dat
     Runalyzer running on Python 3.8.5 (default, Aug  2 2020, 15:09:07)
     [GCC 10.2.0]
     Run .help to see help for 'magic' commands
     >>>
+
+``runalyzer`` accepts multiple input files. Behind the scenes, these files are
+gathered into a single database for analysis.
+You can optionally do this manually by running ``runalyzer-gather``
+as a script::
+
+    $ runalyzer-gather summary.sqlite log.sqlite
+    Scanning...          [########################################] ETA ?
+    Importing...         [########################################] ETA ?
+
+Specifying multiple data files serves two important functions:
+
+- If you would like to compare data from multiple runs, you can simply
+  add data files from multiple runs and analyze them side-by-side.
+- For distributed-memory runs, you can likewise give data sets from
+  multiple ranks to be gathered in a single file for centralized analysis.
+- As well as, naturally, any combination of the above.
+
+
 
 This is a normal Python console, but it has a few extra tricks up its
 sleeve. ``.help`` gives an overview. Here, we'll focus on demonstrating
@@ -56,7 +62,7 @@ logged quantities::
     9  | fifteen | None | None                        | None
     5  | step    | 1    | Timesteps                   | None
     2  | t_2step | s    | Step-to-step duration       | None
-    3  | t_cpu   | s    | Wall time                   | None
+    3  | t_wall  | s    | Wall time                   | None
     4  | t_log   | s    | Time spent updating the log | None
     6  | t_sim   | s    | Simulation Time             | None
     1  | t_step  | s    | Time step duration          | None
@@ -68,7 +74,7 @@ Next, we could plot, e.g. time step duration against simulation time::
 
 Next, a fact that the ``select`` may have given away: The argument to
 ``.plot`` is a SQL query that is passed on to :mod:`sqlite3`, with support
-for some additional syntax. You can  see what this query expanded to internally::
+for some additional syntax. You can see what this query expanded to internally::
 
     >>> mangle_sql("select $t_sim, $t_2step")
     'select t_sim.value, t_2step.value from runs  inner join t_sim on (t_sim.run_id = runs.id)  inner join t_2step on (t_2step.run_id = runs.id and t_sim.step = t_2step.step and t_sim.rank=t_2step.rank) '
@@ -125,6 +131,7 @@ and usage becomes::
 (Full example code can be found in
 :download:`examples/optional-log.py <../examples/optional-log.py>` in the logpyle
 source distribution.)
+Check out the :doc:`analysis` section for further information.
 
 
 .. no-doctest

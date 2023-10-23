@@ -8,7 +8,7 @@ on:
         - cron:  '5 0 * * *'
 
 jobs:
-    Flake8:
+    flake8:
         runs-on: ubuntu-latest
         steps:
         - uses: actions/checkout@v3
@@ -19,15 +19,15 @@ jobs:
             python-version: '3.7'
         - name: Run flake8
           run: |
-            pip install flake8 pep8-naming flake8-quotes flake8-comprehensions flake8-isort types-psutil numpy
-            flake8 setup.py doc/conf.py logpyle bin/* examples/*.py
+            pip install -U flake8 pep8-naming flake8-quotes flake8-comprehensions flake8-isort types-psutil numpy flake8-bugbear
+            flake8 setup.py doc/conf.py logpyle bin/* examples/*.py test/*.py
 
-    Examples:
+    examples:
         runs-on: ${{ matrix.os }}
         strategy:
-          fail-fast: false
+          fail-fast: true
           matrix:
-            python-version: [3.7, 3.8, 3.9, 3.x]
+            python-version: ['3.7', '3.8', '3.9', '3.10', '3.11', '3.12', '3.x']
             os: [ubuntu-latest, macos-latest]
 
         steps:
@@ -51,12 +51,29 @@ jobs:
 
             # Perform some simple tests on the output file
 
-            ## Check that t_log is within [0, 1]
-            runalyzer -m summary.sqlite -c 'assert all([0 < r[0] < 1 for r in q("select $t_log.max")])'
+            ## Check for warnings and logging
+            runalyzer summary.sqlite  -c 'db.print_cursor(db.q("select * from warnings"))'
+            runalyzer summary.sqlite  -c 'db.print_cursor(db.q("select * from warnings"))' | grep Oof
+            runalyzer summary.sqlite  -c 'db.print_cursor(db.q("select * from logging"))'
+            runalyzer summary.sqlite  -c 'db.print_cursor(db.q("select * from logging"))' | grep WARNING
+
+            ## Check that t_log is within [0, 2]
+            runalyzer -m summary.sqlite -c 'assert all([0 < r[0] < 2 for r in q("select $t_log.max")])'
+
+            ## Check that gathered and auto-gathered are equivalent for t_log non-mpi case
+            manual_gather=$(runalyzer summary.sqlite -c 'db.print_cursor(db.q("select $t_log.max"))')
+            auto_gather=$(runalyzer log.sqlite -c 'db.print_cursor(db.q("select $t_log.max"))' | grep -v Creating)
+            if [[ $auto_gather == $manual_gather ]]; then echo "t_log values match"; else exit 1; fi
 
             ## Check that t_init is within [0, 20], and that there is only one value
             runalyzer -m summary.sqlite -c 'assert all([0 < r[0] < 20 for r in q("select $t_init.max")])'
             runalyzer -m summary.sqlite -c 'assert len([r[0] for r in q("select $t_init.max")]) == 1'
+
+            ## Check that gathered and auto-gathered are equivalent for t_sim non-mpi case
+            manual_gather=$(runalyzer summary.sqlite -c 'db.print_cursor(db.q("select $t_init.max"))')
+            auto_gather=$(runalyzer log.sqlite -c 'db.print_cursor(db.q("select $t_init.max"))' | grep -v Creating)
+            if [[ $auto_gather == $manual_gather ]]; then echo "t_init values match"; else exit 1; fi
+
 
             # Allow oversubscription of ranks to cores with Open MPI
             export OMPI_MCA_rmaps_base_oversubscribe=1
@@ -68,17 +85,50 @@ jobs:
             runalyzer-gather summary.sqlite mpi-log*.sqlite
             runalyzer -m summary.sqlite -c 'dbplot(q("select $t_sim.max, $t_step.max"))'
 
-            ## Check that t_log is within [0, 1]
-            runalyzer -m summary.sqlite -c 'assert all([0 < r[0] < 1 for r in q("select $t_log.max")])'
+            # Perform some simple tests on the output file
+
+            ## Check for warnings and logging
+            runalyzer summary.sqlite  -c 'db.print_cursor(db.q("select * from warnings"))'
+            runalyzer summary.sqlite  -c 'db.print_cursor(db.q("select * from warnings"))' | grep Oof
+            runalyzer summary.sqlite  -c 'db.print_cursor(db.q("select * from logging"))'
+            runalyzer summary.sqlite  -c 'db.print_cursor(db.q("select * from logging"))' | grep WARNING
+
+            ## Check that t_log is within [0, 2]
+            runalyzer -m summary.sqlite -c 'assert all([0 < r[0] < 2 for r in q("select $t_log.max")])'
+
+            ## Check that gathered and auto-gathered are equivalent for t_log mpi case
+            manual_gather=$(runalyzer summary.sqlite -c 'db.print_cursor(db.q("select $t_log.max"))')
+            auto_gather=$(runalyzer mpi-log*.sqlite -c 'db.print_cursor(db.q("select $t_log.max"))' | grep -v Creating)
+            if [[ $auto_gather == $manual_gather ]]; then echo "t_log values match"; else exit 1; fi
 
             ## Check that t_init is within [0, 20], and that there is only one value
             runalyzer -m summary.sqlite -c 'assert all([0 < r[0] < 20 for r in q("select $t_init.max")])'
             runalyzer -m summary.sqlite -c 'assert len([r[0] for r in q("select $t_init.max")]) == 1'
 
+            ## Check that gathered and auto-gathered are equivalent for t_init mpi case
+            manual_gather=$(runalyzer summary.sqlite -c 'db.print_cursor(db.q("select $t_init.max"))')
+            auto_gather=$(runalyzer mpi-log*.sqlite -c 'db.print_cursor(db.q("select $t_init.max"))' | grep -v Creating)
+            if [[ $auto_gather == $manual_gather ]]; then echo "t_init values match"; else exit 1; fi
+
+            ## Gather and autogather multiple runs together and compare output
+            runalyzer-gather summary_multirun.sqlite mpi-log*.sqlite log.sqlite
+
+            manual_gather=$(runalyzer summary_multirun.sqlite -c 'db.print_cursor(db.q("select $t_log.max"))')
+            auto_gather=$(runalyzer mpi-log*.sqlite log.sqlite -c 'db.print_cursor(db.q("select $t_log.max"))' | grep -v Creating)
+            if [[ $auto_gather == $manual_gather ]]; then echo "t_log values match"; else exit 1; fi
+
+            manual_gather=$(runalyzer summary_multirun.sqlite -c 'db.print_cursor(db.q("select $t_init.max"))')
+            auto_gather=$(runalyzer mpi-log*.sqlite log.sqlite -c 'db.print_cursor(db.q("select $t_init.max"))' | grep -v Creating)
+            if [[ $auto_gather == $manual_gather ]]; then echo "t_init values match"; else exit 1; fi
+
+            # ensure that gathering gathered files raises exception
+            set +e
+            runalyzer summary.sqlite summary_multirun.sqlite -c 'db.print_cursor(db.q("select $t_log.max"))'
+            if [ $? -eq 0 ]; then echo "Exception was not raised when gathering gathered files"; exit 1; else echo "Exception was raised"; fi
+            set -e
 
 
     docs:
-        name: Documentation
         runs-on: ubuntu-latest
         steps:
         -   uses: actions/checkout@v3
@@ -94,7 +144,6 @@ jobs:
                 build_docs
 
     mypy:
-        name: Mypy
         runs-on: ubuntu-latest
         steps:
         -   uses: actions/checkout@v3
@@ -105,6 +154,74 @@ jobs:
         -   name: "Main Script"
             run: |
                 curl -L -O -k https://gitlab.tiker.net/inducer/ci-support/raw/main/prepare-and-run-mypy.sh
-                export EXTRA_INSTALL="pytools numpy types-psutil"
+                export EXTRA_INSTALL="pytools numpy types-psutil pymbolic"
                 . ./prepare-and-run-mypy.sh python3
 
+    pytest:
+        runs-on: ubuntu-latest
+        steps:
+        - uses: actions/checkout@v3
+        -
+            uses: actions/setup-python@v4
+            with:
+                python-version: '3.x'
+
+        - name: Run tests
+          run: |
+            set -x
+            sudo apt-get update && sudo apt-get install -y libopenmpi-dev
+            pip install -e .
+            python -m pip install pytest pymbolic psutil matplotlib mpi4py
+
+            # run current test coverage
+            python -m pytest --durations=5 --tb=native -rxsw test/
+
+    coverage:
+      runs-on: ubuntu-latest
+      steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+            python-version: '3.x'
+      - name: Compare coverage with 'main' branch
+        run: |
+          set -x
+          sudo apt-get update && sudo apt-get install -y libopenmpi-dev
+          pip install -e .
+          python -m pip install pytest pytest-cov pymbolic psutil matplotlib mpi4py
+
+          # run current test coverage
+          python -m pytest --durations=0 --tb=native -rxsw --cov-report term --cov-report json:new_cov.json --cov=logpyle test/
+
+          # get main's test coverage
+          pip uninstall logpyle -y
+          cd ..
+          git clone https://github.com/illinois-ceesd/logpyle.git logpyle_main
+          cd logpyle_main
+          pip install -e .
+          python -m pytest --durations=0 --tb=native -rxsw --cov-report term --cov-report json:old_cov.json --cov=logpyle test/
+
+          # ensure that coverage can only increase
+          cd test
+          ls -l ..
+          python -c 'from conftest import assert_cov; assert_cov("../old_cov.json", "../../logpyle/new_cov.json")'
+
+    htmlalyzer:
+        runs-on: ubuntu-latest
+        steps:
+        - uses: actions/checkout@v3
+        -
+            uses: actions/setup-python@v4
+            with:
+                python-version: '3.x'
+
+        - name: Run
+          run: |
+            pip install -e .
+            python -m pip install pymbolic psutil matplotlib
+
+            # open default html
+            htmlalyzer
+
+            # open html after being built
+            htmlalyzer -b
