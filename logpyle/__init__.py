@@ -987,9 +987,12 @@ class LogManager:
 
     def save(self) -> None:
         """Commit the current state of the log."""
-        if self.mode[0] == "w":
-            self._save_logging()
-            self._save_warnings()
+        if self.mode[0] != "w":
+            # No need to save readonly files.
+            return
+
+        self._save_logging()
+        self._save_warnings()
 
         from sqlite3 import OperationalError
         try:
