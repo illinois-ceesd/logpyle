@@ -792,6 +792,7 @@ def test_empty_plot_data(basic_logmgr: LogManager):
 def test_atexit() -> None:
     import atexit
     import sqlite3
+    import weakref
 
     def get_atexit_functions():
         # Based on https://stackoverflow.com/a/63029332/1250282
@@ -799,28 +800,50 @@ def test_atexit() -> None:
 
         class AtexitCapture:
             def __eq__(self, other: Any) -> bool:
-                atexit_funcs.append(other)
+                atexit_funcs.append(other.__name__)
                 return False
 
         c = AtexitCapture()
         atexit.unregister(c)
         return atexit_funcs
 
-    # {{{
+    # {{{ test 1 - save/close
 
     logmgr = LogManager(None, "wo")
 
-    assert logmgr.save in get_atexit_functions()
+    # _exitfunc is added by weakref.finalize
+    assert "_exitfunc" in get_atexit_functions()
+
+    assert weakref.getweakrefcount(logmgr) == 1
+
+    assert logmgr.weakref_finalize.alive
 
     logmgr.save()
     logmgr.close()
 
-    assert logmgr.save not in get_atexit_functions()
+    assert not logmgr.weakref_finalize.alive
+
+    assert weakref.getweakrefcount(logmgr) == 0
 
     with pytest.raises(sqlite3.ProgrammingError):
         logmgr.save()
 
     with pytest.raises(sqlite3.ProgrammingError):
         logmgr.close()
+
+    # }}}
+
+    # {{{ test 2 - delete
+
+    # Logging/warnings capture keep the logmgr instance alive even after
+    # deleting the object, so disable them.
+    logmgr2 = LogManager(None, "w", capture_logging=False,
+                                     capture_warnings=False)
+
+    # FIXME: This can't (yet) test the case where the logmgr is deleted before
+    # the program ends, since the logmgr is kept alive by the self.save weakref
+    # callback. However, this can be manually verified by e.g. printing a
+    # message when save() is called.
+    del logmgr2
 
     # }}}

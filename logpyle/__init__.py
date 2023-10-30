@@ -68,7 +68,6 @@ import logpyle.version
 
 __version__ = logpyle.version.VERSION_TEXT
 
-import atexit
 import logging
 import sys
 
@@ -481,6 +480,7 @@ class LogManager:
     .. automethod:: set_watch_interval
     .. automethod:: set_constant
     .. automethod:: add_quantity
+    .. automethod:: enable_save_on_sigterm
 
     .. rubric:: Time Loop
 
@@ -542,6 +542,9 @@ class LogManager:
         else:
             self.rank = mpi_comm.rank
             self.head_rank = 0
+
+        # weakref finalization
+        self.weakref_finalize: Callable[..., Any] = lambda: None
 
         # watch stuff
         self.watches: List[_WatchInfo] = []
@@ -647,10 +650,34 @@ class LogManager:
 
         # {{{ atexit handling
 
-        if self.mode[0] == "w":
-            atexit.register(self.save)
+        import weakref
+
+        # Make sure the database gets saved at exit.
+        # Note that this does not handle all possible exit modes:
+        # - SIGINT (i.e., Ctrl-C): automatically handled
+        # - SIGKILL (i.e., kill -9), os._exit(), Python fatal internal error:
+        #   impossible to capture
+        # - SIGTERM (i.e., kill): Users must handle the signal explicitly
+        #   (e.g. via 'logmgr.enable_save_on_sigterm()')
+        self.weakref_finalize = weakref.finalize(self, self.save)
 
         # }}}
+
+    def __del__(self) -> None:
+        self.weakref_finalize()
+
+    def enable_save_on_sigterm(self) -> Union[Callable[..., Any], int, None]:
+        """Enable saving the log on SIGTERM.
+
+        :returns: The previous SIGTERM handler.
+        """
+        # See
+        # https://mail.python.org/pipermail/python-ideas/2016-February/038471.html
+        # on why this only captures SIGTERM.
+        import signal
+
+        # type-ignore-reason: signal.signal takes a function with 2 arguments
+        return signal.signal(signal.SIGTERM, self.save)  # type: ignore[arg-type]
 
     def capture_warnings(self, enable: bool = True) -> None:
         """Enable or disable :mod:`warnings` capture."""
@@ -768,13 +795,13 @@ class LogManager:
 
     def close(self) -> None:
         """Close this :class:`LogManager` instance."""
-        atexit.unregister(self.save)
-
         if self.old_showwarning is not None:
             self.capture_warnings(False)
 
         if self.logging_handler:
             self.capture_logging(False)
+
+        self.weakref_finalize()
 
         self.save()
         self.db_conn.close()
