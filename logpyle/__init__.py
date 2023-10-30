@@ -957,6 +957,10 @@ class LogManager:
         for gd in self.after_gather_descriptors:
             cast(PostLogQuantity, gd.quantity).prepare_for_tick()
 
+        # For the first three ticks, force saving the log.
+        if self.tick_count < 3:
+            self.save()
+
         self.t_log = time_monotonic() - tick_start_time
 
     def tick_after(self) -> None:
