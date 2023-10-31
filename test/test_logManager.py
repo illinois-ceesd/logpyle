@@ -31,8 +31,8 @@ def test_warnings_capture_from_warnings_module(basic_logmgr: LogManager):
     first_warning_type = UserWarning
 
     basic_logmgr.tick_before()
+
     warn(first_warning_message, first_warning_type)
-    basic_logmgr.tick_after()
 
     # ensure that the warning was captured properly
     print(basic_logmgr.warning_data[0])
@@ -43,15 +43,13 @@ def test_warnings_capture_from_warnings_module(basic_logmgr: LogManager):
     second_warning_message = "Not a warning: Second warning message"
     second_warning_type = UserWarning
 
-    basic_logmgr.tick_before()
     warn(second_warning_message, second_warning_type)
-    basic_logmgr.tick_after()
 
     # ensure that the warning was captured properly
     print(basic_logmgr.warning_data[1])
     assert basic_logmgr.warning_data[1].message == second_warning_message
     assert basic_logmgr.warning_data[1].category == str(second_warning_type)
-    assert basic_logmgr.warning_data[1].tick_count == 1
+    assert basic_logmgr.warning_data[1].tick_count == 0
 
     # save warnings to database
     basic_logmgr._save_warnings()
@@ -67,7 +65,9 @@ def test_warnings_capture_from_warnings_module(basic_logmgr: LogManager):
 
     # ensure the second warning has been saved correctly
     assert data[1][message_ind] == second_warning_message
-    assert data[1][step_ind] == 1
+    assert data[1][step_ind] == 0
+
+    basic_logmgr.tick_after()
 
 
 def test_logging_capture_from_logging_module(basic_logmgr: LogManager):
@@ -76,8 +76,8 @@ def test_logging_capture_from_logging_module(basic_logmgr: LogManager):
     first_logging_message = "First logging message"
 
     basic_logmgr.tick_before()
+
     logger.warning(first_logging_message)
-    basic_logmgr.tick_after()
 
     # ensure that the logging message was captured properly
     print(basic_logmgr.logging_data)
@@ -87,15 +87,13 @@ def test_logging_capture_from_logging_module(basic_logmgr: LogManager):
 
     second_logging_message = "Second logging message"
 
-    basic_logmgr.tick_before()
     logger.warning(second_logging_message)
-    basic_logmgr.tick_after()
 
     # ensure that the logging message was captured properly
     print(basic_logmgr.logging_data[1])
     assert basic_logmgr.logging_data[1].message == second_logging_message
     assert basic_logmgr.logging_data[1].category == "WARNING"
-    assert basic_logmgr.logging_data[1].tick_count == 1
+    assert basic_logmgr.logging_data[1].tick_count == 0
 
     # save logging to database
     basic_logmgr._save_logging()
@@ -111,7 +109,9 @@ def test_logging_capture_from_logging_module(basic_logmgr: LogManager):
 
     # ensure the second logging message has been saved correctly
     assert data[1][message_ind] == second_logging_message
-    assert data[1][step_ind] == 1
+    assert data[1][step_ind] == 0
+
+    basic_logmgr.tick_after()
 
 
 def test_general_quantities(basic_logmgr: LogManager):
