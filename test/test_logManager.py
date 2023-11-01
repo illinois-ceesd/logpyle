@@ -1,6 +1,7 @@
 import logging
 from time import monotonic as time_monotonic
 from time import sleep
+from typing import Any
 from warnings import warn
 
 import pytest
@@ -30,8 +31,8 @@ def test_warnings_capture_from_warnings_module(basic_logmgr: LogManager):
     first_warning_type = UserWarning
 
     basic_logmgr.tick_before()
+
     warn(first_warning_message, first_warning_type)
-    basic_logmgr.tick_after()
 
     # ensure that the warning was captured properly
     print(basic_logmgr.warning_data[0])
@@ -42,15 +43,13 @@ def test_warnings_capture_from_warnings_module(basic_logmgr: LogManager):
     second_warning_message = "Not a warning: Second warning message"
     second_warning_type = UserWarning
 
-    basic_logmgr.tick_before()
     warn(second_warning_message, second_warning_type)
-    basic_logmgr.tick_after()
 
     # ensure that the warning was captured properly
     print(basic_logmgr.warning_data[1])
     assert basic_logmgr.warning_data[1].message == second_warning_message
     assert basic_logmgr.warning_data[1].category == str(second_warning_type)
-    assert basic_logmgr.warning_data[1].tick_count == 1
+    assert basic_logmgr.warning_data[1].tick_count == 0
 
     # save warnings to database
     basic_logmgr._save_warnings()
@@ -66,7 +65,9 @@ def test_warnings_capture_from_warnings_module(basic_logmgr: LogManager):
 
     # ensure the second warning has been saved correctly
     assert data[1][message_ind] == second_warning_message
-    assert data[1][step_ind] == 1
+    assert data[1][step_ind] == 0
+
+    basic_logmgr.tick_after()
 
 
 def test_logging_capture_from_logging_module(basic_logmgr: LogManager):
@@ -75,8 +76,8 @@ def test_logging_capture_from_logging_module(basic_logmgr: LogManager):
     first_logging_message = "First logging message"
 
     basic_logmgr.tick_before()
+
     logger.warning(first_logging_message)
-    basic_logmgr.tick_after()
 
     # ensure that the logging message was captured properly
     print(basic_logmgr.logging_data)
@@ -86,15 +87,13 @@ def test_logging_capture_from_logging_module(basic_logmgr: LogManager):
 
     second_logging_message = "Second logging message"
 
-    basic_logmgr.tick_before()
     logger.warning(second_logging_message)
-    basic_logmgr.tick_after()
 
     # ensure that the logging message was captured properly
     print(basic_logmgr.logging_data[1])
     assert basic_logmgr.logging_data[1].message == second_logging_message
     assert basic_logmgr.logging_data[1].category == "WARNING"
-    assert basic_logmgr.logging_data[1].tick_count == 1
+    assert basic_logmgr.logging_data[1].tick_count == 0
 
     # save logging to database
     basic_logmgr._save_logging()
@@ -110,7 +109,9 @@ def test_logging_capture_from_logging_module(basic_logmgr: LogManager):
 
     # ensure the second logging message has been saved correctly
     assert data[1][message_ind] == second_logging_message
-    assert data[1][step_ind] == 1
+    assert data[1][step_ind] == 0
+
+    basic_logmgr.tick_after()
 
 
 def test_general_quantities(basic_logmgr: LogManager):
@@ -786,3 +787,63 @@ def test_empty_plot_data(basic_logmgr: LogManager):
     data1_2 = basic_logmgr.get_plot_data("t_wall", "t_wall", 1, 2)
     print(data1_2)
     assert len(data1_2) == 2
+
+
+def test_atexit() -> None:
+    import atexit
+    import sqlite3
+    import weakref
+
+    def get_atexit_functions():
+        # Based on https://stackoverflow.com/a/63029332/1250282
+        atexit_funcs = []
+
+        class AtexitCapture:
+            def __eq__(self, other: Any) -> bool:
+                atexit_funcs.append(other.__name__)
+                return False
+
+        c = AtexitCapture()
+        atexit.unregister(c)
+        return atexit_funcs
+
+    # {{{ test 1 - save/close
+
+    logmgr = LogManager(None, "wo")
+
+    # _exitfunc is added by weakref.finalize
+    assert "_exitfunc" in get_atexit_functions()
+
+    assert weakref.getweakrefcount(logmgr) == 1
+
+    assert logmgr.weakref_finalize.alive
+
+    logmgr.save()
+    logmgr.close()
+
+    assert not logmgr.weakref_finalize.alive
+
+    assert weakref.getweakrefcount(logmgr) == 0
+
+    with pytest.raises(sqlite3.ProgrammingError):
+        logmgr.save()
+
+    with pytest.raises(sqlite3.ProgrammingError):
+        logmgr.close()
+
+    # }}}
+
+    # {{{ test 2 - delete
+
+    # Logging/warnings capture keep the logmgr instance alive even after
+    # deleting the object, so disable them.
+    logmgr2 = LogManager(None, "w", capture_logging=False,
+                                     capture_warnings=False)
+
+    # FIXME: This can't (yet) test the case where the logmgr is deleted before
+    # the program ends, since the logmgr is kept alive by the self.save weakref
+    # callback. However, this can be manually verified by e.g. printing a
+    # message when save() is called.
+    del logmgr2
+
+    # }}}

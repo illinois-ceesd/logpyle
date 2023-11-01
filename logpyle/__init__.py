@@ -68,7 +68,6 @@ import logpyle.version
 
 __version__ = logpyle.version.VERSION_TEXT
 
-
 import logging
 import sys
 
@@ -481,6 +480,7 @@ class LogManager:
     .. automethod:: set_watch_interval
     .. automethod:: set_constant
     .. automethod:: add_quantity
+    .. automethod:: enable_save_on_sigterm
 
     .. rubric:: Time Loop
 
@@ -490,7 +490,7 @@ class LogManager:
 
     def __init__(self, filename: Optional[str] = None, mode: str = "r",
                  mpi_comm: Optional["mpi4py.MPI.Comm"] = None,
-                 capture_warnings: bool = True, commit_interval: int = 90,
+                 capture_warnings: bool = True,
                  watch_interval: float = 1.0,
                  capture_logging: bool = True) -> None:
         """Initialize this log manager instance.
@@ -508,8 +508,6 @@ class LogManager:
           warnings to the log file. Note that when multiple :class:`LogManager`
           instances have warnings capture enabled, the warnings will be saved
           to all instances.
-        :arg commit_interval: actually perform a commit only every N times a commit
-          is requested.
         :arg watch_interval: print watches every N seconds.
         :arg capture_logging: Tap the Python :mod:`logging` facility and save
           logging messages to the log file. Note that when multiple
@@ -525,9 +523,6 @@ class LogManager:
         self.before_gather_descriptors: List[_GatherDescriptor] = []
         self.after_gather_descriptors: List[_GatherDescriptor] = []
         self.tick_count = 0
-
-        self.commit_interval = commit_interval
-        self.commit_countdown = commit_interval
 
         self.constants: Dict[str, object] = {}
 
@@ -547,6 +542,9 @@ class LogManager:
         else:
             self.rank = mpi_comm.rank
             self.head_rank = 0
+
+        # weakref finalization
+        self.weakref_finalize: Callable[..., Any] = lambda: None
 
         # watch stuff
         self.watches: List[_WatchInfo] = []
@@ -649,6 +647,40 @@ class LogManager:
             self.capture_logging(True)
 
         # }}}
+
+        # {{{ atexit handling
+
+        import weakref
+
+        # Make sure the database gets saved at exit.
+        # Note that this does not handle all possible exit modes:
+        # - SIGINT (i.e., Ctrl-C): automatically handled
+        # - SIGKILL (i.e., kill -9), os._exit(), Python fatal internal error:
+        #   impossible to capture
+        # - SIGTERM (i.e., kill): Users must handle the signal explicitly
+        #   (e.g. via 'logmgr.enable_save_on_sigterm()')
+        self.weakref_finalize = weakref.finalize(self, self.save)
+
+        # FIXME: The weakref keeps the log manager alive until close() is
+        # called or the application exits.
+
+        # }}}
+
+    def __del__(self) -> None:
+        self.weakref_finalize()
+
+    def enable_save_on_sigterm(self) -> Union[Callable[..., Any], int, None]:
+        """Enable saving the log on SIGTERM.
+
+        :returns: The previous SIGTERM handler.
+        """
+        # See
+        # https://mail.python.org/pipermail/python-ideas/2016-February/038471.html
+        # on why this only captures SIGTERM.
+        import signal
+
+        # type-ignore-reason: signal.signal takes a function with 2 arguments
+        return signal.signal(signal.SIGTERM, self.save)  # type: ignore[arg-type]
 
     def capture_warnings(self, enable: bool = True) -> None:
         """Enable or disable :mod:`warnings` capture."""
@@ -772,6 +804,8 @@ class LogManager:
         if self.logging_handler:
             self.capture_logging(False)
 
+        self.weakref_finalize()
+
         self.save()
         self.db_conn.close()
 
@@ -877,8 +911,6 @@ class LogManager:
             self.db_conn.execute("insert into constants values (?,?)",
                     (name, value))
 
-        self._commit()
-
     def _insert_datapoint(self, name: str, value: Optional[float]) -> None:
         if value is None:
             return
@@ -928,6 +960,10 @@ class LogManager:
         for gd in self.after_gather_descriptors:
             cast(PostLogQuantity, gd.quantity).prepare_for_tick()
 
+        # For the first three ticks, force saving the log.
+        if self.tick_count < 3:
+            self.save()
+
         self.t_log = time_monotonic() - tick_start_time
 
     def tick_after(self) -> None:
@@ -946,12 +982,9 @@ class LogManager:
         for gd in self.after_gather_descriptors:
             self._gather_for_descriptor(gd)
 
-        if tick_start_time - self.start_time > 15*60:
-            save_interval = 5*60
-        else:
-            save_interval = 15
+        save_interval_seconds = 10
 
-        if tick_start_time > self.last_save_time + save_interval:
+        if tick_start_time > self.last_save_time + save_interval_seconds:
             self.save()
 
         # print watches
@@ -966,12 +999,6 @@ class LogManager:
                 self._update_t_log(gd.quantity.name, gd.quantity())
 
         self.tick_count += 1
-
-    def _commit(self) -> None:
-        self.commit_countdown -= 1
-        if self.commit_countdown <= 0:
-            self.commit_countdown = self.commit_interval
-            self.db_conn.commit()
 
     def _save_logging(self) -> None:
         for log in self.logging_data:
@@ -994,14 +1021,19 @@ class LogManager:
 
     def save(self) -> None:
         """Commit the current state of the log."""
-        if self.mode[0] == "w":
-            self._save_logging()
-            self._save_warnings()
+        if self.mode[0] != "w":
+            # No need to save readonly files.
+            return
+
+        self._save_logging()
+        self._save_warnings()
 
         from sqlite3 import OperationalError
         try:
             self.db_conn.commit()
         except OperationalError as e:
+            # Even when encountering a commit error, we want to continue
+            # running the application.
             from warnings import warn
             warn("encountered sqlite error during commit: %s" % e)
 
@@ -1029,8 +1061,6 @@ class LogManager:
             self.db_conn.execute("""create table %s
               (step integer, rank integer, value real)""" % name)
 
-            self._commit()
-
         gd = _GatherDescriptor(quantity, interval)
         if isinstance(quantity, PostLogQuantity):
             gd_list = self.after_gather_descriptors
@@ -1051,6 +1081,8 @@ class LogManager:
             add_internal(quantity.name,
                     quantity.unit, quantity.description,
                     quantity.default_aggregator)
+
+        self.save()
 
     def get_expr_dataset(self, expression: Expression,
                          description: Optional[str] = None,

@@ -21,6 +21,8 @@ logger = logging.getLogger(__name__)
 def main() -> None:
     logmgr = LogManager("log.sqlite", "wo")
 
+    logmgr.enable_save_on_sigterm()
+
     # set a run property
     logmgr.set_constant("myconst", uniform(0, 1))
 
