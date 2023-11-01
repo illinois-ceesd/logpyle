@@ -661,6 +661,9 @@ class LogManager:
         #   (e.g. via 'logmgr.enable_save_on_sigterm()')
         self.weakref_finalize = weakref.finalize(self, self.save)
 
+        # FIXME: The weakref keeps the log manager alive until close() is
+        # called or the application exits.
+
         # }}}
 
     def __del__(self) -> None:
