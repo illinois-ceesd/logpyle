@@ -42,7 +42,7 @@ jobs:
             [[ $(uname) == "Linux" ]] && sudo apt-get update && sudo apt-get install -y mpich libmpich-dev
             pip install wheel matplotlib mpi4py psutil
             pip install -e .
-        - name: Run and test example
+        - name: Run and test examples
           run: |
             set -x
             python examples/log.py
@@ -127,6 +127,12 @@ jobs:
             if [ $? -eq 0 ]; then echo "Exception was not raised when gathering gathered files"; exit 1; else echo "Exception was raised"; fi
             set -e
 
+        - name: Test signal handling
+          run: |
+            set -x
+            ret=$(python examples/log.py & sleep 1; kill %1)
+            [[ $ret -eq 15 ]] || { echo "Expected return code 15, got $ret"; exit 1; }
+            runalyzer summary.sqlite  -c 'db.print_cursor(db.q("select * from warnings"))' | grep Oof
 
     docs:
         runs-on: ubuntu-latest
