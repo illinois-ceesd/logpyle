@@ -42,7 +42,7 @@ jobs:
             [[ $(uname) == "Linux" ]] && sudo apt-get update && sudo apt-get install -y mpich libmpich-dev
             pip install wheel matplotlib mpi4py psutil
             pip install -e .
-        - name: Run and test example
+        - name: Run and test examples
           run: |
             set -x
             python examples/log.py
@@ -127,6 +127,25 @@ jobs:
             if [ $? -eq 0 ]; then echo "Exception was not raised when gathering gathered files"; exit 1; else echo "Exception was raised"; fi
             set -e
 
+        - name: Test signal handling
+          run: |
+            set -x
+
+            # {{{ test SIGTERM handling
+
+            set +e
+            python examples/log.py & pid=$!
+            sleep 2; kill $pid
+            wait $pid
+            ret=$?
+            set -e
+            [[ $ret -eq 15 ]] || { echo "Expected return code 15, got $ret"; exit 1; }
+
+            len=$(runalyzer log.sqlite  -c 'print(len(db.q("select $t_log.max").fetchall()))' | tail -1)
+
+            [[ $len -ge 10 ]] || { echo "Expected at least 10 t_log values, got $len"; exit 1; }
+
+            # }}}
 
     docs:
         runs-on: ubuntu-latest

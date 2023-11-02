@@ -679,8 +679,12 @@ class LogManager:
         # on why this only captures SIGTERM.
         import signal
 
-        # type-ignore-reason: signal.signal takes a function with 2 arguments
-        return signal.signal(signal.SIGTERM, self.save)  # type: ignore[arg-type]
+        def sighndl(_signo: int, _stackframe: Any) -> None:
+            self.weakref_finalize()
+            import sys
+            sys.exit(_signo)
+
+        return signal.signal(signal.SIGTERM, sighndl)
 
     def capture_warnings(self, enable: bool = True) -> None:
         """Enable or disable :mod:`warnings` capture."""
