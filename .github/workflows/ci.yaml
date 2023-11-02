@@ -130,6 +130,9 @@ jobs:
         - name: Test signal handling
           run: |
             set -x
+
+            # {{{ test SIGTERM handling
+
             set +e
             python examples/log.py & pid=$!
             sleep 2; kill $pid
@@ -141,6 +144,8 @@ jobs:
             len=$(runalyzer log.sqlite  -c 'print(len(db.q("select $t_log.max").fetchall()))' | tail -1)
 
             [[ $len -ge 10 ]] || { echo "Expected at least 10 t_log values, got $len"; exit 1; }
+
+            # }}}
 
     docs:
         runs-on: ubuntu-latest
