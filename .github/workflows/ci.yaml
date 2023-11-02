@@ -130,9 +130,17 @@ jobs:
         - name: Test signal handling
           run: |
             set -x
-            ret=$(python examples/log.py & sleep 1; kill %1)
+            set +e
+            python examples/log.py & pid=$!
+            sleep 2; kill $pid
+            wait $pid
+            ret=$?
+            set -e
             [[ $ret -eq 15 ]] || { echo "Expected return code 15, got $ret"; exit 1; }
-            runalyzer summary.sqlite  -c 'db.print_cursor(db.q("select * from warnings"))' | grep Oof
+
+            len=$(runalyzer log.sqlite  -c 'print(len(db.q("select $t_log.max").fetchall()))' | tail -1)
+
+            [[ $len -ge 10 ]] || { echo "Expected at least 10 t_log values, got $len"; exit 1; }
 
     docs:
         runs-on: ubuntu-latest

@@ -679,7 +679,7 @@ class LogManager:
         # on why this only captures SIGTERM.
         import signal
 
-        def sighndl(_signo, _stackframe):
+        def sighndl(_signo: int, _stackframe: Any) -> None:
             self.weakref_finalize()
             import sys
             sys.exit(_signo)
