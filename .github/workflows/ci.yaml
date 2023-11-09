@@ -264,7 +264,7 @@ jobs:
             fi
             upgrade-db .github/log.sqlite
 
-            runalyzer log_upgrade.sqlite -c 'db.print_cursor(db.q("select * from warnings"))'
+            runalyzer .github/log_upgrade.sqlite -c 'db.print_cursor(db.q("select * from warnings"))'
             runalyzer .github/log_upgrade.sqlite -c 'print([l[0] for l in q("select * from warnings").description])'
             runalyzer .github/log_upgrade.sqlite -c 'print([l[0] for l in q("select * from logging").description])'
             runalyzer .github/log_upgrade.sqlite -c 'assert "unixtime" in [l[0] for l in q("select * from warnings").description]'
@@ -276,7 +276,7 @@ jobs:
             fi
             upgrade-db .github/flame1d_lazy_2021.10.21-07.26.58.sqlite
 
-            runalyzer flame1d_lazy_2021.10.21-07.26.58_upgrade.sqlite -c 'db.print_cursor(db.q("select * from warnings"))'
+            runalyzer .github/flame1d_lazy_2021.10.21-07.26.58_upgrade.sqlite -c 'db.print_cursor(db.q("select * from warnings"))'
             runalyzer .github/flame1d_lazy_2021.10.21-07.26.58_upgrade.sqlite -c 'print([l[0] for l in q("select * from warnings").description])'
             runalyzer .github/flame1d_lazy_2021.10.21-07.26.58_upgrade.sqlite -c 'print([l[0] for l in q("select * from logging").description])'
             runalyzer .github/flame1d_lazy_2021.10.21-07.26.58_upgrade.sqlite -c 'assert "unixtime" in [l[0] for l in q("select * from warnings").description]'
@@ -289,7 +289,7 @@ jobs:
             fi
             upgrade-db .github/flame1d_lazy_2021.10.21-07.26.58.sqlite --suffix '_new'
 
-            runalyzer flame1d_lazy_2021.10.21-07.26.58_upgrade.sqlite -c 'db.print_cursor(db.q("select * from warnings"))'
+            runalyzer .github/flame1d_lazy_2021.10.21-07.26.58_new.sqlite -c 'db.print_cursor(db.q("select * from warnings"))'
             runalyzer .github/flame1d_lazy_2021.10.21-07.26.58_new.sqlite -c 'print([l[0] for l in q("select * from warnings").description])'
             runalyzer .github/flame1d_lazy_2021.10.21-07.26.58_new.sqlite -c 'print([l[0] for l in q("select * from logging").description])'
             runalyzer .github/flame1d_lazy_2021.10.21-07.26.58_new.sqlite -c 'assert "unixtime" in [l[0] for l in q("select * from warnings").description]'
