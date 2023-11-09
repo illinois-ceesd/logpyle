@@ -1,6 +1,7 @@
-#! /usr/bin/env python
+#!/usr/bin/env python
 
 import sqlite3
+import shutil
 
 
 def main() -> None:
@@ -20,6 +21,7 @@ def main() -> None:
         args.suffix = "_upgrade"
 
     for dbfile in args.dbfiles:
+        # here we do assume we have a gathered dbfile
         new_db = upgrade_gathered_db(dbfile, suffix=args.suffix)
 
         new_db.commit()
@@ -31,16 +33,13 @@ def upgrade_gathered_db(dbfile: str, suffix: str) -> sqlite3.Connection:
 
     tmp = old_conn.execute("select * from warnings").description
     warning_columns = [col[0] for col in tmp]
-    print(warning_columns)
 
     # seperate the filename and the extention
     filename, file_ext = dbfile.rsplit(".", 1)
 
     new_conn_name = filename + suffix + "." + file_ext
 
-    with open(dbfile, "rb") as f:
-        with open(new_conn_name, "wb") as f1:
-            f1.write(f.read())
+    shutil.copy(dbfile, new_conn_name)
 
     new_conn = sqlite3.connect(new_conn_name)
 
@@ -53,7 +52,7 @@ def upgrade_gathered_db(dbfile: str, suffix: str) -> sqlite3.Connection:
         print("Adding a unixtime column in the warnings table")
         new_conn.execute("""
                          ALTER TABLE warnings
-                            ADD unixtime integer DEFAULT -1;
+                            ADD unixtime integer DEFAULT NULL;
                          """)
 
     # ensure that warnings table has rank column
@@ -61,7 +60,7 @@ def upgrade_gathered_db(dbfile: str, suffix: str) -> sqlite3.Connection:
         print("Adding a rank column in the warnings table")
         new_conn.execute("""
                          ALTER TABLE warnings
-                            ADD rank integer DEFAULT -1;
+                            ADD rank integer DEFAULT NULL;
                          """)
 
     print("Ensuring a logging table exists")
