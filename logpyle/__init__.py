@@ -68,7 +68,6 @@ import logpyle.version
 
 __version__ = logpyle.version.VERSION_TEXT
 
-
 import logging
 import sys
 
@@ -77,12 +76,11 @@ logger = logging.getLogger(__name__)
 from dataclasses import dataclass
 from sqlite3 import Connection
 from time import monotonic as time_monotonic
-from typing import (TYPE_CHECKING, Any, Callable, Dict, Generator, Iterable,
-                    List, Optional, Sequence, TextIO, Tuple, Type, Union, cast)
+from typing import (TYPE_CHECKING, Any, Callable, Dict, Generator, Iterable, List,
+                    Optional, Sequence, TextIO, Tuple, Type, Union, cast)
 
-from pymbolic.compiler import CompiledExpression  # type: ignore[import]
-from pymbolic.mapper.dependency import DependencyMapper  # type: ignore[import]
-from pymbolic.primitives import Expression  # type: ignore[import]
+from pymbolic.compiler import CompiledExpression  # type: ignore[import-untyped]
+from pymbolic.primitives import Expression  # type: ignore[import-untyped]
 from pytools.datatable import DataTable
 
 if TYPE_CHECKING and not getattr(sys, "_BUILDING_SPHINX_DOCS", False):
@@ -482,6 +480,7 @@ class LogManager:
     .. automethod:: set_watch_interval
     .. automethod:: set_constant
     .. automethod:: add_quantity
+    .. automethod:: enable_save_on_sigterm
 
     .. rubric:: Time Loop
 
@@ -491,7 +490,7 @@ class LogManager:
 
     def __init__(self, filename: Optional[str] = None, mode: str = "r",
                  mpi_comm: Optional["mpi4py.MPI.Comm"] = None,
-                 capture_warnings: bool = True, commit_interval: int = 90,
+                 capture_warnings: bool = True,
                  watch_interval: float = 1.0,
                  capture_logging: bool = True) -> None:
         """Initialize this log manager instance.
@@ -505,11 +504,15 @@ class LogManager:
         :arg mpi_comm: An optional :class:`mpi4py.MPI.Comm` object.
           If given, logs are periodically synchronized to the head node,
           which then writes them out to disk.
-        :arg capture_warnings: Tap the Python warnings facility and save warnings
-          to the log file.
-        :arg commit_interval: actually perform a commit only every N times a commit
-          is requested.
+        :arg capture_warnings: Tap the Python :mod:`warnings` facility and save
+          warnings to the log file. Note that when multiple :class:`LogManager`
+          instances have warnings capture enabled, the warnings will be saved
+          to all instances.
         :arg watch_interval: print watches every N seconds.
+        :arg capture_logging: Tap the Python :mod:`logging` facility and save
+          logging messages to the log file. Note that when multiple
+          :class:`LogManager` instances have logging capture enabled, the
+          logging messages will be saved to all instances.
         """
 
         assert isinstance(mode, str), "mode must be a string"
@@ -520,9 +523,6 @@ class LogManager:
         self.before_gather_descriptors: List[_GatherDescriptor] = []
         self.after_gather_descriptors: List[_GatherDescriptor] = []
         self.tick_count = 0
-
-        self.commit_interval = commit_interval
-        self.commit_countdown = commit_interval
 
         self.constants: Dict[str, object] = {}
 
@@ -542,6 +542,9 @@ class LogManager:
         else:
             self.rank = mpi_comm.rank
             self.head_rank = 0
+
+        # weakref finalization
+        self.weakref_finalize: Callable[..., Any] = lambda: None
 
         # watch stuff
         self.watches: List[_WatchInfo] = []
@@ -645,7 +648,46 @@ class LogManager:
 
         # }}}
 
+        # {{{ atexit handling
+
+        import weakref
+
+        # Make sure the database gets saved at exit.
+        # Note that this does not handle all possible exit modes:
+        # - SIGINT (i.e., Ctrl-C): automatically handled
+        # - SIGKILL (i.e., kill -9), os._exit(), Python fatal internal error:
+        #   impossible to capture
+        # - SIGTERM (i.e., kill): Users must handle the signal explicitly
+        #   (e.g. via 'logmgr.enable_save_on_sigterm()')
+        self.weakref_finalize = weakref.finalize(self, self.save)
+
+        # FIXME: The weakref keeps the log manager alive until close() is
+        # called or the application exits.
+
+        # }}}
+
+    def __del__(self) -> None:
+        self.weakref_finalize()
+
+    def enable_save_on_sigterm(self) -> Union[Callable[..., Any], int, None]:
+        """Enable saving the log on SIGTERM.
+
+        :returns: The previous SIGTERM handler.
+        """
+        # See
+        # https://mail.python.org/pipermail/python-ideas/2016-February/038471.html
+        # on why this only captures SIGTERM.
+        import signal
+
+        def sighndl(_signo: int, _stackframe: Any) -> None:
+            self.weakref_finalize()
+            import sys
+            sys.exit(_signo)
+
+        return signal.signal(signal.SIGTERM, sighndl)
+
     def capture_warnings(self, enable: bool = True) -> None:
+        """Enable or disable :mod:`warnings` capture."""
         def _showwarning(message: Union[Warning, str], category: Type[Warning],
                          filename: str, lineno: int, file: Optional[TextIO] = None,
                          line: Optional[str] = None) -> None:
@@ -683,6 +725,7 @@ class LogManager:
                 self.old_showwarning = None
 
     def capture_logging(self, enable: bool = True) -> None:
+        """Enable or disable :mod:`logging` capture."""
         class LogpyleLogHandler(logging.Handler):
             def __init__(self, mgr: LogManager) -> None:
                 logging.Handler.__init__(self)
@@ -720,6 +763,8 @@ class LogManager:
             self.logging_handler = None
 
     def get_logging(self) -> DataTable:
+        """Return a :class:`~pytools.datatable.DataTable` of :mod:`logging`
+        messages logged by this :class:`LogManager` instance."""
         # Match the table set up by _set_up_schema
         columns = ["rank", "step", "unixtime", "level", "message", "filename",
                    "lineno"]
@@ -756,16 +801,21 @@ class LogManager:
                     unit, description, loads(def_agg))
 
     def close(self) -> None:
+        """Close this :class:`LogManager` instance."""
         if self.old_showwarning is not None:
             self.capture_warnings(False)
 
         if self.logging_handler:
             self.capture_logging(False)
 
+        self.weakref_finalize()
+
         self.save()
         self.db_conn.close()
 
     def get_table(self, q_name: str) -> DataTable:
+        """Return a :class:`~pytools.datatable.DataTable` of the data logged
+        for the quantity *q_name*."""
         if q_name not in self.quantity_data:
             raise KeyError("invalid quantity name '%s'" % q_name)
 
@@ -779,6 +829,8 @@ class LogManager:
         return result
 
     def get_warnings(self) -> DataTable:
+        """Return a :class:`~pytools.datatable.DataTable` of warnings logged by
+        this :class:`LogManager` instance."""
         # Match the table set up by _set_up_schema
         columns = ["step", "message", "category", "filename", "lineno"]
         if self.schema_version >= 2:
@@ -828,7 +880,7 @@ class LogManager:
             self.have_nonlocal_watches = self.have_nonlocal_watches or \
                     any(dd.nonlocal_agg for dd in dep_data)
 
-            from pymbolic import compile  # type: ignore[import]
+            from pymbolic import compile  # type: ignore[import-untyped]
             compiled = compile(parsed, [dd.varname for dd in dep_data])
 
             watch_info = _WatchInfo(parsed=parsed, expr=expr, dep_data=dep_data,
@@ -862,8 +914,6 @@ class LogManager:
         else:
             self.db_conn.execute("insert into constants values (?,?)",
                     (name, value))
-
-        self._commit()
 
     def _insert_datapoint(self, name: str, value: Optional[float]) -> None:
         if value is None:
@@ -914,6 +964,10 @@ class LogManager:
         for gd in self.after_gather_descriptors:
             cast(PostLogQuantity, gd.quantity).prepare_for_tick()
 
+        # For the first three ticks, force saving the log.
+        if self.tick_count < 3:
+            self.save()
+
         self.t_log = time_monotonic() - tick_start_time
 
     def tick_after(self) -> None:
@@ -932,12 +986,9 @@ class LogManager:
         for gd in self.after_gather_descriptors:
             self._gather_for_descriptor(gd)
 
-        if tick_start_time - self.start_time > 15*60:
-            save_interval = 5*60
-        else:
-            save_interval = 15
+        save_interval_seconds = 10
 
-        if tick_start_time > self.last_save_time + save_interval:
+        if tick_start_time > self.last_save_time + save_interval_seconds:
             self.save()
 
         # print watches
@@ -953,13 +1004,7 @@ class LogManager:
 
         self.tick_count += 1
 
-    def _commit(self) -> None:
-        self.commit_countdown -= 1
-        if self.commit_countdown <= 0:
-            self.commit_countdown = self.commit_interval
-            self.db_conn.commit()
-
-    def save_logging(self) -> None:
+    def _save_logging(self) -> None:
         for log in self.logging_data:
             self.db_conn.execute(
                 "insert into logging values (?,?,?,?,?,?,?)",
@@ -969,7 +1014,7 @@ class LogManager:
 
         self.logging_data = []
 
-    def save_warnings(self) -> None:
+    def _save_warnings(self) -> None:
         for w in self.warning_data:
             self.db_conn.execute(
                 "insert into warnings values (?,?,?,?,?,?,?)",
@@ -979,14 +1024,20 @@ class LogManager:
         self.warning_data = []
 
     def save(self) -> None:
-        if self.mode[0] == "w":
-            self.save_logging()
-            self.save_warnings()
+        """Commit the current state of the log."""
+        if self.mode[0] != "w":
+            # No need to save readonly files.
+            return
+
+        self._save_logging()
+        self._save_warnings()
 
         from sqlite3 import OperationalError
         try:
             self.db_conn.commit()
         except OperationalError as e:
+            # Even when encountering a commit error, we want to continue
+            # running the application.
             from warnings import warn
             warn("encountered sqlite error during commit: %s" % e)
 
@@ -1014,8 +1065,6 @@ class LogManager:
             self.db_conn.execute("""create table %s
               (step integer, rank integer, value real)""" % name)
 
-            self._commit()
-
         gd = _GatherDescriptor(quantity, interval)
         if isinstance(quantity, PostLogQuantity):
             gd_list = self.after_gather_descriptors
@@ -1036,6 +1085,8 @@ class LogManager:
             add_internal(quantity.name,
                     quantity.unit, quantity.description,
                     quantity.default_aggregator)
+
+        self.save()
 
     def get_expr_dataset(self, expression: Expression,
                          description: Optional[str] = None,
@@ -1198,7 +1249,8 @@ class LogManager:
             def __call__(self, lst: List[Any]) -> Any:
                 return lst[self.n]
 
-        deps = DependencyMapper(include_calls=False)(parsed)
+        import pymbolic.mapper.dependency as pmd  # type: ignore[import-untyped]
+        deps = pmd.DependencyMapper(include_calls=False)(parsed)
 
         # gather information on aggregation expressions
         dep_data = []
@@ -1232,8 +1284,13 @@ class LogManager:
                 elif agg_name == "max":
                     agg_func = max
                 elif agg_name == "avg":
-                    from statistics import fmean
-                    agg_func = fmean
+                    try:
+                        from statistics import fmean
+                        agg_func = fmean
+                    except ImportError:
+                        # fmean is Python 3.8+ only
+                        from statistics import mean
+                        agg_func = mean
                 elif agg_name == "median":
                     from statistics import median
                     agg_func = median

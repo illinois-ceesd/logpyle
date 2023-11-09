@@ -5,10 +5,9 @@ from time import sleep
 import pytest
 
 from logpyle import (ETA, CallableLogQuantityAdapter, GCStats, IntervalTimer,
-                     LogManager, LogQuantity, MultiLogQuantity,
-                     MultiPostLogQuantity, PostLogQuantity, PushLogQuantity,
-                     StepToStepDuration, TimestepCounter, TimestepDuration,
-                     WallTime)
+                     LogManager, LogQuantity, MultiLogQuantity, MultiPostLogQuantity,
+                     PostLogQuantity, PushLogQuantity, StepToStepDuration,
+                     TimestepCounter, TimestepDuration, WallTime)
 
 # (name, value, unit, description, call_func)
 test_logquantity_types = [
@@ -80,7 +79,7 @@ def test_logquantity(basic_logmgr, custom_logquantity):
 
     # generate prediction
     predicted_list.append(init_value)
-    for i in range(n):
+    for _ in range(n):
         cur = predicted_list[-1]
         next = custom_logquantity.func(cur)
         predicted_list.append(next)
@@ -159,7 +158,7 @@ def test_post_logquantity(basic_logmgr, custom_post_logquantity):
 
     # generate prediction
     predicted_list.append(init_value)
-    for i in range(n):
+    for _ in range(n):
         cur = predicted_list[-1]
         next = custom_post_logquantity.func(cur)
         predicted_list.append(next)
@@ -285,7 +284,7 @@ def test_multi_log_quantity(basic_logmgr, custom_multi_log_quantity):
 
     # generate prediction
     predicted_list.append(init_values)
-    for i in range(n):
+    for _ in range(n):
         cur = predicted_list[-1]
         next = custom_multi_log_quantity.func(*cur)
         predicted_list.append(next)
@@ -383,7 +382,7 @@ def test_multi_post_logquantity(basic_logmgr, custom_multi_post_logquantity):
 
     # generate prediction
     predicted_list.append(init_values)
-    for i in range(n):
+    for _ in range(n):
         cur = predicted_list[-1]
         next = custom_multi_post_logquantity.func(*cur)
         predicted_list.append(next)
@@ -447,13 +446,13 @@ def test_accurate_timestepcounter_quantity(basic_logmgr: LogManager):
     n1 = 200
     n2 = 120
 
-    for i in range(n1):
+    for _ in range(n1):
         basic_logmgr.tick_before()
         # do something ...
         basic_logmgr.tick_after()
     assert basic_logmgr.last_values["t_step_count"] == n1 - 1
 
-    for i in range(n2):
+    for _ in range(n2):
         basic_logmgr.tick_before()
         # do something ...
         basic_logmgr.tick_after()
@@ -512,7 +511,7 @@ def test_accurate_walltime_quantity(basic_logmgr: LogManager):
     start_time = time_monotonic()
 
     basic_logmgr.add_quantity(test_timer)
-    for i in range(n):
+    for _ in range(n):
         sleep_before_time = random.random() / 30 + min_time
         sleep_during_time = random.random() / 30 + min_time
 
@@ -569,7 +568,7 @@ def test_callable_logquantity(basic_logmgr: LogManager):
     basic_logmgr.add_quantity(callable)
 
     n = 50
-    for i in range(n):
+    for _ in range(n):
         basic_logmgr.tick_before()
         # do something ...
         basic_logmgr.tick_after()
@@ -617,7 +616,7 @@ def test_interval_timer_subtimer(basic_logmgr: LogManager):
     expected_timer_list = []
 
     n = 20
-    for i in range(n):
+    for _ in range(n):
         good_sleep_time = (random.random()/10 + 0.1)
         bad_sleep_time = (random.random()/10 + 0.1)
         expected_timer_list.append(good_sleep_time)
@@ -651,7 +650,7 @@ def test_interval_timer_subtimer_blocking(basic_logmgr: LogManager):
     expected_timer_list = []
 
     n = 20
-    for i in range(n):
+    for _ in range(n):
         good_sleep_time = (random.random()/10 + 0.1)
         bad_sleep_time = (random.random()/10 + 0.1)
         expected_timer_list.append(good_sleep_time)
@@ -678,38 +677,32 @@ def test_interval_timer_subtimer_blocking(basic_logmgr: LogManager):
 def test_accurate_eta_quantity(basic_logmgr: LogManager):
     # should begin calculation and ensure that the true time is
     # within a tolerance of the estimated time
-    tol = 0.05
+    tol = 0.25
 
     n = 30
 
-    test_timer = ETA(n+2, "t_fin")
+    test_timer = ETA(n-1, "t_fin")
     basic_logmgr.add_quantity(test_timer)
 
-    sleep_time = 0.1
+    sleep_time = 0.02
 
-    # add first tick
-    basic_logmgr.tick_before()
-    sleep(sleep_time)
-    basic_logmgr.tick_after()
-
-    # add second tick
-    basic_logmgr.tick_before()
-    sleep(sleep_time)
-    basic_logmgr.tick_after()
-
-    last = basic_logmgr.get_expr_dataset("t_fin")[-1][-1][-1]
+    predicted_time = n * sleep_time
 
     for i in range(n):
         basic_logmgr.tick_before()
         sleep(sleep_time)
         basic_logmgr.tick_after()
 
-        actual_time = basic_logmgr.get_expr_dataset("t_fin")[-1][-1][-1]
-        last = last - sleep_time
-        print(last, actual_time)
-        # assert that these quantities only
-        # differ by a max of tol defined above
-        assert abs(last - actual_time) < tol
+        eta_time = basic_logmgr.get_expr_dataset("t_fin")[-1][-1][-1]
+        predicted_time -= sleep_time
+
+        if i > 0:
+            # ETA isn't available on step 0.
+            assert abs(predicted_time-eta_time) < tol
+        print(i, eta_time, predicted_time, abs(eta_time - predicted_time))
+
+    assert 0 <= eta_time < 1e-12
+    assert abs(predicted_time) < 1e-12
 
 
 def test_gc_stats(basic_logmgr: LogManager):

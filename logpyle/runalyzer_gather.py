@@ -165,7 +165,7 @@ def scan(fg: FeatureGatherer, dbnames: List[str], progress: bool = True) \
         if progress:
             pb.progress()  # type: ignore[no-untyped-call]
 
-        for fname, ftype, fvalue in fg.get_db_features(dbname, logmgr):
+        for fname, ftype, _fvalue in fg.get_db_features(dbname, logmgr):
             if fname in features:
                 features[fname] = larger_sql_type(ftype, features[fname])
             else:
@@ -296,7 +296,7 @@ def gather_multi_file(outfile: str, infiles: List[str], fmap: Dict[str, str],
 
         def transfer_data_table_multi(db_conn: Connection, tbl_name: str,
                                       data_table: DataTable) -> None:
-            my_data = [(run_id,)+d for d in data_table.data]
+            my_data = [(run_id,)+d for d in data_table.data]  # noqa: B023
 
             db_conn.executemany(f"insert into {tbl_name} (%s) values (%s)" %
                 ("run_id,"

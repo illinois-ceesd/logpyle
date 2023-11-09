@@ -6,8 +6,8 @@ from time import sleep
 from warnings import warn
 
 from logpyle import (GCStats, IntervalTimer, LogManager, LogQuantity,
-                     add_general_quantities, add_run_info,
-                     add_simulation_quantities, set_dt)
+                     add_general_quantities, add_run_info, add_simulation_quantities,
+                     set_dt)
 
 
 class Fifteen(LogQuantity):
@@ -20,6 +20,8 @@ logger = logging.getLogger(__name__)
 
 def main() -> None:
     logmgr = LogManager("log.sqlite", "wo")
+
+    logmgr.enable_save_on_sigterm()
 
     # set a run property
     logmgr.set_constant("myconst", uniform(0, 1))
