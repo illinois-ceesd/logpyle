@@ -258,7 +258,7 @@ jobs:
           run: |
             pip install -e .
 
-            # test default name
+            # test gathered default name
             if [ -f .github/flame1d_lazy_2021.10.21-07.26.58_upgrade.sqlite ] ; then
               rm .github/flame1d_lazy_2021.10.21-07.26.58_upgrade.sqlite
             fi
@@ -271,7 +271,7 @@ jobs:
             runalyzer .github/flame1d_lazy_2021.10.21-07.26.58_upgrade.sqlite -c 'assert "rank" in [l[0] for l in q("select * from warnings").description]'
 
 
-            # test custom name
+            # test gathered custom name
             if [ -f .github/flame1d_lazy_2021.10.21-07.26.58_new.sqlite ] ; then
               rm .github/flame1d_lazy_2021.10.21-07.26.58_new.sqlite
             fi
