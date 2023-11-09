@@ -44,12 +44,14 @@ def upgrade_db(
         dbfile: str, suffix: str, overwrite: bool
         ) -> sqlite3.Connection:
 
+    # original db files
     old_conn = sqlite3.connect(dbfile)
 
     tmp = old_conn.execute("select * from warnings").description
     warning_columns = [col[0] for col in tmp]
 
     if overwrite:
+        # simply perform modifications on old connection
         new_conn_name = dbfile
         new_conn = old_conn
         print(f"Overwriting Database: {new_conn_name}")
