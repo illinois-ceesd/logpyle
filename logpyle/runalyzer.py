@@ -135,8 +135,8 @@ class RunDB:
                 style_idx[0] += 1
 
             style_idx = [0]
-            for x, y, rest in split_cursor(cursor):
-                do_plot(x, y, rest)  # type: ignore[arg-type]
+            for my_x, my_y, rest in split_cursor(cursor):
+                do_plot(my_x, my_y, rest)  # type: ignore[arg-type]
 
             if small_legend:
                 from matplotlib.font_manager import FontProperties
