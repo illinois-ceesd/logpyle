@@ -6,6 +6,17 @@ def upgrade_conn(conn: sqlite3.Connection) -> sqlite3.Connection:
     tmp = conn.execute("select * from warnings").description
     warning_columns = [col[0] for col in tmp]
 
+    # check if any of the provided files have been gathered
+    gathered = False
+    # get a list of tables with the name of 'runs'
+    res = list(conn.execute("""
+                        SELECT name
+                        FROM sqlite_master
+                        WHERE type='table' AND name='runs'
+                                      """))
+    if len(res) == 1:
+        gathered = True
+
     # ensure that warnings table has unixtime column
     if ("unixtime" not in warning_columns):
         print("Adding a unixtime column in the warnings table")
@@ -25,17 +36,30 @@ def upgrade_conn(conn: sqlite3.Connection) -> sqlite3.Connection:
                          """)
 
     print("Ensuring a logging table exists")
-    conn.execute("""
-      CREATE TABLE IF NOT EXISTS logging (
-        run_id integer,
-        rank integer,
-        step integer,
-        unixtime integer,
-        level text,
-        message text,
-        filename text,
-        lineno integer
-        )""")
+    if gathered:
+        conn.execute("""
+          CREATE TABLE IF NOT EXISTS logging (
+            run_id integer,
+            rank integer,
+            step integer,
+            unixtime integer,
+            level text,
+            message text,
+            filename text,
+            lineno integer
+            )""")
+    else:
+        conn.execute("""
+          CREATE TABLE IF NOT EXISTS logging (
+            rank integer,
+            step integer,
+            unixtime integer,
+            level text,
+            message text,
+            filename text,
+            lineno integer
+            )""")
+
     return conn
 
 
