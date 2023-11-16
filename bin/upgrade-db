@@ -3,6 +3,7 @@
 
 def main() -> None:
     import argparse
+
     from logpyle.upgrade_db import upgrade_db
 
     parser = argparse.ArgumentParser(description="Upgrade an existing database\
