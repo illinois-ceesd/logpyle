@@ -15,6 +15,8 @@ def upgrade_conn(conn: sqlite3.Connection) -> sqlite3.Connection:
                          """)
 
     # ensure that warnings table has rank column
+    # nowhere to grab the rank of the process that generated
+    # the warning
     if ("rank" not in warning_columns):
         print("Adding a rank column in the warnings table")
         conn.execute("""

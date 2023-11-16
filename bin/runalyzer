@@ -16,6 +16,8 @@ def main() -> None:
                         help="database file(s) to read")
     parser.add_argument("--script", type=str,
                         help="script file to read")
+    parser.add_argument("--nogather", action="store_true",
+                        help="do not automatically gather files")
     args = parser.parse_args()
 
     from logpyle.runalyzer import make_runalyzer_symbols, make_wrapped_db
@@ -27,16 +29,24 @@ def main() -> None:
 
     do_mangle = not args.nomangle
 
+    gather = not args.nogather
+
     if args.script:
-        db = make_wrapped_db(args.dbfiles, mangle=do_mangle, interactive=False)
+        db = make_wrapped_db(
+                args.dbfiles, mangle=do_mangle, interactive=False,
+                gather=gather)
         exec(compile(open(args.script).read(), args.script, "exec"),
                 make_runalyzer_symbols(db))
     elif args.commands:
-        db = make_wrapped_db(args.dbfiles, mangle=do_mangle, interactive=False)
+        db = make_wrapped_db(
+                args.dbfiles, mangle=do_mangle, interactive=False,
+                gather=gather)
         exec(compile(args.commands, "--commands", "exec"),
                 make_runalyzer_symbols(db))
     else:
-        db = make_wrapped_db(args.dbfiles, mangle=do_mangle, interactive=True)
+        db = make_wrapped_db(
+                args.dbfiles, mangle=do_mangle, interactive=True,
+                gather=gather)
         from logpyle.runalyzer import RunalyzerConsole
         cons = RunalyzerConsole(db)
         cons.interact("Runalyzer running on Python %s\n"

@@ -506,8 +506,15 @@ def auto_gather(filenames: List[str]) -> sqlite3.Connection:
 
 # {{{ main program
 
-def make_wrapped_db(filenames: List[str], interactive: bool, mangle: bool) -> RunDB:
-    db = auto_gather(filenames)
+def make_wrapped_db(
+        filenames: List[str], interactive: bool,
+        mangle: bool, gather: bool = True
+        ) -> RunDB:
+    if gather:
+        db = auto_gather(filenames)
+    else:
+        assert len(filenames) == 1, "Enable autogather to support multiple infiles"
+        db = sqlite3.connect(filenames[0])
     db.create_aggregate("stddev", 1, StdDeviation)  # type: ignore[arg-type]
     db.create_aggregate("var", 1, Variance)
     db.create_aggregate("norm1", 1, Norm1)  # type: ignore[arg-type]
