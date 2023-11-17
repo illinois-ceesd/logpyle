@@ -3,69 +3,61 @@ import sqlite3
 
 
 def upgrade_conn(conn: sqlite3.Connection) -> sqlite3.Connection:
+    from logpyle.runalyzer import is_gathered
     tmp = conn.execute("select * from warnings").description
     warning_columns = [col[0] for col in tmp]
 
-    # check if any of the provided files have been gathered
-    gathered = False
-    # get a list of tables with the name of 'runs'
-    res = list(conn.execute("""
-                        SELECT name
-                        FROM sqlite_master
-                        WHERE type='table' AND name='runs'
-                                      """))
-    if len(res) == 1:
-        gathered = True
+    # check if the provided connection has been gathered
+    gathered = is_gathered(conn)
 
     # ensure that warnings table has unixtime column
-    if ("unixtime" not in warning_columns):
+    if "unixtime" not in warning_columns:
         print("Adding a unixtime column in the warnings table")
         conn.execute("""
-                         ALTER TABLE warnings
-                            ADD unixtime integer DEFAULT NULL;
+            ALTER TABLE warnings
+                ADD unixtime integer DEFAULT NULL;
                          """)
 
     # ensure that warnings table has rank column
     # nowhere to grab the rank of the process that generated
     # the warning
-    if ("rank" not in warning_columns):
+    if "rank" not in warning_columns:
         print("Adding a rank column in the warnings table")
         conn.execute("""
-                         ALTER TABLE warnings
-                            ADD rank integer DEFAULT NULL;
+            ALTER TABLE warnings
+                ADD rank integer DEFAULT NULL;
                          """)
 
+    tables = [col[0] for col in conn.execute("""
+                    SELECT name
+                    FROM sqlite_master
+                    WHERE type='table'
+                       """)]
+
     print("Ensuring a logging table exists")
-    if gathered:
+    if "logging" not in tables:
         conn.execute("""
-          CREATE TABLE IF NOT EXISTS logging (
-            run_id integer,
-            rank integer,
-            step integer,
-            unixtime integer,
-            level text,
-            message text,
-            filename text,
-            lineno integer
-            )""")
-    else:
-        conn.execute("""
-          CREATE TABLE IF NOT EXISTS logging (
-            rank integer,
-            step integer,
-            unixtime integer,
-            level text,
-            message text,
-            filename text,
-            lineno integer
-            )""")
+            CREATE TABLE logging (
+                rank integer,
+                step integer,
+                unixtime integer,
+                level text,
+                message text,
+                filename text,
+                lineno integer
+                )""")
+        if gathered:
+            conn.execute("""
+                ALTER TABLE logging
+                ADD run_id integer;
+                             """)
 
     return conn
 
 
 def upgrade_db(
         dbfile: str, suffix: str, overwrite: bool
-        ) -> sqlite3.Connection:
+        ) -> None:
 
     # original db files
     old_conn = sqlite3.connect(dbfile)
@@ -92,6 +84,8 @@ def upgrade_db(
 
     new_conn = upgrade_conn(new_conn)
 
-    old_conn.close()
+    if old_conn != new_conn:
+        old_conn.close()
 
-    return new_conn
+    new_conn.commit()
+    new_conn.close()

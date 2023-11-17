@@ -458,6 +458,20 @@ def my_sprintf(format: str, arg: str) -> str:
 # }}}
 
 
+def is_gathered(conn: sqlite3.Connection):
+    gathered = False
+    # get a list of tables with the name of 'runs'
+    res = list(conn.execute("""
+                        SELECT name
+                        FROM sqlite_master
+                        WHERE type='table' AND name='runs'
+                                      """))
+    if len(res) == 1:
+        gathered = True
+
+    return gathered
+
+
 def auto_gather(filenames: List[str]) -> sqlite3.Connection:
     # allow for creating ungathered files.
     # Check if database has been gathered, if not, create one in memory
@@ -467,16 +481,7 @@ def auto_gather(filenames: List[str]) -> sqlite3.Connection:
     # check if any of the provided files have been gathered
     for f in filenames:
         db = sqlite3.connect(f)
-        cur = db.cursor()
-
-        # get a list of tables with the name of 'runs'
-        res = list(cur.execute("""
-                            SELECT name
-                            FROM sqlite_master
-                            WHERE type='table' AND name='runs'
-                                          """))
-        # there exists a table with the name of 'runs'
-        if len(res) == 1:
+        if is_gathered(db):
             gathered = True
 
     if gathered:

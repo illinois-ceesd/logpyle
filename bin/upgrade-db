@@ -32,11 +32,8 @@ def main() -> None:
     suffix = args.suffix or "_upgrade"
 
     for dbfile in args.dbfiles:
-        new_db = upgrade_db(
-                dbfile, suffix=suffix, overwrite=args.overwrite
-                )
+        upgrade_db(dbfile, suffix=suffix, overwrite=args.overwrite)
 
-        new_db.commit()
 
 if __name__ == "__main__":
     main()
