@@ -258,24 +258,6 @@ jobs:
           run: |
             pip install -e .
 
-            # test ungathered_v3 default name
-            upgrade-db .github/workflows/log_ungathered_v3.sqlite
-
-            runalyzer .github/workflows/log_ungathered_v3_upgrade.sqlite -c 'db.print_cursor(db.q("select * from warnings"))' --nogather
-            runalyzer .github/workflows/log_ungathered_v3_upgrade.sqlite -c 'print([l[0] for l in q("select * from warnings").description])' --nogather
-            runalyzer .github/workflows/log_ungathered_v3_upgrade.sqlite -c 'print([l[0] for l in q("select * from logging").description])' --nogather
-            runalyzer .github/workflows/log_ungathered_v3_upgrade.sqlite -c 'assert "unixtime" in [l[0] for l in q("select * from warnings").description]' --nogather
-            runalyzer .github/workflows/log_ungathered_v3_upgrade.sqlite -c 'assert "rank" in [l[0] for l in q("select * from warnings").description]' --nogather
-
-            # test gathered_v3 default name
-            upgrade-db .github/workflows/log_gathered_v3.sqlite
-
-            runalyzer .github/workflows/log_gathered_v3_upgrade.sqlite -c 'db.print_cursor(db.q("select * from warnings"))' --nogather
-            runalyzer .github/workflows/log_gathered_v3_upgrade.sqlite -c 'print([l[0] for l in q("select * from warnings").description])' --nogather
-            runalyzer .github/workflows/log_gathered_v3_upgrade.sqlite -c 'print([l[0] for l in q("select * from logging").description])' --nogather
-            runalyzer .github/workflows/log_gathered_v3_upgrade.sqlite -c 'assert "unixtime" in [l[0] for l in q("select * from warnings").description]' --nogather
-            runalyzer .github/workflows/log_gathered_v3_upgrade.sqlite -c 'assert "rank" in [l[0] for l in q("select * from warnings").description]' --nogather
-
             # test ungathered_v2 default name
             upgrade-db .github/workflows/log_ungathered_v2.sqlite
 
@@ -304,3 +286,34 @@ jobs:
             runalyzer .github/workflows/log_gathered_v2_new.sqlite -c 'print([l[0] for l in q("select * from logging").description])' --nogather
             runalyzer .github/workflows/log_gathered_v2_new.sqlite -c 'assert "unixtime" in [l[0] for l in q("select * from warnings").description]' --nogather
             runalyzer .github/workflows/log_gathered_v2_new.sqlite -c 'assert "rank" in [l[0] for l in q("select * from warnings").description]' --nogather
+
+        - name: Upgrade V3 to V3
+          run: |
+            pip install -e .
+
+            # test ungathered_v3 default name
+            upgrade-db .github/workflows/log_ungathered_v3.sqlite
+
+            runalyzer .github/workflows/log_ungathered_v3_upgrade.sqlite -c 'db.print_cursor(db.q("select * from warnings"))' --nogather
+            runalyzer .github/workflows/log_ungathered_v3_upgrade.sqlite -c 'print([l[0] for l in q("select * from warnings").description])' --nogather
+            runalyzer .github/workflows/log_ungathered_v3_upgrade.sqlite -c 'print([l[0] for l in q("select * from logging").description])' --nogather
+            runalyzer .github/workflows/log_ungathered_v3_upgrade.sqlite -c 'assert "unixtime" in [l[0] for l in q("select * from warnings").description]' --nogather
+            runalyzer .github/workflows/log_ungathered_v3_upgrade.sqlite -c 'assert "rank" in [l[0] for l in q("select * from warnings").description]' --nogather
+
+            # test gathered_v3 default name
+            upgrade-db .github/workflows/log_gathered_v3.sqlite
+
+            runalyzer .github/workflows/log_gathered_v3_upgrade.sqlite -c 'db.print_cursor(db.q("select * from warnings"))' --nogather
+            runalyzer .github/workflows/log_gathered_v3_upgrade.sqlite -c 'print([l[0] for l in q("select * from warnings").description])' --nogather
+            runalyzer .github/workflows/log_gathered_v3_upgrade.sqlite -c 'print([l[0] for l in q("select * from logging").description])' --nogather
+            runalyzer .github/workflows/log_gathered_v3_upgrade.sqlite -c 'assert "unixtime" in [l[0] for l in q("select * from warnings").description]' --nogather
+            runalyzer .github/workflows/log_gathered_v3_upgrade.sqlite -c 'assert "rank" in [l[0] for l in q("select * from warnings").description]' --nogather
+
+            # test gathered custom name
+            upgrade-db .github/workflows/log_gathered_v3.sqlite --suffix '_new'
+
+            runalyzer .github/workflows/log_gathered_v3_new.sqlite -c 'db.print_cursor(db.q("select * from warnings"))' --nogather
+            runalyzer .github/workflows/log_gathered_v3_new.sqlite -c 'print([l[0] for l in q("select * from warnings").description])' --nogather
+            runalyzer .github/workflows/log_gathered_v3_new.sqlite -c 'print([l[0] for l in q("select * from logging").description])' --nogather
+            runalyzer .github/workflows/log_gathered_v3_new.sqlite -c 'assert "unixtime" in [l[0] for l in q("select * from warnings").description]' --nogather
+            runalyzer .github/workflows/log_gathered_v3_new.sqlite -c 'assert "rank" in [l[0] for l in q("select * from warnings").description]' --nogather
