@@ -458,7 +458,7 @@ def my_sprintf(format: str, arg: str) -> str:
 # }}}
 
 
-def is_gathered(conn: sqlite3.Connection):
+def is_gathered(conn: sqlite3.Connection) -> bool:
     gathered = False
     # get a list of tables with the name of 'runs'
     res = list(conn.execute("""
