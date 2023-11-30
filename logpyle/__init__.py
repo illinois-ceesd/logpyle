@@ -1197,13 +1197,13 @@ class LogManager:
         if max_step is not None:
             data = [(step, tup) for step, tup in data if step <= max_step]
 
-        stepless_data = [tup for step, tup in data]
+        stepless_data = [tup for _step, tup in data]
 
         if stepless_data:
             data_x, data_y = list(zip(*stepless_data))
         else:
-            data_x = []
-            data_y = []
+            data_x = ()
+            data_y = ()
 
         return (data_x, descr_x, unit_x), \
                (data_y, descr_y, unit_y)
