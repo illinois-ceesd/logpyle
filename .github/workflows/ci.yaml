@@ -288,6 +288,8 @@ jobs:
             runalyzer .github/workflows/log_gathered_v2_new.sqlite -c 'assert "rank" in [l[0] for l in q("select * from warnings").description]' --nogather
 
         - name: Upgrade V3 to V3
+          # Tests upgrades on current version for stability and allows users
+          # to blindly upgrade databases safely
           run: |
             pip install -e .
 
