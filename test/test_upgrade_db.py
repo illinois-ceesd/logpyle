@@ -1,6 +1,6 @@
 import sqlite3
 
-from logpyle import (upgrade_db)
+from logpyle import upgrade_db
 
 
 def test_upgrade_v2_v3():
@@ -15,7 +15,7 @@ def test_upgrade_v2_v3():
     try:
         # should throw an exception because logging
         # should not exist in a V2 database
-        print([ele for ele in conn.execute("select * from logging")])
+        print(list(conn.execute("select * from logging")))
         raise AssertionError(f"{filename} is a v3 database")
     except sqlite3.OperationalError:
         pass  # v2 should not have a logging table
@@ -26,7 +26,7 @@ def test_upgrade_v2_v3():
     # ensure it is V3
     conn = sqlite3.connect(filename + suffix + "." + file_ext)
     try:
-        print([ele for ele in conn.execute("select * from logging")])
+        print(list(conn.execute("select * from logging")))
     except sqlite3.OperationalError:
         raise AssertionError(f"{filename} is not a v3 database")
     conn.close()
