@@ -16,7 +16,7 @@ def test_upgrade_v2_v3():
         # should throw an exception because logging
         # should not exist in a V2 database
         print([ele for ele in conn.execute("select * from logging")])
-        assert False, f"{filename} is a v3 database"
+        raise AssertionError(f"{filename} is a v3 database")
     except sqlite3.OperationalError:
         pass  # v2 should not have a logging table
     conn.close()
@@ -28,5 +28,5 @@ def test_upgrade_v2_v3():
     try:
         print([ele for ele in conn.execute("select * from logging")])
     except sqlite3.OperationalError:
-        assert False, f"{filename} is not a v3 database"
+        raise AssertionError(f"{filename} is not a v3 database")
     conn.close()
