@@ -3,8 +3,11 @@ Database Upgrade Functions
 --------------------------------
 .. autofunction:: upgrade_db
 """
+import logging
 import shutil
 import sqlite3
+
+logger = logging.getLogger(__name__)
 
 
 def upgrade_conn(conn: sqlite3.Connection) -> sqlite3.Connection:
@@ -64,17 +67,12 @@ def upgrade_db(
         dbfile: str, suffix: str, overwrite: bool
         ) -> None:
     """
-
-    The function first connects to the original database . If the
+    Upgrade a database file to the most recent format. If the
     `overwrite` parameter is True, it simply modifies the existing
     database and uses the same file name for the upgraded database.
     Otherwise, a new database is created with a separate filename
     by appending the given suffix to the original file's base name
     using `filename + suffix + "." + file_ext`.
-
-    Next, the function prints a message indicating whether it is
-    overwriting or creating a new database and then proceeds to
-    upgrade the database schema version to 3.
 
     Parameters
     ----------
@@ -97,7 +95,7 @@ def upgrade_db(
         # simply perform modifications on old connection
         new_conn_name = dbfile
         new_conn = old_conn
-        print(f"Overwriting Database: {new_conn_name}")
+        logger.info(f"Overwriting Database: {new_conn_name}")
 
     else:
         # seperate the filename and the extention
@@ -109,9 +107,9 @@ def upgrade_db(
 
         new_conn = sqlite3.connect(new_conn_name)
 
-        print(f"Creating new Database: {new_conn_name}, a clone of {dbfile}")
+        logger.info(f"Creating new Database: {new_conn_name}, a clone of {dbfile}")
 
-    print(f"Upgrading {new_conn_name} to schema version 3")
+    logger.info(f"Upgrading {new_conn_name} to schema version 3")
 
     new_conn = upgrade_conn(new_conn)
 

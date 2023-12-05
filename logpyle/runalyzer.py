@@ -465,7 +465,7 @@ def my_sprintf(format: str, arg: str) -> str:
 
 def is_gathered(conn: sqlite3.Connection) -> bool:
     """
-    The function checks whether a connection to an existing
+    Returns whether a connection to an existing
     database has been gathered.
 
     Parameters
