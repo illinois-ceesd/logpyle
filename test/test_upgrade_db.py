@@ -1,6 +1,7 @@
 import os
-import pytest
 import sqlite3
+
+import pytest
 
 from logpyle import upgrade_db
 
