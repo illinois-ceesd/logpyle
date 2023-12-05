@@ -2,6 +2,17 @@
 Database Upgrade Functions
 --------------------------------
 .. autofunction:: upgrade_db
+
+.. list-table:: Overview of known changes between schema versions
+   :widths: 25 25 50
+   :header-rows: 1
+
+   * - Version 1
+     - Version 2
+     - Version 3 (current)
+   * - Initial Version
+     - Added ``warnings.rank``
+     - Added ``warnings.unixtime``, ``logging``
 """
 import logging
 import shutil
