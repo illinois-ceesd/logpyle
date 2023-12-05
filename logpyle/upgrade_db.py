@@ -78,9 +78,6 @@ def upgrade_db(
 
     Parameters
     ----------
-    name
-      Quantity name.
-
     dbfile
       A database file path
 
