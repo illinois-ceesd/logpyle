@@ -1,4 +1,9 @@
 #! /usr/bin/env python
+"""
+Runalyzer Functions
+--------------------------------
+.. autofunction:: is_gathered
+"""
 
 import code
 import sqlite3
@@ -459,6 +464,16 @@ def my_sprintf(format: str, arg: str) -> str:
 
 
 def is_gathered(conn: sqlite3.Connection) -> bool:
+    """
+    The function checks whether a connection to an existing
+    database has been gathered.
+
+    Parameters
+    ----------
+    conn
+      SQLite3 connection object
+    """
+
     gathered = False
     # get a list of tables with the name of 'runs'
     res = list(conn.execute("""
