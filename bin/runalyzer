@@ -17,7 +17,10 @@ def main() -> None:
     parser.add_argument("--script", type=str,
                         help="script file to read")
     parser.add_argument("--nogather", action="store_true",
-                        help="do not automatically gather files")
+                        help="""
+                        Do not automatically gather files. Primarily
+                        used internally to view database schema.
+                        """)
     args = parser.parse_args()
 
     from logpyle.runalyzer import make_runalyzer_symbols, make_wrapped_db

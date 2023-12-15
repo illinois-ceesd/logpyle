@@ -261,11 +261,14 @@ jobs:
             # test ungathered_v2 default name
             upgrade-db .github/workflows/log_ungathered_v2.sqlite
 
+            # utilize nogather flag to ensure schema is from modification
+            # instead of gathering, which builds schema v3
             runalyzer .github/workflows/log_ungathered_v2_upgrade.sqlite -c 'db.print_cursor(db.q("select * from warnings"))' --nogather
             runalyzer .github/workflows/log_ungathered_v2_upgrade.sqlite -c 'print([l[0] for l in q("select * from warnings").description])' --nogather
             runalyzer .github/workflows/log_ungathered_v2_upgrade.sqlite -c 'print([l[0] for l in q("select * from logging").description])' --nogather
             runalyzer .github/workflows/log_ungathered_v2_upgrade.sqlite -c 'assert "unixtime" in [l[0] for l in q("select * from warnings").description]' --nogather
             runalyzer .github/workflows/log_ungathered_v2_upgrade.sqlite -c 'assert "rank" in [l[0] for l in q("select * from warnings").description]' --nogather
+            runalyzer .github/workflows/log_ungathered_v2_upgrade.sqlite -c 'assert [l[0] for l in q("select schema_version")][0] == 3'
 
 
             # test gathered_v2 default name
@@ -276,6 +279,7 @@ jobs:
             runalyzer .github/workflows/log_gathered_v2_upgrade.sqlite -c 'print([l[0] for l in q("select * from logging").description])' --nogather
             runalyzer .github/workflows/log_gathered_v2_upgrade.sqlite -c 'assert "unixtime" in [l[0] for l in q("select * from warnings").description]' --nogather
             runalyzer .github/workflows/log_gathered_v2_upgrade.sqlite -c 'assert "rank" in [l[0] for l in q("select * from warnings").description]' --nogather
+            runalyzer .github/workflows/log_gathered_v2_upgrade.sqlite -c 'assert [l[0] for l in q("select schema_version")][0] == 3'
 
 
             # test gathered custom name
@@ -286,6 +290,7 @@ jobs:
             runalyzer .github/workflows/log_gathered_v2_new.sqlite -c 'print([l[0] for l in q("select * from logging").description])' --nogather
             runalyzer .github/workflows/log_gathered_v2_new.sqlite -c 'assert "unixtime" in [l[0] for l in q("select * from warnings").description]' --nogather
             runalyzer .github/workflows/log_gathered_v2_new.sqlite -c 'assert "rank" in [l[0] for l in q("select * from warnings").description]' --nogather
+            runalyzer .github/workflows/log_gathered_v2_new.sqlite -c 'assert [l[0] for l in q("select schema_version")][0] == 3'
 
         - name: Upgrade V3 to V3
           # Tests upgrades on current version for stability and allows users
@@ -296,11 +301,14 @@ jobs:
             # test ungathered_v3 default name
             upgrade-db .github/workflows/log_ungathered_v3.sqlite
 
+            # utilize nogather flag to ensure schema is from modification
+            # instead of gathering, which builds schema v3
             runalyzer .github/workflows/log_ungathered_v3_upgrade.sqlite -c 'db.print_cursor(db.q("select * from warnings"))' --nogather
             runalyzer .github/workflows/log_ungathered_v3_upgrade.sqlite -c 'print([l[0] for l in q("select * from warnings").description])' --nogather
             runalyzer .github/workflows/log_ungathered_v3_upgrade.sqlite -c 'print([l[0] for l in q("select * from logging").description])' --nogather
             runalyzer .github/workflows/log_ungathered_v3_upgrade.sqlite -c 'assert "unixtime" in [l[0] for l in q("select * from warnings").description]' --nogather
             runalyzer .github/workflows/log_ungathered_v3_upgrade.sqlite -c 'assert "rank" in [l[0] for l in q("select * from warnings").description]' --nogather
+            runalyzer .github/workflows/log_ungathered_v3_upgrade.sqlite -c 'assert [l[0] for l in q("select schema_version")][0] == 3'
 
             # test gathered_v3 default name
             upgrade-db .github/workflows/log_gathered_v3.sqlite
@@ -310,6 +318,7 @@ jobs:
             runalyzer .github/workflows/log_gathered_v3_upgrade.sqlite -c 'print([l[0] for l in q("select * from logging").description])' --nogather
             runalyzer .github/workflows/log_gathered_v3_upgrade.sqlite -c 'assert "unixtime" in [l[0] for l in q("select * from warnings").description]' --nogather
             runalyzer .github/workflows/log_gathered_v3_upgrade.sqlite -c 'assert "rank" in [l[0] for l in q("select * from warnings").description]' --nogather
+            runalyzer .github/workflows/log_gathered_v3_upgrade.sqlite -c 'assert [l[0] for l in q("select schema_version")][0] == 3'
 
             # test gathered custom name
             upgrade-db .github/workflows/log_gathered_v3.sqlite --suffix '_new'
@@ -319,3 +328,4 @@ jobs:
             runalyzer .github/workflows/log_gathered_v3_new.sqlite -c 'print([l[0] for l in q("select * from logging").description])' --nogather
             runalyzer .github/workflows/log_gathered_v3_new.sqlite -c 'assert "unixtime" in [l[0] for l in q("select * from warnings").description]' --nogather
             runalyzer .github/workflows/log_gathered_v3_new.sqlite -c 'assert "rank" in [l[0] for l in q("select * from warnings").description]' --nogather
+            runalyzer .github/workflows/log_gathered_v3_new.sqlite -c 'assert [l[0] for l in q("select schema_version")][0] == 3'

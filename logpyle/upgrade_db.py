@@ -2,6 +2,9 @@
 Database Upgrade Functions
 --------------------------------
 .. autofunction:: upgrade_db
+.. note::
+   Currently, upgrades all schema versions to version 3.
+   Upgrading from version 1 is untested.
 
 .. list-table:: Overview of known changes between schema versions
    :widths: 25 25 50
@@ -70,6 +73,16 @@ def upgrade_conn(conn: sqlite3.Connection) -> sqlite3.Connection:
                 ALTER TABLE logging
                 ADD run_id integer;
                              """)
+
+    from pickle import dumps
+    schema_version = 3
+    value = bytes(dumps(schema_version))
+    if gathered:
+        conn.execute("UPDATE runs SET schema_version=3")
+        # conn.execute("UPDATE runs SET schema_version = ?", (value,))
+    else:
+        # conn.execute("UPDATE constants SET value=3 WHERE name='schema_version'")
+        conn.execute("UPDATE constants SET value = ? WHERE name='schema_version'", (value,))
 
     return conn
 

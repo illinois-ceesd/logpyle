@@ -533,7 +533,7 @@ def make_wrapped_db(
     if gather:
         db = auto_gather(filenames)
     else:
-        assert len(filenames) == 1, "Enable autogather to support multiple infiles"
+        assert len(filenames) == 1, "Enable autogather to support multiple input files"
         db = sqlite3.connect(filenames[0])
     db.create_aggregate("stddev", 1, StdDeviation)  # type: ignore[arg-type]
     db.create_aggregate("var", 1, Variance)
