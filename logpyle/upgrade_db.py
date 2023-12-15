@@ -20,6 +20,7 @@ Database Upgrade Functions
 import logging
 import shutil
 import sqlite3
+from pickle import dumps
 
 logger = logging.getLogger(__name__)
 
@@ -74,15 +75,13 @@ def upgrade_conn(conn: sqlite3.Connection) -> sqlite3.Connection:
                 ADD run_id integer;
                              """)
 
-    from pickle import dumps
     schema_version = 3
     value = bytes(dumps(schema_version))
     if gathered:
         conn.execute("UPDATE runs SET schema_version=3")
-        # conn.execute("UPDATE runs SET schema_version = ?", (value,))
     else:
-        # conn.execute("UPDATE constants SET value=3 WHERE name='schema_version'")
-        conn.execute("UPDATE constants SET value = ? WHERE name='schema_version'", (value,))
+        conn.execute("UPDATE constants SET value = ? WHERE name='schema_version'",
+                     (value,))
 
     return conn
 
