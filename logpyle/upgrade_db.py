@@ -78,9 +78,10 @@ def upgrade_conn(conn: sqlite3.Connection) -> sqlite3.Connection:
     schema_version = 3
     value = bytes(dumps(schema_version))
     if gathered:
-        conn.execute("UPDATE runs SET schema_version=3")
+        conn.execute("UPDATE runs SET schema_version=?",
+                     (schema_version,))
     else:
-        conn.execute("UPDATE constants SET value = ? WHERE name='schema_version'",
+        conn.execute("UPDATE constants SET value=? WHERE name='schema_version'",
                      (value,))
 
     return conn
