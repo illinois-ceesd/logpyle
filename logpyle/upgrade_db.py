@@ -3,19 +3,22 @@ Database Upgrade Functions
 --------------------------------
 .. autofunction:: upgrade_db
 .. note::
+
    Currently, upgrades all schema versions to version 3.
-   Upgrading from version 1 is untested.
+   Upgrading from version <=1 is untested.
 
-.. list-table:: Overview of known changes between schema versions
-   :widths: 25 25 50
-   :header-rows: 1
+.. table:: Overview of known changes between schema versions
 
-   * - Version 1
-     - Version 2
-     - Version 3 (current)
-   * - Initial Version
-     - Added ``warnings.rank``
-     - Added ``warnings.unixtime``, ``logging``
+   ============== =========================== =======
+   Schema version Logpyle version             Changes
+   ============== =========================== =======
+   0              pre v1 (``pytools.log``)    Initial Version
+   1              v1 -- v9 (``pytools.log``)  Added ``warnings`` table
+   2              v10 -- 2023.1               Added ``warnings.rank`` column
+   3              2023.2 --                   Added ``warnings.unixtime`` column
+                                              and ``logging`` table
+   ============== =========================== =======
+
 """
 import logging
 import shutil
