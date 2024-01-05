@@ -38,7 +38,7 @@ def upgrade_conn(conn: sqlite3.Connection) -> sqlite3.Connection:
 
     # ensure that warnings table has unixtime column
     if "unixtime" not in warning_columns:
-        print("Adding a unixtime column in the warnings table")
+        logger.info("Adding a unixtime column in the warnings table")
         conn.execute("""
             ALTER TABLE warnings
                 ADD unixtime integer DEFAULT NULL;
@@ -48,7 +48,7 @@ def upgrade_conn(conn: sqlite3.Connection) -> sqlite3.Connection:
     # nowhere to grab the rank of the process that generated
     # the warning
     if "rank" not in warning_columns:
-        print("Adding a rank column in the warnings table")
+        logger.info("Adding a rank column in the warnings table")
         conn.execute("""
             ALTER TABLE warnings
                 ADD rank integer DEFAULT NULL;
@@ -60,7 +60,7 @@ def upgrade_conn(conn: sqlite3.Connection) -> sqlite3.Connection:
                     WHERE type='table'
                        """)]
 
-    print("Ensuring a logging table exists")
+    logger.info("Ensuring a logging table exists")
     if "logging" not in tables:
         conn.execute("""
             CREATE TABLE logging (
