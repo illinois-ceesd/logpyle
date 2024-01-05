@@ -125,7 +125,7 @@ def upgrade_db(
         logger.info(f"Overwriting Database: {new_conn_name}")
 
     else:
-        # seperate the filename and the extention
+        # separate the filename and the extension
         filename, file_ext = dbfile.rsplit(".", 1)
 
         new_conn_name = filename + suffix + "." + file_ext
