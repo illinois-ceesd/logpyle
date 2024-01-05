@@ -474,17 +474,18 @@ def is_gathered(conn: sqlite3.Connection) -> bool:
       SQLite3 connection object
     """
 
-    gathered = False
     # get a list of tables with the name of 'runs'
     res = list(conn.execute("""
                         SELECT name
                         FROM sqlite_master
                         WHERE type='table' AND name='runs'
                                       """))
-    if len(res) == 1:
-        gathered = True
+    assert len(res) <= 1
 
-    return gathered
+    if len(res) == 1:
+        return True
+
+    return False
 
 
 def auto_gather(filenames: List[str]) -> sqlite3.Connection:
