@@ -1,4 +1,9 @@
 #! /usr/bin/env python
+"""
+Runalyzer Functions
+--------------------------------
+.. autofunction:: is_gathered
+"""
 
 import code
 import sqlite3
@@ -137,8 +142,8 @@ class RunDB:
                 style_idx[0] += 1
 
             style_idx = [0]
-            for x, y, rest in split_cursor(cursor):
-                do_plot(x, y, rest)  # type: ignore[arg-type]
+            for my_x, my_y, rest in split_cursor(cursor):
+                do_plot(my_x, my_y, rest)  # type: ignore[arg-type]
 
             if small_legend:
                 from matplotlib.font_manager import FontProperties
@@ -460,6 +465,31 @@ def my_sprintf(format: str, arg: str) -> str:
 # }}}
 
 
+def is_gathered(conn: sqlite3.Connection) -> bool:
+    """
+    Returns whether a connection to an existing
+    database has been gathered.
+
+    Parameters
+    ----------
+    conn
+      SQLite3 connection object
+    """
+
+    # get a list of tables with the name of 'runs'
+    res = list(conn.execute("""
+                        SELECT name
+                        FROM sqlite_master
+                        WHERE type='table' AND name='runs'
+                                      """))
+    assert len(res) <= 1
+
+    if len(res) == 1:
+        return True
+
+    return False
+
+
 def auto_gather(filenames: List[str]) -> sqlite3.Connection:
     # allow for creating ungathered files.
     # Check if database has been gathered, if not, create one in memory
@@ -469,16 +499,7 @@ def auto_gather(filenames: List[str]) -> sqlite3.Connection:
     # check if any of the provided files have been gathered
     for f in filenames:
         db = sqlite3.connect(f)
-        cur = db.cursor()
-
-        # get a list of tables with the name of 'runs'
-        res = list(cur.execute("""
-                            SELECT name
-                            FROM sqlite_master
-                            WHERE type='table' AND name='runs'
-                                          """))
-        # there exists a table with the name of 'runs'
-        if len(res) == 1:
+        if is_gathered(db):
             gathered = True
 
     if gathered:
@@ -508,8 +529,16 @@ def auto_gather(filenames: List[str]) -> sqlite3.Connection:
 
 # {{{ main program
 
-def make_wrapped_db(filenames: List[str], interactive: bool, mangle: bool) -> RunDB:
-    db = auto_gather(filenames)
+def make_wrapped_db(
+        filenames: List[str], interactive: bool,
+        mangle: bool, gather: bool = True
+        ) -> RunDB:
+    if gather:
+        db = auto_gather(filenames)
+    else:
+        assert len(filenames) == 1, \
+                "Enable autogather to support multiple input files"
+        db = sqlite3.connect(filenames[0])
     db.create_aggregate("stddev", 1, StdDeviation)  # type: ignore[arg-type]
     db.create_aggregate("var", 1, Variance)
     db.create_aggregate("norm1", 1, Norm1)  # type: ignore[arg-type]

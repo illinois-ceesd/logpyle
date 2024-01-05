@@ -51,6 +51,7 @@ setup(name="logpyle",
           "bin/runalyzer",
           "bin/pandalyzer",
           "bin/htmlalyzer",
+          "bin/upgrade-db",
       ],
 
       author="Andreas Kloeckner",
