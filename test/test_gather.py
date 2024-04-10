@@ -77,7 +77,7 @@ def test_auto_gather_single():
     print("Constant data:")
     result = [row[0] for row in cur.description]
     print(result)
-    assert len(result) == 11
+    assert len(result) == 12
 
     db = make_wrapped_db(["log.sqlite"], mangle=True, interactive=False)
     cur = db.q("select $fifteen")
@@ -142,7 +142,7 @@ def test_auto_gather_multi():
     print("Constant data:")
     result = [row[0] for row in cur.description]
     print(result)
-    assert len(result) == 11
+    assert len(result) == 12
 
     # teardown test
     for f in filenames:
