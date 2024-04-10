@@ -1701,6 +1701,12 @@ def add_simulation_quantities(mgr: LogManager) -> None:
     mgr.add_quantity(Timestep())
 
 
+def _get_env_vars() -> str:
+    """Return a string containing all environment variables."""
+    from os import environ
+    return "\n".join(f"{key}={value}" for key, value in environ.items())
+
+
 def add_run_info(mgr: LogManager) -> None:
     """Add generic run metadata, such as command line, host, and time."""
 
@@ -1717,6 +1723,7 @@ def add_run_info(mgr: LogManager) -> None:
     from time import localtime, strftime, time
     mgr.set_constant("date", strftime("%a, %d %b %Y %H:%M:%S %Z", localtime()))
     mgr.set_constant("unixtime", time())
+    mgr.set_constant("env", _get_env_vars())
 
 
 class MemoryHwm(PostLogQuantity):
