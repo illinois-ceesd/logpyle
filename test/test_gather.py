@@ -11,7 +11,7 @@ class Fifteen(LogQuantity):
         return 15
 
 
-def create_log(filename: str):
+def create_log(filename: str) -> None:
     logmgr = LogManager(filename, "wo")
 
     # Generic run metadata, such as command line, host, and time
@@ -40,7 +40,7 @@ def create_log(filename: str):
     logmgr.close()
 
 
-def test_auto_gather_single():
+def test_auto_gather_single() -> None:
     # run example
     create_log("log.sqlite")
     assert os.path.exists("log.sqlite"), "The logging file was not generated."
@@ -77,7 +77,7 @@ def test_auto_gather_single():
     print("Constant data:")
     result = [row[0] for row in cur.description]
     print(result)
-    assert len(result) == 11
+    assert len(result) == 12
 
     db = make_wrapped_db(["log.sqlite"], mangle=True, interactive=False)
     cur = db.q("select $fifteen")
@@ -91,7 +91,7 @@ def test_auto_gather_single():
     os.remove("log.sqlite")
 
 
-def test_auto_gather_multi():
+def test_auto_gather_multi() -> None:
     # run example
     def is_unique_filename(str: str):
         return str.startswith("multi-log")
@@ -142,7 +142,7 @@ def test_auto_gather_multi():
     print("Constant data:")
     result = [row[0] for row in cur.description]
     print(result)
-    assert len(result) == 11
+    assert len(result) == 12
 
     # teardown test
     for f in filenames:
