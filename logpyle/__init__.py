@@ -76,8 +76,22 @@ logger = logging.getLogger(__name__)
 from dataclasses import dataclass
 from sqlite3 import Connection
 from time import monotonic as time_monotonic
-from typing import (TYPE_CHECKING, Any, Callable, Dict, Generator, Iterable, List,
-                    Optional, Sequence, TextIO, Tuple, Type, Union, cast)
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    Generator,
+    Iterable,
+    List,
+    Optional,
+    Sequence,
+    TextIO,
+    Tuple,
+    Type,
+    Union,
+    cast,
+)
 
 from pymbolic.compiler import CompiledExpression  # type: ignore[import-untyped]
 from pymbolic.primitives import Expression  # type: ignore[import-untyped]
@@ -992,7 +1006,7 @@ class LogManager:
             self.save()
 
         # print watches
-        if self.tick_count+1 >= self.next_watch_tick:
+        if self.tick_count + 1 >= self.next_watch_tick:
             self._watch_tick()
 
         self.t_log += time_monotonic() - tick_start_time
@@ -1216,7 +1230,7 @@ class LogManager:
         outf = open(filename, "w")
         outf.write(f"# {label_x} vs. {label_y}\n")
         for dx, dy in zip(data_x, data_y):
-            outf.write("{}\t{}\n".format(repr(dx), repr(dy)))
+            outf.write(f"{dx!r}\t{dy!r}\n")
         outf.close()
 
     def plot_matplotlib(self, expr_x: Expression, expr_y: Expression) -> None:
@@ -1327,7 +1341,7 @@ class LogManager:
 
     def _calculate_next_watch_tick(self) -> None:
         ticks_per_interval = (self.tick_count
-                              / max(1, time_monotonic()-self.start_time)
+                              / max(1, time_monotonic() - self.start_time)
                               * self.watch_interval)
         self.next_watch_tick = self.tick_count + int(max(1, ticks_per_interval))
 
@@ -1620,7 +1634,7 @@ class WallTime(LogQuantity):
         self.start = time_monotonic()
 
     def __call__(self) -> float:
-        return time_monotonic()-self.start
+        return time_monotonic() - self.start
 
 
 class ETA(LogQuantity):
@@ -1636,11 +1650,11 @@ class ETA(LogQuantity):
         self.start = time_monotonic()
 
     def __call__(self) -> float:
-        fraction_done = self.steps/self.total_steps
+        fraction_done = self.steps / self.total_steps
         self.steps += 1
-        time_spent = time_monotonic()-self.start
+        time_spent = time_monotonic() - self.start
         if fraction_done > 1e-9:
-            return time_spent/fraction_done-time_spent
+            return time_spent / fraction_done - time_spent
         else:
             return 0
 
@@ -1734,7 +1748,7 @@ class MemoryHwm(PostLogQuantity):
         if os.uname().sysname == "Linux":
             self.fac = 1024
         elif os.uname().sysname == "Darwin":
-            self.fac = 1024*1024
+            self.fac = 1024 * 1024
         else:
             raise ValueError("MemoryHwm is only supported on Linux/Mac.")
 

@@ -7,9 +7,18 @@ from warnings import warn
 import pytest
 from pymbolic.primitives import Variable
 
-from logpyle import (EventCounter, IntervalTimer, LogManager, LogQuantity,
-                     PushLogQuantity, add_general_quantities, add_run_info,
-                     add_simulation_quantities, set_dt, time_and_count_function)
+from logpyle import (
+    EventCounter,
+    IntervalTimer,
+    LogManager,
+    LogQuantity,
+    PushLogQuantity,
+    add_general_quantities,
+    add_run_info,
+    add_simulation_quantities,
+    set_dt,
+    time_and_count_function,
+)
 
 
 def test_start_time_has_past(basic_logmgr: LogManager):
@@ -626,7 +635,7 @@ def test_write_datafile(basic_logmgr: LogManager):
 
     basic_logmgr.write_datafile(filename, "t_wall", "t_wall")
 
-    file_object = open(filename, "r")
+    file_object = open(filename)
     lines = file_object.readlines()
     lines = filter(has_contents, lines)
 

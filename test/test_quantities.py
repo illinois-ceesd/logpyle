@@ -4,10 +4,22 @@ from time import sleep
 
 import pytest
 
-from logpyle import (ETA, CallableLogQuantityAdapter, GCStats, IntervalTimer,
-                     LogManager, LogQuantity, MultiLogQuantity, MultiPostLogQuantity,
-                     PostLogQuantity, PushLogQuantity, StepToStepDuration,
-                     TimestepCounter, TimestepDuration, WallTime)
+from logpyle import (
+    ETA,
+    CallableLogQuantityAdapter,
+    GCStats,
+    IntervalTimer,
+    LogManager,
+    LogQuantity,
+    MultiLogQuantity,
+    MultiPostLogQuantity,
+    PostLogQuantity,
+    PushLogQuantity,
+    StepToStepDuration,
+    TimestepCounter,
+    TimestepDuration,
+    WallTime,
+)
 
 # (name, value, unit, description, call_func)
 test_logquantity_types = [
@@ -16,28 +28,28 @@ test_logquantity_types = [
             1,
             "1",
             "Q init to 1",
-            lambda x: x+1
+            lambda x: x + 1
             ),
         (
             "Quantity_name",
             1,
             None,
             "Q init to 1",
-            lambda x: x+1
+            lambda x: x + 1
             ),
         (
             "Quantity_name",
             1,
             "1",
             None,
-            lambda x: x+1
+            lambda x: x + 1
             ),
         (
             "Quantity_name",
             1,
             None,
             None,
-            lambda x: x+1
+            lambda x: x + 1
             ),
         ]
 
@@ -91,11 +103,11 @@ def test_logquantity(basic_logmgr, custom_logquantity):
         basic_logmgr.tick_before()
         # custom_logquantity should have been called
         middle_val = getattr(custom_logquantity, custom_logquantity.name)
-        assert middle_val == predicted_list[i+1]
+        assert middle_val == predicted_list[i + 1]
         basic_logmgr.tick_after()
 
         post_val = getattr(custom_logquantity, custom_logquantity.name)
-        assert post_val == predicted_list[i+1]
+        assert post_val == predicted_list[i + 1]
 
         cur_vals = getattr(custom_logquantity, custom_logquantity.name)
         calculated_list.append(cur_vals)
@@ -174,7 +186,7 @@ def test_post_logquantity(basic_logmgr, custom_post_logquantity):
         basic_logmgr.tick_after()
 
         post_val = getattr(custom_post_logquantity, custom_post_logquantity.name)
-        assert post_val == predicted_list[i+1]
+        assert post_val == predicted_list[i + 1]
 
         cur_vals = getattr(custom_post_logquantity, custom_post_logquantity.name)
         calculated_list.append(cur_vals)
@@ -196,49 +208,49 @@ test_multi_log_quantity_types = [
             [1, 2],
             ["1", "1"],
             ["Q init to 1", "Q init to 2"],
-            lambda x, y: [x+1, y+1]
+            lambda x, y: [x + 1, y + 1]
             ),
         (
             ["Quantity_1", "Quantity_2"],
             [1, 2],
             [None, "1"],
             ["Q init to 1", "Q init to 2"],
-            lambda x, y: [x+1, y+1]
+            lambda x, y: [x + 1, y + 1]
             ),
         (
             ["Quantity_1", "Quantity_2"],
             [1, 2],
             ["1", None],
             ["Q init to 1", "Q init to 2"],
-            lambda x, y: [x+1, y+1]
+            lambda x, y: [x + 1, y + 1]
             ),
         (
             ["Quantity_1", "Quantity_2"],
             [1, 2],
             ["1", "1"],
             [None, "Q init to 2"],
-            lambda x, y: [x+1, y+1]
+            lambda x, y: [x + 1, y + 1]
             ),
         (
             ["Quantity_1", "Quantity_2"],
             [1, 2],
             ["1", "1"],
             ["Q init to 1", None],
-            lambda x, y: [x+1, y+1]
+            lambda x, y: [x + 1, y + 1]
             ),
         (
             ["Quantity_1", "Quantity_2"],
             [1, 2],
             None,
             ["Q init to 1", "Q init to 2"],
-            lambda x, y: [x+1, y+1]
+            lambda x, y: [x + 1, y + 1]
             ),
         (
             ["Quantity_1", "Quantity_2"],
             [1, 2],
             ["1", "1"],
             None,
-            lambda x, y: [x+1, y+1]
+            lambda x, y: [x + 1, y + 1]
             ),
         ]
 
@@ -302,14 +314,14 @@ def test_multi_log_quantity(basic_logmgr, custom_multi_log_quantity):
         for name in custom_multi_log_quantity.names:
             middle_vals.append(getattr(custom_multi_log_quantity, name))
         assert len(middle_vals) == len(init_values)
-        assert middle_vals == predicted_list[i+1]
+        assert middle_vals == predicted_list[i + 1]
         basic_logmgr.tick_after()
 
         post_vals = []
         for name in custom_multi_log_quantity.names:
             post_vals.append(getattr(custom_multi_log_quantity, name))
         assert len(post_vals) == len(init_values)
-        assert post_vals == predicted_list[i+1]
+        assert post_vals == predicted_list[i + 1]
 
         cur_vals = []
         for name in custom_multi_log_quantity.names:
@@ -407,7 +419,7 @@ def test_multi_post_logquantity(basic_logmgr, custom_multi_post_logquantity):
         for name in custom_multi_post_logquantity.names:
             post_vals.append(getattr(custom_multi_post_logquantity, name))
         assert len(post_vals) == len(init_values)
-        assert post_vals == predicted_list[i+1]
+        assert post_vals == predicted_list[i + 1]
 
         cur_vals = []
         for name in custom_multi_post_logquantity.names:
@@ -617,8 +629,8 @@ def test_interval_timer_subtimer(basic_logmgr: LogManager):
 
     n = 20
     for _ in range(n):
-        good_sleep_time = (random.random()/10 + 0.1)
-        bad_sleep_time = (random.random()/10 + 0.1)
+        good_sleep_time = (random.random() / 10 + 0.1)
+        bad_sleep_time = (random.random() / 10 + 0.1)
         expected_timer_list.append(good_sleep_time)
         sub_timer = timer.get_sub_timer()
 
@@ -651,8 +663,8 @@ def test_interval_timer_subtimer_blocking(basic_logmgr: LogManager):
 
     n = 20
     for _ in range(n):
-        good_sleep_time = (random.random()/10 + 0.1)
-        bad_sleep_time = (random.random()/10 + 0.1)
+        good_sleep_time = (random.random() / 10 + 0.1)
+        bad_sleep_time = (random.random() / 10 + 0.1)
         expected_timer_list.append(good_sleep_time)
         sub_timer = timer.get_sub_timer()
 
@@ -681,7 +693,7 @@ def test_accurate_eta_quantity(basic_logmgr: LogManager):
 
     n = 30
 
-    test_timer = ETA(n-1, "t_fin")
+    test_timer = ETA(n - 1, "t_fin")
     basic_logmgr.add_quantity(test_timer)
 
     sleep_time = 0.02
@@ -698,7 +710,7 @@ def test_accurate_eta_quantity(basic_logmgr: LogManager):
 
         if i > 0:
             # ETA isn't available on step 0.
-            assert abs(predicted_time-eta_time) < tol
+            assert abs(predicted_time - eta_time) < tol
         print(i, eta_time, predicted_time, abs(eta_time - predicted_time))
 
     assert 0 <= eta_time < 1e-12
@@ -722,7 +734,7 @@ def test_gc_stats(basic_logmgr: LogManager):
         basic_logmgr.tick_before()
 
         soon_tobe_lost_ref = ["garb1", "garb2", "garb3"] * istep
-        outer_list.append(([soon_tobe_lost_ref]))
+        outer_list.append([soon_tobe_lost_ref])
 
         basic_logmgr.tick_after()
 

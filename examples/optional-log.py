@@ -5,8 +5,15 @@ from random import uniform
 from time import sleep
 from typing import Union
 
-from logpyle import (IntervalTimer, LogManager, _SubTimer, add_general_quantities,
-                     add_run_info, add_simulation_quantities, set_dt)
+from logpyle import (
+    IntervalTimer,
+    LogManager,
+    _SubTimer,
+    add_general_quantities,
+    add_run_info,
+    add_simulation_quantities,
+    set_dt,
+)
 
 
 def main(use_logpyle: bool) -> None:

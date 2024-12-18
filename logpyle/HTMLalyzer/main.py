@@ -49,7 +49,7 @@ async def import_logpyle() -> None:
     whl_binary_data = base64.decodebytes(whl_base_64)
     with open(pymbolic_whl_file_name, "wb") as f:
         f.write(whl_binary_data)
-    await micropip.install("emfs:"+pymbolic_whl_file_name)
+    await micropip.install("emfs:" + pymbolic_whl_file_name)
 
     # install logpyle in ecmascript virtual filesystem
     os.mkdir("./logpyle")
@@ -106,7 +106,7 @@ async def run_plot(event: Any) -> None:
     run_db = make_wrapped_db(file_dict[id].names, True, True)
     q1 = document.getElementById("quantity1_" + str(id)).value
     q2 = document.getElementById("quantity2_" + str(id)).value
-    query = "select ${}, ${}".format(q1, q2)
+    query = f"select ${q1}, ${q2}"
     cursor = run_db.db.execute(run_db.mangle_sql(query))
     columnnames = [column[0] for column in cursor.description]
     run_db.plot_cursor(cursor, labels=columnnames)
@@ -274,7 +274,7 @@ async def store_file(event: Any) -> None:
     for row in cursor:
         q_id, q_name, q_unit, q_desc, q_rank_agg = row
         tmp_cur = run_db.db.execute(run_db.mangle_sql(
-            "select ${}".format(q_name)))
+            f"select ${q_name}"))
 
         vals = list(tmp_cur)
         file_dict[id].quantities[q_name] = {"vals": vals, "id":  q_id,

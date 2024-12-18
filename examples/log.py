@@ -5,9 +5,16 @@ from random import uniform
 from time import sleep
 from warnings import warn
 
-from logpyle import (GCStats, IntervalTimer, LogManager, LogQuantity,
-                     add_general_quantities, add_run_info, add_simulation_quantities,
-                     set_dt)
+from logpyle import (
+    GCStats,
+    IntervalTimer,
+    LogManager,
+    LogQuantity,
+    add_general_quantities,
+    add_run_info,
+    add_simulation_quantities,
+    set_dt,
+)
 
 
 class Fifteen(LogQuantity):

@@ -23,8 +23,19 @@ logger = logging.getLogger(__name__)
 from dataclasses import dataclass
 from itertools import product
 from sqlite3 import Connection, Cursor
-from typing import (Any, Callable, Dict, Generator, List, Optional, Sequence, Set,
-                    Tuple, Type, Union)
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Generator,
+    List,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    Type,
+    Union,
+)
 
 from pytools import Table
 
@@ -38,7 +49,7 @@ class PlotStyle:
 PLOT_STYLES = [
         PlotStyle(dashes=dashes, color=color)
         for dashes, color in product(
-            [(), (12, 2), (4, 2),  (2, 2), (2, 8)],
+            [(), (12, 2), (4, 2), (2, 2), (2, 8)],
             ["blue", "green", "red", "magenta", "cyan"],
             )]
 
@@ -217,7 +228,7 @@ class MagicRunDB(RunDB):
         qry, _ = magic_column_re.subn(replace_magic_column, qry)
 
         other_clauses = [  # noqa: F841
-                "UNION",  "INTERSECT", "EXCEPT", "WHERE", "GROUP",
+                "UNION", "INTERSECT", "EXCEPT", "WHERE", "GROUP",
                 "HAVING", "ORDER", "LIMIT", ";"]
 
         from_clause = "from runs "
@@ -225,9 +236,7 @@ class MagicRunDB(RunDB):
         for tbl, rank_aggregator in magic_columns:
             if rank_aggregator is not None:
                 full_tbl = f"{rank_aggregator}_{tbl}"
-                full_tbl_src = "{} as {}".format(
-                        self.get_rank_agg_table(tbl, rank_aggregator),
-                        full_tbl)
+                full_tbl_src = f"{self.get_rank_agg_table(tbl, rank_aggregator)} as {full_tbl}"
 
                 if last_tbl is not None:
                     addendum = f" and {last_tbl}.step = {full_tbl}.step"
@@ -238,17 +247,15 @@ class MagicRunDB(RunDB):
                 full_tbl_src = tbl
 
                 if last_tbl is not None:
-                    addendum = " and {}.step = {}.step and {}.rank={}.rank".format(
-                            last_tbl, full_tbl, last_tbl, full_tbl)
+                    addendum = f" and {last_tbl}.step = {full_tbl}.step and {last_tbl}.rank={full_tbl}.rank"
                 else:
                     addendum = ""
 
-            from_clause += " inner join {} on ({}.run_id = runs.id{}) ".format(
-                    full_tbl_src, full_tbl, addendum)
+            from_clause += f" inner join {full_tbl_src} on ({full_tbl}.run_id = runs.id{addendum}) "
             last_tbl = full_tbl
 
         def get_clause_indices(qry: str) -> Dict[str, int]:
-            other_clauses = ["UNION",  "INTERSECT", "EXCEPT", "WHERE", "GROUP",
+            other_clauses = ["UNION", "INTERSECT", "EXCEPT", "WHERE", "GROUP",
                     "HAVING", "ORDER", "LIMIT", ";"]
 
             result = {}
@@ -267,7 +274,7 @@ class MagicRunDB(RunDB):
             clause_indices = get_clause_indices(qry)
 
             if not clause_indices:
-                qry = qry+" "+from_clause
+                qry = qry + " " + from_clause
             else:
                 first_clause_idx = min(clause_indices.values())
                 qry = (
@@ -345,7 +352,7 @@ class RunalyzerConsole(code.InteractiveConsole):
             args = ""
         else:
             cmd = cmdline[1:cmd_end]
-            args = cmdline[cmd_end+1:]
+            args = cmdline[cmd_end + 1:]
 
         if cmd == "help":
             print("""
@@ -508,8 +515,12 @@ def auto_gather(filenames: List[str]) -> sqlite3.Connection:
         return sqlite3.connect(filenames[0])
 
     # create in memory database of files to be gathered
-    from logpyle.runalyzer_gather import (FeatureGatherer, gather_multi_file,
-                                          make_name_map, scan)
+    from logpyle.runalyzer_gather import (
+        FeatureGatherer,
+        gather_multi_file,
+        make_name_map,
+        scan,
+    )
     print("Creating an in memory database from provided files")
     from os.path import exists
     infiles = [f for f in filenames if exists(f)]

@@ -105,13 +105,13 @@ class FeatureGatherer:
                 colon_idx = line.find(":")
                 assert colon_idx != -1
 
-                entries = [val.strip() for val in line[colon_idx+1:].split(",")]
+                entries = [val.strip() for val in line[colon_idx + 1:].split(",")]
                 features = []
                 for entry in entries:
                     equal_idx = entry.find("=")
                     assert equal_idx != -1
                     features.append((entry[:equal_idx],)
-                            + sql_type_and_value_from_str(entry[equal_idx+1:]))
+                            + sql_type_and_value_from_str(entry[equal_idx + 1:]))
 
                 self.dir_to_features[line[:colon_idx]] = features
 
@@ -220,7 +220,7 @@ def gather_multi_file(outfile: str, infiles: List[str], fmap: Dict[str, str],
         tgt_name = fmap.get(fname, fname)
 
         if tgt_name.lower() in sqlite_keywords:
-            feature_col_name_map[fname] = tgt_name+"_"
+            feature_col_name_map[fname] = tgt_name + "_"
         else:
             feature_col_name_map[fname] = tgt_name
 
@@ -230,7 +230,7 @@ def gather_multi_file(outfile: str, infiles: List[str], fmap: Dict[str, str],
             "id integer primary key",
             "dirname text",
             "filename text",
-            ] + ["{} {}".format(feature_col_name_map[fname], ftype)
+            ] + [f"{feature_col_name_map[fname]} {ftype}"
                     for fname, ftype in features.items()]
     db_conn.execute("create table runs (%s)" % ",".join(run_columns))
     db_conn.execute("create index runs_id on runs (id)")
@@ -287,7 +287,7 @@ def gather_multi_file(outfile: str, infiles: List[str], fmap: Dict[str, str],
             qry = "insert into runs ({}) values ({})".format(
                 ",".join(["id", "dirname", "filename"]
                     + [feature_col_name_map[f[0]] for f in dbfeatures]),
-                ",".join("?" * (len(dbfeatures)+3)))
+                ",".join("?" * (len(dbfeatures) + 3)))
             db_conn.execute(qry,
                     [run_id, dirname(dbname), basename(dbname)]
                     + [_normalize_types(f[2]) for f in dbfeatures])
@@ -296,12 +296,12 @@ def gather_multi_file(outfile: str, infiles: List[str], fmap: Dict[str, str],
 
         def transfer_data_table_multi(db_conn: Connection, tbl_name: str,
                                       data_table: DataTable) -> None:
-            my_data = [(run_id,)+d for d in data_table.data]  # noqa: B023
+            my_data = [(run_id,) + d for d in data_table.data]  # noqa: B023
 
             db_conn.executemany(f"insert into {tbl_name} (%s) values (%s)" %
                 ("run_id,"
                     + ", ".join(data_table.column_names),
-                    ", ".join("?" * (len(data_table.column_names)+1))),
+                    ", ".join("?" * (len(data_table.column_names) + 1))),
                 my_data)
 
         transfer_data_table_multi(db_conn, "warnings", logmgr.get_warnings())
@@ -317,8 +317,8 @@ def gather_multi_file(outfile: str, infiles: List[str], fmap: Dict[str, str],
                   % tgt_qname)
 
                 db_conn.execute(
-                        "create index {}_main on {} (run_id,step,rank)"
-                        .format(tgt_qname, tgt_qname))
+                        f"create index {tgt_qname}_main on {tgt_qname} (run_id,step,rank)"
+                        )
 
                 agg = qdat.default_aggregator
                 try:
