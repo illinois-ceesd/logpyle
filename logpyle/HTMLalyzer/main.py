@@ -237,7 +237,7 @@ def print_table(event: Any) -> None:
 
     names = ["$" + s for s in names]
     query_args = ", ".join(names)
-    # shoud remake in the future to store the connection instead of
+    # should remake in the future to store the connection instead of
     # re-gathering it every time the button is pressed
     run_db = make_wrapped_db(file_dict[id].names, True, True)
     run_db.print_cursor(run_db.q("select " + query_args))
@@ -337,7 +337,7 @@ async def store_file(event: Any) -> None:
     # create plot group
     chart_button = document.getElementById("chartsButton" + str(id))
     chart_button .addEventListener("click", create_proxy(run_chart))
-    # add quantites to quantity 1 dropdown
+    # add quantities to quantity 1 dropdown
     plot_q1_select = document.getElementById("quantity1_" + str(id))
     for quantity in file_dict[id].quantities:
         item = document.createElement("option")
@@ -347,7 +347,7 @@ async def store_file(event: Any) -> None:
         if quantity == "step":
             plot_q1_select.value = quantity
 
-    # add quantites to quantity 2 dropdown
+    # add quantities to quantity 2 dropdown
     plot_q2_select = document.getElementById("quantity2_" + str(id))
     for quantity in file_dict[id].quantities:
         item = document.createElement("option")

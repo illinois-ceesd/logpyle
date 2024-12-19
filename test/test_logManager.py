@@ -728,7 +728,7 @@ def test_eventcounter(basic_logmgr: LogManager):
     # transfer counter1's count to counter2's
     basic_logmgr.tick_before()
 
-    # at the beggining of tick, counter should clear
+    # at the beginning of tick, counter should clear
     print(counter1.events)
     assert counter1.events == 0
 
