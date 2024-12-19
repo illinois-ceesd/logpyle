@@ -98,7 +98,7 @@ def add_file_func() -> None:
     next_id = next_id + 1
 
 
-async def run_plot(event: Any) -> None:
+async def run_plot(event: Any) -> None:  # noqa: RUF029
     from logpyle.runalyzer import make_wrapped_db
     id = event.target.getAttribute("param")
     output = document.getElementById("output" + str(id))
@@ -114,7 +114,7 @@ async def run_plot(event: Any) -> None:
     output.id = "output" + str(id)
 
 
-async def run_chart(event: Any) -> None:
+async def run_chart(event: Any) -> None:  # noqa: RUF029
     id = event.target.getAttribute("param")
     x_quantity: str = document.getElementById("quantity1_" + str(id)).value
     x = file_dict[id].quantities[x_quantity]
@@ -147,7 +147,7 @@ async def run_chart(event: Any) -> None:
             )
 
 
-async def add_table_list(event: Any) -> None:
+async def add_table_list(event: Any) -> None:  # noqa: RUF029
     id = event.target.getAttribute("param")
     quantity = document.getElementById("tableQuantitySelect" + str(id)).value
     table_list = document.getElementById("tableList" + str(id))
@@ -165,7 +165,7 @@ async def add_table_list(event: Any) -> None:
     table_list.appendChild(item)
 
 
-async def add_line(event: Any) -> None:
+async def add_line(event: Any) -> None:  # noqa: RUF029
     id = event.target.getAttribute("param1")
     i = event.target.param2
     event.target.param2 = i + 1
@@ -190,7 +190,7 @@ async def add_line(event: Any) -> None:
     y_quantities.appendChild(y_div)
 
 
-async def remove_table_ele(event: Any) -> None:
+async def remove_table_ele(event: Any) -> None:  # noqa: RUF029
     event.target.parentElement.remove()
 
 
@@ -264,7 +264,7 @@ async def store_file(event: Any) -> None:
     run_db = make_wrapped_db(file_dict[id].names, True, True)
     cursor = run_db.db.execute("select * from runs")
     columns = [col[0] for col in cursor.description]
-    vals = list(list(cursor)[0])
+    vals = list(next(iter(cursor)))
     for (col, val) in zip(columns, vals):
         file_dict[id].constants[col] = val
 
@@ -364,7 +364,7 @@ async def store_file(event: Any) -> None:
     table_button = document.getElementById("tableButton" + str(id))
     table_button.addEventListener("click", create_proxy(add_table_list))
 
-    # add quantites to table dropdown
+    # add quantities to table dropdown
     table_select = document.getElementById("tableQuantitySelect" + str(id))
     for quantity in file_dict[id].quantities:
         item = document.createElement("option")
@@ -383,6 +383,6 @@ async def store_file(event: Any) -> None:
 # init file storage structure
 file_dict: dict[str, Any] = {}
 # ensure logpyle and dependencies are present
-asyncio.ensure_future(import_logpyle())
-# ensure that one analysis pannel is present to begin with
+asyncio.ensure_future(import_logpyle())  # noqa: RUF006
+# ensure that one analysis panel is present to begin with
 add_file_func()

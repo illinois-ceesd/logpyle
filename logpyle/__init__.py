@@ -70,9 +70,6 @@ __version__ = logpyle.version.VERSION_TEXT
 
 import logging
 import sys
-
-logger = logging.getLogger(__name__)
-
 from dataclasses import dataclass
 from sqlite3 import Connection
 from time import monotonic as time_monotonic
@@ -96,6 +93,8 @@ from typing import (
 from pymbolic.compiler import CompiledExpression  # type: ignore[import-untyped]
 from pymbolic.primitives import Expression  # type: ignore[import-untyped]
 from pytools.datatable import DataTable
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING and not getattr(sys, "_BUILDING_SPHINX_DOCS", False):
     import mpi4py
@@ -502,7 +501,7 @@ class LogManager:
     .. automethod:: tick_after
     """
 
-    def __init__(self, filename: Optional[str] = None, mode: str = "r",
+    def __init__(self, filename: Optional[str] = None, mode: str = "r",  # noqa: C901
                  mpi_comm: Optional["mpi4py.MPI.Comm"] = None,
                  capture_warnings: bool = True,
                  watch_interval: float = 1.0,
@@ -578,7 +577,7 @@ class LogManager:
             import os
             file_base, file_extension = os.path.splitext(filename)
             if self.is_parallel:
-                file_base += "-rank%d" % self.rank
+                file_base += f"-rank{self.rank}"
 
         while True:
             suffix = ""
@@ -606,10 +605,10 @@ class LogManager:
             self.mode = mode
             try:
                 self.db_conn.execute("select * from quantities;")
-            except sqlite.OperationalError:
+            except sqlite.OperationalError as err:
                 # we're building a new database
                 if mode == "r":
-                    raise RuntimeError("Log database '%s' not found" % filename)
+                    raise RuntimeError(f"Log database '{filename}' not found") from err
 
                 self.schema_version = _set_up_schema(self.db_conn)
                 self.set_constant("schema_version", self.schema_version)
@@ -634,7 +633,7 @@ class LogManager:
             else:
                 # we've opened an existing database
                 if mode == "w":
-                    raise RuntimeError("Log database '%s' already exists" % filename)
+                    raise RuntimeError(f"Log database '{filename}' already exists")
 
                 if mode == "wu":
                     # try again with a new suffix
@@ -729,11 +728,11 @@ class LogManager:
                 warnings.showwarning = _showwarning
             else:
                 from warnings import warn
-                warn("Warnings capture already enabled")
+                warn("Warnings capture already enabled", stacklevel=2)
         else:
             if self.old_showwarning is None:
                 from warnings import warn
-                warn("Warnings capture already disabled")
+                warn("Warnings capture already disabled", stacklevel=2)
             else:
                 warnings.showwarning = self.old_showwarning
                 self.old_showwarning = None
@@ -766,13 +765,13 @@ class LogManager:
                 root_logger.addHandler(self.logging_handler)
             elif self.logging_handler:
                 from warnings import warn
-                warn("Logging capture already enabled")
+                warn("Logging capture already enabled", stacklevel=2)
         else:
             if self.logging_handler:
                 root_logger.removeHandler(self.logging_handler)
             elif self.logging_handler is None:
                 from warnings import warn
-                warn("Logging capture already disabled")
+                warn("Logging capture already disabled", stacklevel=2)
 
             self.logging_handler = None
 
@@ -787,11 +786,11 @@ class LogManager:
 
         if self.schema_version < 3:
             from warnings import warn
-            warn("This database lacks a 'logging' table")
+            warn("This database lacks a 'logging' table", stacklevel=2)
             return result
 
         for row in self.db_conn.execute(
-                "select %s from logging" % (", ".join(columns))):
+                "select {} from logging".format(", ".join(columns))):
             result.insert_row(row)
 
         return result
@@ -831,13 +830,13 @@ class LogManager:
         """Return a :class:`~pytools.datatable.DataTable` of the data logged
         for the quantity *q_name*."""
         if q_name not in self.quantity_data:
-            raise KeyError("invalid quantity name '%s'" % q_name)
+            raise KeyError(f"invalid quantity name '{q_name}'")
 
         result = DataTable(
             ["step", "rank", "value"])
 
         for row in self.db_conn.execute(
-                "select step, rank, value from %s" % q_name):
+                f"select step, rank, value from {q_name}"):
             result.insert_row(row)
 
         return result
@@ -856,7 +855,7 @@ class LogManager:
         result = DataTable(columns)
 
         for row in self.db_conn.execute(
-                "select %s from warnings" % (", ".join(columns))):
+                "select {} from warnings".format(", ".join(columns))):
             result.insert_row(row)
 
         return result
@@ -936,10 +935,10 @@ class LogManager:
         self.last_values[name] = value
 
         try:
-            self.db_conn.execute("insert into %s values (?,?,?)" % name,
+            self.db_conn.execute(f"insert into {name} values (?,?,?)",
                     (self.tick_count, self.rank, float(value)))
         except Exception:
-            print("while adding datapoint for '%s':" % name)
+            print(f"while adding datapoint for '{name}':")
             raise
 
     def _update_t_log(self, name: str, value: float) -> None:
@@ -952,7 +951,7 @@ class LogManager:
             self.db_conn.execute(f"update {name} set value = {float(value)} \
                 where rank = {self.rank} and step = {self.tick_count}")
         except Exception:
-            print("while adding datapoint for '%s':" % name)
+            print(f"while adding datapoint for '{name}':")
             raise
 
     def _gather_for_descriptor(self, gd: _GatherDescriptor) -> None:
@@ -1053,7 +1052,7 @@ class LogManager:
             # Even when encountering a commit error, we want to continue
             # running the application.
             from warnings import warn
-            warn("encountered sqlite error during commit: %s" % e)
+            warn(f"encountered sqlite error during commit: {e}", stacklevel=2)
 
         self.last_save_time = time_monotonic()
 
@@ -1066,18 +1065,18 @@ class LogManager:
 
         def add_internal(name: str, unit: Optional[str], description: Optional[str],
                          def_agg: Optional[Callable[..., Any]]) -> None:
-            logger.debug("add log quantity '%s'" % name)
+            logger.debug(f"adding log quantity '{name}'")
 
             if name in self.quantity_data:
-                raise RuntimeError("cannot add the same quantity '%s' twice" % name)
+                raise RuntimeError(f"cannot add the same quantity '{name}' twice")
             self.quantity_data[name] = _QuantityData(unit, description, def_agg)
 
             from pickle import dumps
             self.db_conn.execute("""insert into quantities values (?,?,?,?)""", (
                 name, unit, description,
                 bytes(dumps(def_agg))))
-            self.db_conn.execute("""create table %s
-              (step integer, rank integer, value real)""" % name)
+            self.db_conn.execute(f"""create table {name}
+              (step integer, rank integer, value real)""")
 
         gd = _GatherDescriptor(quantity, interval)
         if isinstance(quantity, PostLogQuantity):
@@ -1254,7 +1253,8 @@ class LogManager:
 
         return parsed
 
-    def _get_expr_dep_data(self, parsed: Expression) \
+    def _get_expr_dep_data(self,  # noqa: C901
+                           parsed: Expression) \
             -> Tuple[Expression, List[_DependencyData]]:
         class Nth:
             def __init__(self, n: int) -> None:
@@ -1282,9 +1282,10 @@ class LogManager:
                 if agg_func is None:
                     if self.is_parallel:
                         raise ValueError(
-                                "must specify explicit aggregator for '%s'" % name)
+                                f"must specify explicit aggregator for '{name}'")
 
-                    agg_func = lambda lst: lst[0]
+                    def agg_func(lst):
+                        return lst[0]
             elif isinstance(dep, Lookup):
                 assert isinstance(dep.aggregate, Variable)
                 name = dep.aggregate.name
@@ -1312,10 +1313,11 @@ class LogManager:
                     agg_func = sum
                 elif agg_name == "norm2":
                     from math import sqrt
-                    agg_func = lambda iterable: sqrt(
-                            sum(entry**2 for entry in iterable))
+
+                    def agg_func(iterable):
+                        return sqrt(sum(entry ** 2 for entry in iterable))
                 else:
-                    raise ValueError("invalid rank aggregator '%s'" % agg_name)
+                    raise ValueError(f"invalid rank aggregator '{agg_name}'")
             elif isinstance(dep, Subscript):
                 assert isinstance(dep.aggregate, Variable)
                 name = dep.aggregate.name
@@ -1328,7 +1330,7 @@ class LogManager:
             assert agg_func
 
             this_dep_data = _DependencyData(name=name, qdat=qdat, agg_func=agg_func,
-                    varname="logvar%d" % dep_idx, expr=dep,
+                    varname=f"logvar{dep_idx}", expr=dep,
                     nonlocal_agg=nonlocal_agg)
             dep_data.append(this_dep_data)
 
@@ -1602,7 +1604,7 @@ class InitTime(LogQuantity):
             import psutil
         except ModuleNotFoundError:
             from warnings import warn
-            warn("Measuring the init time requires the 'psutil' module.")
+            warn("Measuring the init time requires the 'psutil' module.", stacklevel=2)
             self.done = True
         else:
             self.create_time = psutil.Process().create_time()

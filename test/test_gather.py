@@ -29,7 +29,7 @@ def create_log(filename: str) -> None:
         logmgr.tick_before()
 
         if i == 5:
-            warn("warning from fifth timestep")
+            warn("warning from fifth timestep", stacklevel=2)
 
         if i == 10:
             logger.warning("test on tenth timestep")

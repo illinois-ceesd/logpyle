@@ -16,7 +16,7 @@ from logpyle import (
 )
 
 
-def main(use_logpyle: bool) -> None:
+def main(use_logpyle: bool) -> None:  # noqa: C901
     if use_logpyle:
         logmgr = LogManager("optional-log.sqlite", "w")
     else:

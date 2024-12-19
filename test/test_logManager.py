@@ -32,7 +32,7 @@ def test_empty_on_init(basic_logmgr: LogManager):
 
 def test_basic_warning():
     with pytest.warns(UserWarning):
-        warn("Oof. Something went awry.", UserWarning)
+        warn("Oof. Something went awry.", UserWarning, stacklevel=2)
 
 
 def test_warnings_capture_from_warnings_module(basic_logmgr: LogManager):
@@ -41,7 +41,7 @@ def test_warnings_capture_from_warnings_module(basic_logmgr: LogManager):
 
     basic_logmgr.tick_before()
 
-    warn(first_warning_message, first_warning_type)
+    warn(first_warning_message, first_warning_type, stacklevel=2)
 
     # ensure that the warning was captured properly
     print(basic_logmgr.warning_data[0])
@@ -52,7 +52,7 @@ def test_warnings_capture_from_warnings_module(basic_logmgr: LogManager):
     second_warning_message = "Not a warning: Second warning message"
     second_warning_type = UserWarning
 
-    warn(second_warning_message, second_warning_type)
+    warn(second_warning_message, second_warning_type, stacklevel=2)
 
     # ensure that the warning was captured properly
     print(basic_logmgr.warning_data[1])

@@ -56,6 +56,10 @@ extend-select = [
     "W",   # pycodestyle
 ]
 
+extend-ignore = [
+    "G004", # Logging statement uses f-string
+]
+
 [tool.ruff.lint.flake8-quotes]
 docstring-quotes = "double"
 inline-quotes = "double"

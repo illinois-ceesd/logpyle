@@ -17,9 +17,6 @@ except ImportError:
 
 
 import logging
-
-logger = logging.getLogger(__name__)
-
 from dataclasses import dataclass
 from itertools import product
 from sqlite3 import Connection, Cursor
@@ -38,6 +35,8 @@ from typing import (
 )
 
 from pytools import Table
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -78,12 +77,10 @@ class RunDB:
 
         logger.info("Building temporary rank aggregation table {tbl_name}.")
 
-        self.db.execute("create temporary table %s as "
-                "select run_id, step, %s(value) as value "
-                "from %s group by run_id,step" % (
-                    tbl_name, rank_aggregator, qty))
-        self.db.execute("create index %s_run_step on %s (run_id,step)"
-                % (tbl_name, tbl_name))
+        self.db.execute(f"create temporary table {tbl_name} as "
+                f"select run_id, step, {rank_aggregator}(value) as value "
+                f"from {qty} group by run_id,step")
+        self.db.execute(f"create index {tbl_name}_run_step on {tbl_name} (run_id,step)")
         self.rank_agg_tables.add((qty, rank_aggregator))
         return tbl_name
 
@@ -104,7 +101,7 @@ class RunDB:
         if self.interactive:
             plt.show()
 
-    def plot_cursor(self, cursor: Cursor, labels: Optional[List[str]] = None,
+    def plot_cursor(self, cursor: Cursor, labels: Optional[List[str]] = None,  # noqa: C901
                     *args: Any, **kwargs: Any) -> None:
         from matplotlib.pyplot import legend, plot, show
 
@@ -196,14 +193,14 @@ def split_cursor(cursor: Cursor) -> Generator[
 
 def table_from_cursor(cursor: Cursor) -> Table:
     tbl = Table()
-    tbl.add_row(tuple([column[0] for column in cursor.description]))
+    tbl.add_row(tuple(column[0] for column in cursor.description))
     for row in cursor:
         tbl.add_row(row)
     return tbl
 
 
 class MagicRunDB(RunDB):
-    def mangle_sql(self, qry: str) -> str:
+    def mangle_sql(self, qry: str) -> str:  # noqa: C901
         up_qry = qry.upper()
         if "FROM" in up_qry and "$$" not in up_qry:
             return qry
@@ -222,7 +219,7 @@ class MagicRunDB(RunDB):
                 return f"{rank_aggregator}_{qty_name}.value AS {qty_name}"
             else:
                 magic_columns.add((qty_name, None))
-                return "%s.value AS %s" % (qty_name, qty_name)
+                return f"{qty_name}.value AS {qty_name}"
 
         magic_column_re = re.compile(r"\$([a-zA-Z][A-Za-z0-9_]*)(\.[a-z]*)?")
         qry, _ = magic_column_re.subn(replace_magic_column, qry)
@@ -236,7 +233,8 @@ class MagicRunDB(RunDB):
         for tbl, rank_aggregator in magic_columns:
             if rank_aggregator is not None:
                 full_tbl = f"{rank_aggregator}_{tbl}"
-                full_tbl_src = f"{self.get_rank_agg_table(tbl, rank_aggregator)} as {full_tbl}"
+                full_tbl_src = \
+                    f"{self.get_rank_agg_table(tbl, rank_aggregator)} as {full_tbl}"
 
                 if last_tbl is not None:
                     addendum = f" and {last_tbl}.step = {full_tbl}.step"
@@ -247,11 +245,14 @@ class MagicRunDB(RunDB):
                 full_tbl_src = tbl
 
                 if last_tbl is not None:
-                    addendum = f" and {last_tbl}.step = {full_tbl}.step and {last_tbl}.rank={full_tbl}.rank"
+                    addendum = f" and {last_tbl}.step = {full_tbl}.step and " \
+                               f"{last_tbl}.rank={full_tbl}.rank"
                 else:
                     addendum = ""
 
-            from_clause += f" inner join {full_tbl_src} on ({full_tbl}.run_id = runs.id{addendum}) "
+            from_clause += \
+                f" inner join {full_tbl_src}" \
+                f" on ({full_tbl}.run_id = runs.id{addendum}) "
             last_tbl = full_tbl
 
         def get_clause_indices(qry: str) -> Dict[str, int]:
@@ -261,7 +262,7 @@ class MagicRunDB(RunDB):
             result = {}
             up_qry = qry.upper()
             for clause in other_clauses:
-                clause_match = re.search(r"\b%s\b" % clause, up_qry)
+                clause_match = re.search(rf"\b{clause}\b", up_qry)
                 if clause_match is not None:
                     result[clause] = clause_match.start()
 
@@ -269,7 +270,7 @@ class MagicRunDB(RunDB):
 
         # add 'from'
         if "$$" in qry:
-            qry = qry.replace("$$", " %s " % from_clause)
+            qry = qry.replace("$$", f" {from_clause} ")
         else:
             clause_indices = get_clause_indices(qry)
 
@@ -286,7 +287,7 @@ class MagicRunDB(RunDB):
 
 
 def make_runalyzer_symbols(db: RunDB) \
-        -> Dict[str, Union[RunDB, str, None, Callable[..., Any]]]:
+        -> Dict[str, Union[RunDB, str, Callable[..., Any], None]]:
     return {
             "__name__": "__console__",
             "__doc__": None,
@@ -345,7 +346,7 @@ class RunalyzerConsole(code.InteractiveConsole):
 
         return self.last_push_result
 
-    def execute_magic(self, cmdline: str) -> None:
+    def execute_magic(self, cmdline: str) -> None:  # noqa: C901
         cmd_end = cmdline.find(" ")
         if cmd_end == -1:
             cmd = cmdline[1:]
