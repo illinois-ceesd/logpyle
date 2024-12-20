@@ -9,9 +9,17 @@ from logpyle import __version__
 sys._BUILDING_SPHINX_DOCS = True
 
 _conf_url = \
-    "https://raw.githubusercontent.com/matthiasdiener/sphinxconfig/main/sphinxconfig.py"
+    "https://raw.githubusercontent.com/inducer/sphinxconfig/main/sphinxconfig.py"
 with urlopen(_conf_url) as _inf:
     exec(compile(_inf.read(), _conf_url, "exec"), globals())
+
+old_linkcode_resolve = linkcode_resolve
+
+def lc(domain, info):
+    linkcode_url = "https://github.com/illinois-ceesd/logpyle/blob/main/{filepath}#L{linestart}-L{linestop}"
+    return old_linkcode_resolve(domain, info, linkcode_url=linkcode_url)
+
+linkcode_resolve = lc
 
 # General information about the project.
 project = "logpyle"

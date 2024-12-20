@@ -93,8 +93,8 @@ from typing import (
     cast,
 )
 
-from pymbolic.compiler import CompiledExpression  # type: ignore[import-untyped]
-from pymbolic.primitives import Expression  # type: ignore[import-untyped]
+from pymbolic.compiler import CompiledExpression
+from pymbolic.primitives import ExpressionNode
 from pytools.datatable import DataTable
 
 logger = logging.getLogger(__name__)
@@ -418,15 +418,15 @@ class _DependencyData:
     qdat: _QuantityData
     agg_func: Callable[..., Any]
     varname: str
-    expr: Expression
+    expr: ExpressionNode
     nonlocal_agg: bool
     table: Optional[DataTable] = None
 
 
 @dataclass
 class _WatchInfo:
-    parsed: Expression
-    expr: Expression
+    parsed: ExpressionNode
+    expr: ExpressionNode
     dep_data: List[_DependencyData]
     compiled: CompiledExpression
     unit: Optional[str]
@@ -896,7 +896,7 @@ class LogManager:
             self.have_nonlocal_watches = self.have_nonlocal_watches or \
                     any(dd.nonlocal_agg for dd in dep_data)
 
-            from pymbolic import compile  # type: ignore[import-untyped]
+            from pymbolic import compile
             compiled = compile(parsed, [dd.varname for dd in dep_data])
 
             watch_info = _WatchInfo(parsed=parsed, expr=expr, dep_data=dep_data,
@@ -1104,10 +1104,10 @@ class LogManager:
 
         self.save()
 
-    def get_expr_dataset(self, expression: Expression,
+    def get_expr_dataset(self, expression: ExpressionNode,
                          description: Optional[str] = None,
                          unit: Optional[str] = None) \
-                            -> Tuple[Union[str, Any], Union[str, Any, None],
+                            -> Tuple[Union[str, Any], Union[str, Any],
                                      List[Tuple[int, Any]]]:
         """Prepare a time-series dataset for a given expression.
 
@@ -1165,7 +1165,7 @@ class LogManager:
 
         return (description, unit, data)
 
-    def get_joint_dataset(self, expressions: Sequence[Expression]) -> List[Any]:
+    def get_joint_dataset(self, expressions: Sequence[ExpressionNode]) -> List[Any]:
         """Return a joint data set for a list of expressions.
 
         :arg expressions: a list of either strings representing
@@ -1198,7 +1198,7 @@ class LogManager:
 
         return zipped_dubs
 
-    def get_plot_data(self, expr_x: Expression, expr_y: Expression,
+    def get_plot_data(self, expr_x: ExpressionNode, expr_y: ExpressionNode,
                       min_step: Optional[int] = None,
                       max_step: Optional[int] = None) \
                             -> Tuple[Tuple[Any, str, str], Tuple[Any, str, str]]:
@@ -1224,8 +1224,8 @@ class LogManager:
         return (data_x, descr_x, unit_x), \
                (data_y, descr_y, unit_y)
 
-    def write_datafile(self, filename: str, expr_x: Expression,
-                       expr_y: Expression) -> None:
+    def write_datafile(self, filename: str, expr_x: ExpressionNode,
+                       expr_y: ExpressionNode) -> None:
         (data_x, label_x, _), (data_y, label_y, _) = self.get_plot_data(
                 expr_x, expr_y)
 
@@ -1235,7 +1235,7 @@ class LogManager:
             outf.write(f"{dx!r}\t{dy!r}\n")
         outf.close()
 
-    def plot_matplotlib(self, expr_x: Expression, expr_y: Expression) -> None:
+    def plot_matplotlib(self, expr_x: ExpressionNode, expr_y: ExpressionNode) -> None:
         from matplotlib.pyplot import plot, xlabel, ylabel
 
         (data_x, descr_x, unit_x), (data_y, descr_y, unit_y) = \
@@ -1247,7 +1247,7 @@ class LogManager:
 
     # {{{ private functionality
 
-    def _parse_expr(self, expr: Expression) -> Any:
+    def _parse_expr(self, expr: str) -> Any:
         from pymbolic import parse, substitute
         parsed = parse(expr)
 
@@ -1257,8 +1257,8 @@ class LogManager:
         return parsed
 
     def _get_expr_dep_data(self,  # noqa: C901
-                           parsed: Expression) \
-            -> Tuple[Expression, List[_DependencyData]]:
+                           parsed: ExpressionNode) \
+            -> Tuple[ExpressionNode, List[_DependencyData]]:
         class Nth:
             def __init__(self, n: int) -> None:
                 self.n = n
@@ -1266,7 +1266,7 @@ class LogManager:
             def __call__(self, lst: List[Any]) -> Any:
                 return lst[self.n]
 
-        import pymbolic.mapper.dependency as pmd  # type: ignore[import-untyped]
+        import pymbolic.mapper.dependency as pmd
         deps = pmd.DependencyMapper(include_calls=False)(parsed)
 
         # gather information on aggregation expressions
@@ -1287,7 +1287,7 @@ class LogManager:
                         raise ValueError(
                                 f"must specify explicit aggregator for '{name}'")
 
-                    def agg_func(lst):
+                    def agg_func(lst: Sequence[Any]) -> Any:
                         return lst[0]
             elif isinstance(dep, Lookup):
                 assert isinstance(dep.aggregate, Variable)
@@ -1317,7 +1317,7 @@ class LogManager:
                 elif agg_name == "norm2":
                     from math import sqrt
 
-                    def agg_func(iterable):
+                    def agg_func(iterable: Iterable[Any]) -> float:
                         return sqrt(sum(entry ** 2 for entry in iterable))
                 else:
                     raise ValueError(f"invalid rank aggregator '{agg_name}'")
