@@ -21,6 +21,7 @@ description = "Time series logging for Python"
 dependencies = [
     "pytools>=2011.1",
     "pymbolic",
+    "importlib_metadata;python_version<'3.8'",
 ]
 readme = "README.md"
 license = { file="LICENSE" }

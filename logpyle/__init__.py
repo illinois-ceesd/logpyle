@@ -63,10 +63,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
 
+try:
+    import importlib.metadata as importlib_metadata
+except ModuleNotFoundError:  # pragma: no cover
+    # Python 3.7
+    import importlib_metadata  # type: ignore[no-redef]
 
-import logpyle.version
-
-__version__ = logpyle.version.VERSION_TEXT
+__version__ = importlib_metadata.version(__package__ or __name__)
 
 import logging
 import sys
