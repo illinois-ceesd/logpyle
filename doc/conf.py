@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import sys
-
 from urllib.request import urlopen
 
 from logpyle import __version__
@@ -13,11 +12,13 @@ _conf_url = \
 with urlopen(_conf_url) as _inf:
     exec(compile(_inf.read(), _conf_url, "exec"), globals())
 
-old_linkcode_resolve = linkcode_resolve
+old_linkcode_resolve = linkcode_resolve  # noqa: F821 (linkcode_resolve comes from the URL above)
+
 
 def lc(domain, info):
     linkcode_url = "https://github.com/illinois-ceesd/logpyle/blob/main/{filepath}#L{linestart}-L{linestop}"
     return old_linkcode_resolve(domain, info, linkcode_url=linkcode_url)
+
 
 linkcode_resolve = lc
 
@@ -36,5 +37,3 @@ intersphinx_mapping = {
     "pytools": ("https://documen.tician.de/pytools/", None),
     "mpi4py": ("https://mpi4py.readthedocs.io/en/stable/", None),
 }
-
-
