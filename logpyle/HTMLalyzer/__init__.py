@@ -15,7 +15,6 @@ def get_current_hash() -> str:
             "__init__.py",
             "runalyzer.py",
             "runalyzer_gather.py",
-            "version.py",
             "HTMLalyzer/templates/index.html",
             "HTMLalyzer/templates/newFile.html",
             "HTMLalyzer/main.css",
