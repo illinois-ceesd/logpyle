@@ -27,7 +27,6 @@ $new_file_html
 logpyle_py_file = "$logpyle_py_file"
 runalyzer_py_file = "$runalyzer_py_file"
 runalyzer_gather_py_file = "$runalyzer_gather_py_file"
-version_py_file = "$version_py_file"
 
 
 pymbolic_whl_file_str = "$pymbolic_whl_file_str"
@@ -67,11 +66,6 @@ async def import_logpyle() -> None:
     py_base_64 = runalyzer_gather_py_file.encode("utf-8")
     py_binary_data = base64.decodebytes(py_base_64)
     with open("logpyle/runalyzer_gather.py", "wb") as f:
-        f.write(py_binary_data)
-    # copy version.py
-    py_base_64 = version_py_file.encode("utf-8")
-    py_binary_data = base64.decodebytes(py_base_64)
-    with open("logpyle/version.py", "wb") as f:
         f.write(py_binary_data)
 
 

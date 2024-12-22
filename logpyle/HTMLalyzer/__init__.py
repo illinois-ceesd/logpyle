@@ -58,7 +58,6 @@ def build() -> None:
             "__init__.py",
             "runalyzer.py",
             "runalyzer_gather.py",
-            "version.py",
             pymbolic_whl_path,
             ]
     files_dict = {}
@@ -85,7 +84,6 @@ def build() -> None:
             logpyle_py_file=files_dict["__init__.py"],
             runalyzer_py_file=files_dict["runalyzer.py"],
             runalyzer_gather_py_file=files_dict["runalyzer_gather.py"],
-            version_py_file=files_dict["version.py"],
             )
 
     with open(html_path + "/main.css") as f:
