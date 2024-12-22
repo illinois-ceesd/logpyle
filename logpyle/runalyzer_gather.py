@@ -1,7 +1,7 @@
 import re
 import sqlite3
 from sqlite3 import Connection
-from typing import Any, Dict, List, Optional, Tuple, Union, cast
+from typing import Any, cast
 
 from pytools.datatable import DataTable
 
@@ -29,7 +29,7 @@ sqlite_keywords = """
 
 
 def parse_dir_feature(feat: str, number: int) \
-                        -> Tuple[Union[str, Any], str, Union[str, Any]]:
+                        -> tuple[str | Any, str, str | Any]:
     bool_match = bool_feat_re.match(feat)
     if bool_match is not None:
         return (bool_match.group(1), "integer", int(bool_match.group(2) == "True"))
@@ -45,7 +45,7 @@ def parse_dir_feature(feat: str, number: int) \
     return (f"dirfeat{number}", "text", feat)
 
 
-def larger_sql_type(type_a: Optional[str], type_b: Optional[str]) -> Optional[str]:
+def larger_sql_type(type_a: str | None, type_b: str | None) -> str | None:
     assert type_a in [None, "text", "real", "integer"]
     assert type_b in [None, "text", "real", "integer"]
 
@@ -62,7 +62,7 @@ def larger_sql_type(type_a: Optional[str], type_b: Optional[str]) -> Optional[st
 
 
 def sql_type_and_value(value: Any) \
-                        -> Tuple[Optional[str], Union[int, float, str, None]]:
+                        -> tuple[str | None, int | float | str | None]:
     if value is None:
         return None, None
     elif isinstance(value, bool):
@@ -76,7 +76,7 @@ def sql_type_and_value(value: Any) \
 
 
 def sql_type_and_value_from_str(value: str) \
-                        -> Tuple[Optional[str], Union[int, float, str, None]]:
+                        -> tuple[str | None, int | float | str | None]:
     if value == "None":
         return None, None
     elif value in ["True", "False"]:
@@ -95,7 +95,7 @@ def sql_type_and_value_from_str(value: str) \
 
 class FeatureGatherer:
     def __init__(self, features_from_dir: bool = False,
-                 features_file: Optional[str] = None) -> None:
+                 features_file: str | None = None) -> None:
         self.features_from_dir = features_from_dir
 
         self.dir_to_features = {}
@@ -115,7 +115,7 @@ class FeatureGatherer:
 
                 self.dir_to_features[line[:colon_idx]] = features
 
-    def get_db_features(self, dbname: str, logmgr: LogManager) -> List[Any]:
+    def get_db_features(self, dbname: str, logmgr: LogManager) -> list[Any]:
         from os.path import dirname
         dn = dirname(dbname)
 
@@ -131,11 +131,11 @@ class FeatureGatherer:
         return features
 
 
-def scan(fg: FeatureGatherer, dbnames: List[str],  # noqa: C901
-         progress: bool = True) -> Tuple[Dict[str, Any], Dict[str, int]]:
-    features: Dict[str, Any] = {}
+def scan(fg: FeatureGatherer, dbnames: list[str],  # noqa: C901
+         progress: bool = True) -> tuple[dict[str, Any], dict[str, int]]:
+    features: dict[str, Any] = {}
     dbname_to_run_id = {}
-    uid_to_run_id: Dict[str, int] = {}
+    uid_to_run_id: dict[str, int] = {}
     next_run_id = 1
 
     from pytools import ProgressBar
@@ -181,9 +181,9 @@ def scan(fg: FeatureGatherer, dbnames: List[str],  # noqa: C901
     return features, dbname_to_run_id
 
 
-def make_name_map(map_str: str) -> Dict[str, str]:
+def make_name_map(map_str: str) -> dict[str, str]:
     import re
-    result: Dict[str, str] = {}
+    result: dict[str, str] = {}
 
     if not map_str:
         return result
@@ -208,10 +208,10 @@ def _normalize_types(x: Any) -> Any:
     return x
 
 
-def gather_multi_file(outfile: str, infiles: List[str], fmap: Dict[str, str],
-                      qmap: Dict[str, str], fg: FeatureGatherer,
-                      features: Dict[str, Any],
-                      dbname_to_run_id: Dict[str, int]) -> sqlite3.Connection:
+def gather_multi_file(outfile: str, infiles: list[str], fmap: dict[str, str],
+                      qmap: dict[str, str], fg: FeatureGatherer,
+                      features: dict[str, Any],
+                      dbname_to_run_id: dict[str, int]) -> sqlite3.Connection:
     from pytools import ProgressBar
     pb = ProgressBar("Importing...", len(infiles))  # type: ignore[no-untyped-call]
 

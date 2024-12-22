@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
 import logging
+from collections.abc import Callable
 from random import uniform
 from time import sleep
-from typing import Any, Callable
+from typing import Any
 from warnings import warn
 
 from mpi4py import MPI

@@ -3,7 +3,6 @@
 from contextlib import nullcontext
 from random import uniform
 from time import sleep
-from typing import Union
 
 from logpyle import (
     IntervalTimer,
@@ -32,7 +31,7 @@ def main(use_logpyle: bool) -> None:  # noqa: C901
     if logmgr:
         vis_timer = IntervalTimer("t_vis", "Time spent visualizing")
         logmgr.add_quantity(vis_timer)
-        time_vis: Union[_SubTimer, nullcontext[None]] = vis_timer.get_sub_timer()
+        time_vis: _SubTimer | nullcontext[None] = vis_timer.get_sub_timer()
     else:
         time_vis = nullcontext()
 

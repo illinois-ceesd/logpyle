@@ -17,21 +17,12 @@ except ImportError:
 
 
 import logging
+from collections.abc import Callable, Generator, Sequence
 from dataclasses import dataclass
 from itertools import product
 from sqlite3 import Connection, Cursor
 from typing import (
     Any,
-    Callable,
-    Dict,
-    Generator,
-    List,
-    Optional,
-    Sequence,
-    Set,
-    Tuple,
-    Type,
-    Union,
 )
 
 from pytools import Table
@@ -41,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class PlotStyle:
-    dashes: Tuple[int, ...]
+    dashes: tuple[int, ...]
     color: str
 
 
@@ -57,7 +48,7 @@ class RunDB:
     def __init__(self, db: Connection, interactive: bool) -> None:
         self.db = db
         self.interactive = interactive
-        self.rank_agg_tables: Set[Tuple[str, Callable[..., Any]]] = set()
+        self.rank_agg_tables: set[tuple[str, Callable[..., Any]]] = set()
 
     def __del__(self) -> None:
         self.db.close()
@@ -84,11 +75,11 @@ class RunDB:
         self.rank_agg_tables.add((qty, rank_aggregator))
         return tbl_name
 
-    def scatter_cursor(self, cursor: Cursor, labels: Optional[List[str]] = None,
+    def scatter_cursor(self, cursor: Cursor, labels: list[str] | None = None,
                        *args: Any, **kwargs: Any) -> None:
         import matplotlib.pyplot as plt
 
-        data_args = tuple(zip(*list(cursor)))
+        data_args = tuple(zip(*list(cursor), strict=False))
         plt.scatter(*(data_args + args), **kwargs)
 
         if isinstance(labels, list) and len(labels) == 2:
@@ -101,7 +92,7 @@ class RunDB:
         if self.interactive:
             plt.show()
 
-    def plot_cursor(self, cursor: Cursor, labels: Optional[List[str]] = None,  # noqa: C901
+    def plot_cursor(self, cursor: Cursor, labels: list[str] | None = None,  # noqa: C901
                     *args: Any, **kwargs: Any) -> None:
         from matplotlib.pyplot import legend, plot, show
 
@@ -113,7 +104,7 @@ class RunDB:
                 kwargs["dashes"] = style.dashes
                 kwargs["color"] = style.color
 
-            x, y = list(zip(*list(cursor)))
+            x, y = list(zip(*list(cursor), strict=False))
             p = plot(x, y, *args, **kwargs)
 
             if isinstance(labels, list) and len(labels) == 2:
@@ -126,13 +117,13 @@ class RunDB:
         elif len(cursor.description) > 2:
             small_legend = kwargs.pop("small_legend", True)
 
-            def format_label(kv_pairs: Sequence[Tuple[str, Any]]) -> str:
+            def format_label(kv_pairs: Sequence[tuple[str, Any]]) -> str:
                 return " ".join(f"{column}:{value}"
                             for column, value in kv_pairs)
             format_label = kwargs.pop("format_label", format_label)
 
-            def do_plot(x: List[float], y: List[float],
-                        row_rest: Tuple[Any, ...]) -> None:
+            def do_plot(x: list[float], y: list[float],
+                        row_rest: tuple[Any, ...]) -> None:
                 my_kwargs = kwargs.copy()
                 style = PLOT_STYLES[style_idx[0] % len(PLOT_STYLES)]
                 if auto_style:
@@ -142,7 +133,7 @@ class RunDB:
                 my_kwargs.setdefault("label",
                         format_label(list(zip(
                             (col[0] for col in cursor.description[2:]),
-                            row_rest))))
+                            row_rest, strict=False))))
 
                 plot(x, y, *args, hold=True, **my_kwargs)
                 style_idx[0] += 1
@@ -166,10 +157,10 @@ class RunDB:
 
 
 def split_cursor(cursor: Cursor) -> Generator[
-        Tuple[List[Any], List[Any], Optional[Tuple[Any, ...]]], None, None]:
+        tuple[list[Any], list[Any], tuple[Any, ...] | None], None, None]:
 
-    x: List[Any] = []
-    y: List[Any] = []
+    x: list[Any] = []
+    y: list[Any] = []
     last_rest = None
     for row in cursor:
         row_tuple = tuple(row)
@@ -255,7 +246,7 @@ class MagicRunDB(RunDB):
                 f" on ({full_tbl}.run_id = runs.id{addendum}) "
             last_tbl = full_tbl
 
-        def get_clause_indices(qry: str) -> Dict[str, int]:
+        def get_clause_indices(qry: str) -> dict[str, int]:
             other_clauses = ["UNION", "INTERSECT", "EXCEPT", "WHERE", "GROUP",
                     "HAVING", "ORDER", "LIMIT", ";"]
 
@@ -287,7 +278,7 @@ class MagicRunDB(RunDB):
 
 
 def make_runalyzer_symbols(db: RunDB) \
-        -> Dict[str, Union[RunDB, str, Callable[..., Any], None]]:
+        -> dict[str, RunDB | str | Callable[..., Any] | None]:
     return {
             "__name__": "__console__",
             "__doc__": None,
@@ -432,7 +423,7 @@ class Variance(VarianceAggregator):
 
 
 class StdDeviation(Variance):
-    def finalize(self) -> Optional[float]:
+    def finalize(self) -> float | None:
         result = Variance.finalize(self)  # type: ignore[no-untyped-call]
 
         if result is None:
@@ -496,7 +487,7 @@ def is_gathered(conn: sqlite3.Connection) -> bool:
     return False
 
 
-def auto_gather(filenames: List[str]) -> sqlite3.Connection:
+def auto_gather(filenames: list[str]) -> sqlite3.Connection:
     # allow for creating ungathered files.
     # Check if database has been gathered, if not, create one in memory
 
@@ -540,7 +531,7 @@ def auto_gather(filenames: List[str]) -> sqlite3.Connection:
 # {{{ main program
 
 def make_wrapped_db(
-        filenames: List[str], interactive: bool,
+        filenames: list[str], interactive: bool,
         mangle: bool, gather: bool = True
         ) -> RunDB:
     if gather:
@@ -560,7 +551,7 @@ def make_wrapped_db(
     db.create_function("pow", 2, pow)
 
     if mangle:
-        db_wrap_class: Type[RunDB] = MagicRunDB
+        db_wrap_class: type[RunDB] = MagicRunDB
     else:
         db_wrap_class = RunDB
 

@@ -262,7 +262,7 @@ def custom_multi_log_quantity(request):
     class TestLogQuantity(MultiLogQuantity):
         def __init__(self, names, parameters) -> None:
             super().__init__(names, units, descriptions)
-            for name, parameter in zip(names, parameters):
+            for name, parameter in zip(names, parameters, strict=False):
                 setattr(self, name, parameter)
             self.func = call_func
 
@@ -272,7 +272,7 @@ def custom_multi_log_quantity(request):
 
             # update value every time quantity is called
             new_vals = self.func(*values)
-            for name, val in zip(self.names, new_vals):
+            for name, val in zip(self.names, new_vals, strict=False):
                 setattr(self, name, val)
 
             return new_vals
@@ -360,7 +360,7 @@ def custom_multi_post_logquantity(request):
     class TestLogQuantity(MultiPostLogQuantity):
         def __init__(self, names, parameters) -> None:
             super().__init__(names, units, descriptions)
-            for name, parameter in zip(names, parameters):
+            for name, parameter in zip(names, parameters, strict=False):
                 setattr(self, name, parameter)
             self.func = call_func
 
@@ -370,7 +370,7 @@ def custom_multi_post_logquantity(request):
 
             # update value every time quantity is called
             new_vals = self.func(*values)
-            for name, val in zip(self.names, new_vals):
+            for name, val in zip(self.names, new_vals, strict=False):
                 setattr(self, name, val)
 
             return new_vals
@@ -509,7 +509,7 @@ def test_steptostep_and_timestepduration_quantity(
     print(actual_times, sleep_times)
     # assert that these quantities only differ by a max of tol
     # defined above
-    for (predicted, actual) in zip(sleep_times, actual_times):
+    for (predicted, actual) in zip(sleep_times, actual_times, strict=False):
         assert abs(actual - predicted) < tol
 
 
@@ -650,7 +650,7 @@ def test_interval_timer_subtimer(basic_logmgr: LogManager):
     print(expected_timer_list)
 
     # enforce equality of durations
-    for tup in zip(val_list, expected_timer_list):
+    for tup in zip(val_list, expected_timer_list, strict=False):
         assert abs(tup[0] - tup[1]) < tol
 
 
@@ -682,7 +682,7 @@ def test_interval_timer_subtimer_blocking(basic_logmgr: LogManager):
     print(expected_timer_list)
 
     # enforce equality of durations
-    for tup in zip(val_list, expected_timer_list):
+    for tup in zip(val_list, expected_timer_list, strict=False):
         assert abs(tup[0] - tup[1]) < tol
 
 

@@ -265,7 +265,7 @@ async def store_file(event: Any) -> None:
     cursor = run_db.db.execute("select * from runs")
     columns = [col[0] for col in cursor.description]
     vals = list(next(iter(cursor)))
-    for (col, val) in zip(columns, vals):
+    for (col, val) in zip(columns, vals, strict=False):
         file_dict[id].constants[col] = val
 
     # extract quantities from sqlite file
