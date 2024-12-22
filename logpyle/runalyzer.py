@@ -397,7 +397,7 @@ Available Python symbols:
         elif cmd == "logging":
             self.db.print_cursor(self.db.q("select * from logging"))
         elif cmd == "title":
-            from pylab import title
+            from matplotlib.pyplot import title
             title(args)
         elif cmd == "plot":
             cursor = self.db.db.execute(self.db.mangle_sql(args))

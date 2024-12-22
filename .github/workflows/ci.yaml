@@ -178,7 +178,7 @@ jobs:
             set -x
             sudo apt-get update && sudo apt-get install -y libopenmpi-dev
             curl -L -O -k https://gitlab.tiker.net/inducer/ci-support/raw/main/prepare-and-run-mypy.sh
-            export EXTRA_INSTALL="pytools numpy types-psutil pymbolic mpi4py matplotlib pylab"
+            export EXTRA_INSTALL="pytools numpy types-psutil pymbolic mpi4py matplotlib"
             . ./prepare-and-run-mypy.sh python3
 
     pytest:
