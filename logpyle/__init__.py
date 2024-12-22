@@ -414,7 +414,7 @@ class _DependencyData:
 @dataclass
 class _WatchInfo:
     parsed: ExpressionNode
-    expr: ExpressionNode
+    expr: str
     dep_data: list[_DependencyData]
     compiled: CompiledExpression
     unit: str | None
@@ -885,7 +885,7 @@ class LogManager:
                     any(dd.nonlocal_agg for dd in dep_data)
 
             from pymbolic import compile
-            compiled = compile(parsed, [dd.varname for dd in dep_data])
+            compiled = compile(parsed, [dd.varname for dd in dep_data])  # type: ignore[no-untyped-call]
 
             watch_info = _WatchInfo(parsed=parsed, expr=expr, dep_data=dep_data,
                                     compiled=compiled, unit=unit, format=fmt)
@@ -1092,14 +1092,14 @@ class LogManager:
 
         self.save()
 
-    def get_expr_dataset(self, expression: ExpressionNode,
+    def get_expr_dataset(self, expression: str,
                          description: str | None = None,
                          unit: str | None = None) \
                             -> tuple[str | Any, str | Any,
                                      list[tuple[int, Any]]]:
         """Prepare a time-series dataset for a given expression.
 
-        :arg expression: A :mod:`pymbolic` expression that may involve
+        :arg expression: A :mod:`pymbolic`-like expression that may involve
           the time-series variables and the constants in this :class:`LogManager`.
           If there is data from multiple ranks for a quantity occurring in
           this expression, an aggregator may have to be specified.
@@ -1127,7 +1127,7 @@ class LogManager:
         if unit is None:
             from pymbolic import parse, substitute
 
-            unit_dict = {dd.varname: dd.qdat.unit for dd in dep_data}
+            unit_dict: dict[str, Any] = {dd.varname: dd.qdat.unit for dd in dep_data}
             from pytools import all
             if all(v is not None for v in unit_dict.values()):
                 unit_dict = {k: parse(v) for k, v in unit_dict.items()}
@@ -1140,7 +1140,7 @@ class LogManager:
 
         # compile and evaluate
         from pymbolic import compile
-        compiled = compile(parsed, [dd.varname for dd in dep_data])
+        compiled = compile(parsed, [dd.varname for dd in dep_data])  # type: ignore[no-untyped-call]
 
         data = []
 
@@ -1153,7 +1153,8 @@ class LogManager:
 
         return (description, unit, data)
 
-    def get_joint_dataset(self, expressions: Sequence[ExpressionNode]) -> list[Any]:
+    def get_joint_dataset(self, expressions: Sequence[str | tuple[str, str, str]]) \
+            -> list[Any]:
         """Return a joint data set for a list of expressions.
 
         :arg expressions: a list of either strings representing
@@ -1186,7 +1187,7 @@ class LogManager:
 
         return zipped_dubs
 
-    def get_plot_data(self, expr_x: ExpressionNode, expr_y: ExpressionNode,
+    def get_plot_data(self, expr_x: str, expr_y: str,
                       min_step: int | None = None,
                       max_step: int | None = None) \
                             -> tuple[tuple[Any, str, str], tuple[Any, str, str]]:
@@ -1212,8 +1213,8 @@ class LogManager:
         return (data_x, descr_x, unit_x), \
                (data_y, descr_y, unit_y)
 
-    def write_datafile(self, filename: str, expr_x: ExpressionNode,
-                       expr_y: ExpressionNode) -> None:
+    def write_datafile(self, filename: str, expr_x: str,
+                       expr_y: str) -> None:
         (data_x, label_x, _), (data_y, label_y, _) = self.get_plot_data(
                 expr_x, expr_y)
 
@@ -1223,7 +1224,7 @@ class LogManager:
             outf.write(f"{dx!r}\t{dy!r}\n")
         outf.close()
 
-    def plot_matplotlib(self, expr_x: ExpressionNode, expr_y: ExpressionNode) -> None:
+    def plot_matplotlib(self, expr_x: str, expr_y: str) -> None:
         from matplotlib.pyplot import plot, xlabel, ylabel
 
         (data_x, descr_x, unit_x), (data_y, descr_y, unit_y) = \

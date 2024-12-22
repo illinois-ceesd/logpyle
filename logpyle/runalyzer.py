@@ -106,6 +106,7 @@ class RunDB:
 
             x, y = list(zip(*list(cursor), strict=False))
             p = plot(x, y, *args, **kwargs)
+            assert p[0].axes
 
             if isinstance(labels, list) and len(labels) == 2:
                 p[0].axes.set_xlabel(labels[0])
