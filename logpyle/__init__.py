@@ -87,7 +87,7 @@ from pytools.datatable import DataTable
 
 logger = logging.getLogger(__name__)
 
-if TYPE_CHECKING and not getattr(sys, "_BUILDING_SPHINX_DOCS", False):
+if TYPE_CHECKING:
     import mpi4py
 
 

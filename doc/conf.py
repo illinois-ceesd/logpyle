@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 
-import sys
 from urllib.request import urlopen
 
 from logpyle import __version__
 
-sys._BUILDING_SPHINX_DOCS = True
+# {{{ linkcode_resolve
 
 _conf_url = \
     "https://raw.githubusercontent.com/inducer/sphinxconfig/main/sphinxconfig.py"
@@ -15,12 +14,12 @@ with urlopen(_conf_url) as _inf:
 old_linkcode_resolve = linkcode_resolve  # noqa: F821 (linkcode_resolve comes from the URL above)
 
 
-def lc(domain, info):
+def linkcode_resolve(*args, **kwargs):
     linkcode_url = "https://github.com/illinois-ceesd/logpyle/blob/main/{filepath}#L{linestart}-L{linestop}"
-    return old_linkcode_resolve(domain, info, linkcode_url=linkcode_url)
+    return old_linkcode_resolve(*args, **kwargs, linkcode_url=linkcode_url)
 
 
-linkcode_resolve = lc
+# }}}
 
 # General information about the project.
 project = "logpyle"
