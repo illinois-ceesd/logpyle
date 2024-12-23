@@ -685,7 +685,6 @@ class LogManager:
 
         def sighndl(_signo: int, _stackframe: Any) -> None:
             self.weakref_finalize()
-            import sys
             sys.exit(_signo)
 
         return signal.signal(signal.SIGTERM, sighndl)
@@ -1721,7 +1720,6 @@ def add_run_info(mgr: LogManager) -> None:
     try:
         import psutil
     except ModuleNotFoundError:
-        import sys
         mgr.set_constant("cmdline", " ".join(sys.argv))
     else:
         mgr.set_constant("cmdline", " ".join(psutil.Process().cmdline()))
