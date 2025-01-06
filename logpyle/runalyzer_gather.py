@@ -1,7 +1,12 @@
 import re
 import sqlite3
-from sqlite3 import Connection
 from typing import Any, cast
+
+try:
+    import sqlite_zstd
+    compression_available = True
+except ModuleNotFoundError:
+    compression_available = False
 
 from pytools.datatable import DataTable
 
@@ -224,8 +229,13 @@ def gather_multi_file(outfile: str, infiles: list[str], fmap: dict[str, str],
         else:
             feature_col_name_map[fname] = tgt_name
 
-    import sqlite3
     db_conn = sqlite3.connect(outfile)
+
+    if compression_available:
+        db_conn.enable_load_extension(True)
+        sqlite_zstd.load(db_conn)
+        print("Zstd compression enabled.")
+
     run_columns = [
             "id integer primary key",
             "dirname text",
@@ -294,7 +304,7 @@ def gather_multi_file(outfile: str, infiles: list[str], fmap: dict[str, str],
 
             written_run_ids.add(run_id)
 
-        def transfer_data_table_multi(db_conn: Connection, tbl_name: str,
+        def transfer_data_table_multi(db_conn: sqlite3.Connection, tbl_name: str,
                                       data_table: DataTable) -> None:
             my_data = [(run_id, *d) for d in data_table.data]  # noqa: B023
 
