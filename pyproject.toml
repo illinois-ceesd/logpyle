@@ -21,6 +21,7 @@ description = "Time series logging for Python"
 dependencies = [
     "pytools>=2011.1",
     "pymbolic",
+    "sqlite-zstd @ git+https://github.com/phiresky/sqlite-zstd.git#egg=sqlite_zstd&subdirectory=python",
 ]
 readme = "README.md"
 license = { file="LICENSE" }
