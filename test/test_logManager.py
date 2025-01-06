@@ -32,7 +32,7 @@ def test_empty_on_init(basic_logmgr: LogManager):
 
 def test_basic_warning():
     with pytest.warns(UserWarning):
-        warn("Oof. Something went awry.", UserWarning, stacklevel=2)
+        warn("test warning to test warnings capture", UserWarning, stacklevel=2)
 
 
 def test_warnings_capture_from_warnings_module(basic_logmgr: LogManager):
