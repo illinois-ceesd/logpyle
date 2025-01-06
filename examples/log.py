@@ -66,7 +66,7 @@ def main() -> None:
 
         # Illustrate warnings capture
         if uniform(0, 1) < 0.05:
-            warn("test warning to test warnings capture", stacklevel=2)
+            warn("warnings capture test", stacklevel=2)
 
         if istep == 50:
             logger.warning("test logging")

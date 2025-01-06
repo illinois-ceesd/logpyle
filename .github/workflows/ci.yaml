@@ -58,7 +58,7 @@ jobs:
 
             ## Check for warnings and logging
             runalyzer summary.sqlite  -c 'db.print_cursor(db.q("select * from warnings"))'
-            runalyzer summary.sqlite  -c 'db.print_cursor(db.q("select * from warnings"))' | grep "test warning"
+            runalyzer summary.sqlite  -c 'db.print_cursor(db.q("select * from warnings"))' | grep "warnings capture test"
             runalyzer summary.sqlite  -c 'db.print_cursor(db.q("select * from logging"))'
             runalyzer summary.sqlite  -c 'db.print_cursor(db.q("select * from logging"))' | grep WARNING
 
@@ -94,7 +94,7 @@ jobs:
 
             ## Check for warnings and logging
             runalyzer summary.sqlite  -c 'db.print_cursor(db.q("select * from warnings"))'
-            runalyzer summary.sqlite  -c 'db.print_cursor(db.q("select * from warnings"))' | grep "test warning"
+            runalyzer summary.sqlite  -c 'db.print_cursor(db.q("select * from warnings"))' | grep "warnings capture test"
             runalyzer summary.sqlite  -c 'db.print_cursor(db.q("select * from logging"))'
             runalyzer summary.sqlite  -c 'db.print_cursor(db.q("select * from logging"))' | grep WARNING
 
