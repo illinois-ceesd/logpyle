@@ -361,20 +361,20 @@ def _get_unique_suffix() -> str:
 def _set_up_schema(db_conn: Connection) -> int:
     # initialize new database
     db_conn.execute("""
-      create table quantities (
+      create table if not exists quantities (
         name text,
         unit text,
         description text,
         default_aggregator blob)""")
     db_conn.execute("""
-      create table constants (
+      create table if not exists constants (
         name text,
         value blob)""")
 
     # schema_version < 2 is missing the 'rank' field.
     # schema_version < 3 is missing the 'unixtime' field.
     db_conn.execute("""
-      create table warnings (
+      create table if not exists warnings (
         rank integer,
         step integer,
         unixtime integer,
@@ -386,7 +386,7 @@ def _set_up_schema(db_conn: Connection) -> int:
 
     # schema_version < 3 does not have the logging table
     db_conn.execute("""
-      create table logging (
+      create table if not exists logging (
         rank integer,
         step integer,
         unixtime integer,
