@@ -26,8 +26,8 @@ def test_upgrade_v2_v3():
     conn = sqlite3.connect(upgraded_name)
     try:
         print(list(conn.execute("select * from logging")))
-    except sqlite3.OperationalError:
+    except sqlite3.OperationalError as err:
         os.remove(upgraded_name)
-        raise AssertionError(f"{upgraded_name} is not a v3 database")
+        raise AssertionError(f"{upgraded_name} is not a v3 database") from err
     conn.close()
     os.remove(upgraded_name)

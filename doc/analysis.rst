@@ -32,7 +32,7 @@ the hood, this ensures that the quantity is gathered from all present run_ids.
 
 Magic refers to the usage of customized commands to operate on our mangled and
 non-mangled SQL queries. To issue a magic command, preceding it with a ``.``.
-This will issue a command to runalyzer instead of refering to a python symbol.
+This will issue a command to runalyzer instead of referring to a python symbol.
 
 Running the script
 ------------------
@@ -222,11 +222,11 @@ before serving it.
 Usage
 -----
 After the virtual environment has been setup, click the ``Add file`` button
-to add a pannel for analysis.
+to add a panel for analysis.
 
 To analyze a run, click on the browse button to upload one or more files.
 These files will be gathered together under the hood. You can then select
-quantites from the X and Y dropdowns. If you would like to keep track of
+quantities from the X and Y dropdowns. If you would like to keep track of
 multiple quantities in the same graph, you can press ``Add Line to Plot``
 to add a Y dropdown.
 

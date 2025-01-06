@@ -1,17 +1,16 @@
 import re
 import sqlite3
+from sqlite3 import Connection
+from typing import Any, cast
+
+from pytools.datatable import DataTable
+
+from logpyle import LogManager
 
 bool_feat_re = re.compile(r"^([a-z]+)(True|False)$")
 int_feat_re = re.compile(r"^([a-z]+)([0-9]+)$")
 real_feat_re = re.compile(r"^([a-z]+)([0-9]+\.?[0-9]*)$")
 str_feat_re = re.compile(r"^([a-z]+)([A-Z][A-Za-z_0-9]+)$")
-
-from sqlite3 import Connection
-from typing import Any, Dict, List, Optional, Tuple, Union, cast
-
-from pytools.datatable import DataTable
-
-from logpyle import LogManager
 
 sqlite_keywords = """
     abort action add after all alter analyze and as asc attach
@@ -30,7 +29,7 @@ sqlite_keywords = """
 
 
 def parse_dir_feature(feat: str, number: int) \
-                        -> Tuple[Union[str, Any], str, Union[str, Any]]:
+                        -> tuple[str | Any, str, str | Any]:
     bool_match = bool_feat_re.match(feat)
     if bool_match is not None:
         return (bool_match.group(1), "integer", int(bool_match.group(2) == "True"))
@@ -43,10 +42,10 @@ def parse_dir_feature(feat: str, number: int) \
     str_match = str_feat_re.match(feat)
     if str_match is not None:
         return (str_match.group(1), "text", str_match.group(2))
-    return ("dirfeat%d" % number, "text", feat)
+    return (f"dirfeat{number}", "text", feat)
 
 
-def larger_sql_type(type_a: Optional[str], type_b: Optional[str]) -> Optional[str]:
+def larger_sql_type(type_a: str | None, type_b: str | None) -> str | None:
     assert type_a in [None, "text", "real", "integer"]
     assert type_b in [None, "text", "real", "integer"]
 
@@ -63,7 +62,7 @@ def larger_sql_type(type_a: Optional[str], type_b: Optional[str]) -> Optional[st
 
 
 def sql_type_and_value(value: Any) \
-                        -> Tuple[Optional[str], Union[int, float, str, None]]:
+                        -> tuple[str | None, int | float | str | None]:
     if value is None:
         return None, None
     elif isinstance(value, bool):
@@ -77,7 +76,7 @@ def sql_type_and_value(value: Any) \
 
 
 def sql_type_and_value_from_str(value: str) \
-                        -> Tuple[Optional[str], Union[int, float, str, None]]:
+                        -> tuple[str | None, int | float | str | None]:
     if value == "None":
         return None, None
     elif value in ["True", "False"]:
@@ -96,7 +95,7 @@ def sql_type_and_value_from_str(value: str) \
 
 class FeatureGatherer:
     def __init__(self, features_from_dir: bool = False,
-                 features_file: Optional[str] = None) -> None:
+                 features_file: str | None = None) -> None:
         self.features_from_dir = features_from_dir
 
         self.dir_to_features = {}
@@ -105,17 +104,18 @@ class FeatureGatherer:
                 colon_idx = line.find(":")
                 assert colon_idx != -1
 
-                entries = [val.strip() for val in line[colon_idx+1:].split(",")]
+                entries = [val.strip() for val in line[colon_idx + 1:].split(",")]
                 features = []
                 for entry in entries:
                     equal_idx = entry.find("=")
                     assert equal_idx != -1
-                    features.append((entry[:equal_idx],)
-                            + sql_type_and_value_from_str(entry[equal_idx+1:]))
+                    features.append((entry[:equal_idx],
+                                     *sql_type_and_value_from_str(
+                                         entry[equal_idx + 1:])))
 
                 self.dir_to_features[line[:colon_idx]] = features
 
-    def get_db_features(self, dbname: str, logmgr: LogManager) -> List[Any]:
+    def get_db_features(self, dbname: str, logmgr: LogManager) -> list[Any]:
         from os.path import dirname
         dn = dirname(dbname)
 
@@ -126,16 +126,16 @@ class FeatureGatherer:
                     for i, feat in enumerate(dn.split("-")))
 
         for name, value in logmgr.constants.items():
-            features.append((name,) + sql_type_and_value(value))
+            features.append((name, *sql_type_and_value(value)))
 
         return features
 
 
-def scan(fg: FeatureGatherer, dbnames: List[str], progress: bool = True) \
-            -> Tuple[Dict[str, Any], Dict[str, int]]:
-    features: Dict[str, Any] = {}
+def scan(fg: FeatureGatherer, dbnames: list[str],  # noqa: C901
+         progress: bool = True) -> tuple[dict[str, Any], dict[str, int]]:
+    features: dict[str, Any] = {}
     dbname_to_run_id = {}
-    uid_to_run_id: Dict[str, int] = {}
+    uid_to_run_id: dict[str, int] = {}
     next_run_id = 1
 
     from pytools import ProgressBar
@@ -147,7 +147,7 @@ def scan(fg: FeatureGatherer, dbnames: List[str], progress: bool = True) \
         try:
             logmgr = LogManager(dbname, "r")
         except Exception:
-            print("Trouble with file '%s'" % dbname)
+            print(f"Trouble with file '{dbname}'")
             raise
 
         unique_run_id = cast(str, logmgr.constants.get("unique_run_id"))
@@ -181,9 +181,9 @@ def scan(fg: FeatureGatherer, dbnames: List[str], progress: bool = True) \
     return features, dbname_to_run_id
 
 
-def make_name_map(map_str: str) -> Dict[str, str]:
+def make_name_map(map_str: str) -> dict[str, str]:
     import re
-    result: Dict[str, str] = {}
+    result: dict[str, str] = {}
 
     if not map_str:
         return result
@@ -208,10 +208,10 @@ def _normalize_types(x: Any) -> Any:
     return x
 
 
-def gather_multi_file(outfile: str, infiles: List[str], fmap: Dict[str, str],
-                      qmap: Dict[str, str], fg: FeatureGatherer,
-                      features: Dict[str, Any],
-                      dbname_to_run_id: Dict[str, int]) -> sqlite3.Connection:
+def gather_multi_file(outfile: str, infiles: list[str], fmap: dict[str, str],
+                      qmap: dict[str, str], fg: FeatureGatherer,
+                      features: dict[str, Any],
+                      dbname_to_run_id: dict[str, int]) -> sqlite3.Connection:
     from pytools import ProgressBar
     pb = ProgressBar("Importing...", len(infiles))  # type: ignore[no-untyped-call]
 
@@ -220,7 +220,7 @@ def gather_multi_file(outfile: str, infiles: List[str], fmap: Dict[str, str],
         tgt_name = fmap.get(fname, fname)
 
         if tgt_name.lower() in sqlite_keywords:
-            feature_col_name_map[fname] = tgt_name+"_"
+            feature_col_name_map[fname] = tgt_name + "_"
         else:
             feature_col_name_map[fname] = tgt_name
 
@@ -230,9 +230,9 @@ def gather_multi_file(outfile: str, infiles: List[str], fmap: Dict[str, str],
             "id integer primary key",
             "dirname text",
             "filename text",
-            ] + ["{} {}".format(feature_col_name_map[fname], ftype)
+            ] + [f"{feature_col_name_map[fname]} {ftype}"
                     for fname, ftype in features.items()]
-    db_conn.execute("create table runs (%s)" % ",".join(run_columns))
+    db_conn.execute("create table runs ({})".format(",".join(run_columns)))
     db_conn.execute("create index runs_id on runs (id)")
 
     # Caveat: the next three tables need to match the tables in _set_up_schema,
@@ -287,7 +287,7 @@ def gather_multi_file(outfile: str, infiles: List[str], fmap: Dict[str, str],
             qry = "insert into runs ({}) values ({})".format(
                 ",".join(["id", "dirname", "filename"]
                     + [feature_col_name_map[f[0]] for f in dbfeatures]),
-                ",".join("?" * (len(dbfeatures)+3)))
+                ",".join("?" * (len(dbfeatures) + 3)))
             db_conn.execute(qry,
                     [run_id, dirname(dbname), basename(dbname)]
                     + [_normalize_types(f[2]) for f in dbfeatures])
@@ -296,12 +296,12 @@ def gather_multi_file(outfile: str, infiles: List[str], fmap: Dict[str, str],
 
         def transfer_data_table_multi(db_conn: Connection, tbl_name: str,
                                       data_table: DataTable) -> None:
-            my_data = [(run_id,)+d for d in data_table.data]  # noqa: B023
+            my_data = [(run_id, *d) for d in data_table.data]  # noqa: B023
 
             db_conn.executemany(f"insert into {tbl_name} (%s) values (%s)" %
                 ("run_id,"
                     + ", ".join(data_table.column_names),
-                    ", ".join("?" * (len(data_table.column_names)+1))),
+                    ", ".join("?" * (len(data_table.column_names) + 1))),
                 my_data)
 
         transfer_data_table_multi(db_conn, "warnings", logmgr.get_warnings())
@@ -312,13 +312,11 @@ def gather_multi_file(outfile: str, infiles: List[str], fmap: Dict[str, str],
 
             if tgt_qname not in created_tables:
                 created_tables.add(tgt_qname)
-                db_conn.execute("create table %s ("
-                  "run_id integer, step integer, rank integer, value real)"
-                  % tgt_qname)
+                db_conn.execute(f"create table {tgt_qname} ("
+                  "run_id integer, step integer, rank integer, value real)")
 
                 db_conn.execute(
-                        "create index {}_main on {} (run_id,step,rank)"
-                        .format(tgt_qname, tgt_qname))
+                    f"create index {tgt_qname}_main on {tgt_qname} (run_id,step,rank)")
 
                 agg = qdat.default_aggregator
                 try:
@@ -334,7 +332,7 @@ def gather_multi_file(outfile: str, infiles: List[str], fmap: Dict[str, str],
 
             cursor = logmgr.db_conn.execute(
                     f"select {run_id},step,rank,value from {qname}")
-            db_conn.executemany("insert into %s values (?,?,?,?)" % tgt_qname,
+            db_conn.executemany(f"insert into {tgt_qname} values (?,?,?,?)",
                     cursor)
         logmgr.close()
     pb.finished()  # type: ignore[no-untyped-call]

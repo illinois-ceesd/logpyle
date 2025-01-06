@@ -1,15 +1,23 @@
 #!/usr/bin/env python3
 
 import logging
+from collections.abc import Callable
 from random import uniform
 from time import sleep
-from typing import Any, Callable
+from typing import Any
 from warnings import warn
 
 from mpi4py import MPI
 
-from logpyle import (IntervalTimer, LogManager, LogQuantity, add_general_quantities,
-                     add_run_info, add_simulation_quantities, set_dt)
+from logpyle import (
+    IntervalTimer,
+    LogManager,
+    LogQuantity,
+    add_general_quantities,
+    add_run_info,
+    add_simulation_quantities,
+    set_dt,
+)
 
 
 class Fifteen(LogQuantity):
@@ -68,7 +76,7 @@ def main() -> None:
 
         # Illustrate warnings/logging capture
         if uniform(0, 1) < 0.05:
-            warn("Oof. Something went awry.")
+            warn("warnings capture test", stacklevel=2)
 
         if istep == 16:
             logger.warning("test logging")

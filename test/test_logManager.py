@@ -7,9 +7,18 @@ from warnings import warn
 import pytest
 from pymbolic.primitives import Variable
 
-from logpyle import (EventCounter, IntervalTimer, LogManager, LogQuantity,
-                     PushLogQuantity, add_general_quantities, add_run_info,
-                     add_simulation_quantities, set_dt, time_and_count_function)
+from logpyle import (
+    EventCounter,
+    IntervalTimer,
+    LogManager,
+    LogQuantity,
+    PushLogQuantity,
+    add_general_quantities,
+    add_run_info,
+    add_simulation_quantities,
+    set_dt,
+    time_and_count_function,
+)
 
 
 def test_start_time_has_past(basic_logmgr: LogManager):
@@ -23,7 +32,7 @@ def test_empty_on_init(basic_logmgr: LogManager):
 
 def test_basic_warning():
     with pytest.warns(UserWarning):
-        warn("Oof. Something went awry.", UserWarning)
+        warn("warnings capture test", UserWarning, stacklevel=2)
 
 
 def test_warnings_capture_from_warnings_module(basic_logmgr: LogManager):
@@ -32,7 +41,7 @@ def test_warnings_capture_from_warnings_module(basic_logmgr: LogManager):
 
     basic_logmgr.tick_before()
 
-    warn(first_warning_message, first_warning_type)
+    warn(first_warning_message, first_warning_type, stacklevel=2)
 
     # ensure that the warning was captured properly
     print(basic_logmgr.warning_data[0])
@@ -43,7 +52,7 @@ def test_warnings_capture_from_warnings_module(basic_logmgr: LogManager):
     second_warning_message = "Not a warning: Second warning message"
     second_warning_type = UserWarning
 
-    warn(second_warning_message, second_warning_type)
+    warn(second_warning_message, second_warning_type, stacklevel=2)
 
     # ensure that the warning was captured properly
     print(basic_logmgr.warning_data[1])
@@ -626,7 +635,7 @@ def test_write_datafile(basic_logmgr: LogManager):
 
     basic_logmgr.write_datafile(filename, "t_wall", "t_wall")
 
-    file_object = open(filename, "r")
+    file_object = open(filename)
     lines = file_object.readlines()
     lines = filter(has_contents, lines)
 
@@ -719,7 +728,7 @@ def test_eventcounter(basic_logmgr: LogManager):
     # transfer counter1's count to counter2's
     basic_logmgr.tick_before()
 
-    # at the beggining of tick, counter should clear
+    # at the beginning of tick, counter should clear
     print(counter1.events)
     assert counter1.events == 0
 

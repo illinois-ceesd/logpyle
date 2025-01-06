@@ -5,9 +5,16 @@ from random import uniform
 from time import sleep
 from warnings import warn
 
-from logpyle import (GCStats, IntervalTimer, LogManager, LogQuantity,
-                     add_general_quantities, add_run_info, add_simulation_quantities,
-                     set_dt)
+from logpyle import (
+    GCStats,
+    IntervalTimer,
+    LogManager,
+    LogQuantity,
+    add_general_quantities,
+    add_run_info,
+    add_simulation_quantities,
+    set_dt,
+)
 
 
 class Fifteen(LogQuantity):
@@ -59,7 +66,7 @@ def main() -> None:
 
         # Illustrate warnings capture
         if uniform(0, 1) < 0.05:
-            warn("Oof. Something went awry.")
+            warn("warnings capture test", stacklevel=2)
 
         if istep == 50:
             logger.warning("test logging")
