@@ -225,7 +225,7 @@ def gather_multi_file(outfile: str, infiles: list[str], fmap: dict[str, str],  #
         else:
             feature_col_name_map[fname] = tgt_name
 
-    if os.path.exists(outfile):
+    if os.path.exists(outfile):  # pragma: no cover
         print(f"Error: output file '{outfile}' already exists, exiting.")
         import sys
         sys.exit(1)
