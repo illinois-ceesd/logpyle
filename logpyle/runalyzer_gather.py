@@ -1,3 +1,4 @@
+import os
 import re
 import sqlite3
 from sqlite3 import Connection
@@ -223,6 +224,11 @@ def gather_multi_file(outfile: str, infiles: list[str], fmap: dict[str, str],
             feature_col_name_map[fname] = tgt_name + "_"
         else:
             feature_col_name_map[fname] = tgt_name
+
+    if os.path.exists(outfile):
+        print(f"Error: output file '{outfile}' already exists, exiting.")
+        import sys
+        sys.exit(1)
 
     import sqlite3
     db_conn = sqlite3.connect(outfile)
