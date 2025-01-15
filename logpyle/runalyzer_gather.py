@@ -209,7 +209,7 @@ def _normalize_types(x: Any) -> Any:
     return x
 
 
-def gather_multi_file(outfile: str, infiles: list[str], fmap: dict[str, str],
+def gather_multi_file(outfile: str, infiles: list[str], fmap: dict[str, str],  # noqa: C901
                       qmap: dict[str, str], fg: FeatureGatherer,
                       features: dict[str, Any],
                       dbname_to_run_id: dict[str, int]) -> sqlite3.Connection:
