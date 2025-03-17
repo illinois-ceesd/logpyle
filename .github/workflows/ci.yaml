@@ -196,7 +196,6 @@ jobs:
             pip install -e .
             python -m pip install pytest pymbolic psutil matplotlib mpi4py
 
-            # run current test coverage
             python -m pytest --durations=5 --tb=native -rxsw test/
 
     coverage:
