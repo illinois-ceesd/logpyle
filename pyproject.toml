@@ -13,7 +13,7 @@ script-files = [
 
 [project]
 name = "logpyle"
-version = "2024.0"
+version = "2025.0"
 authors = [
   { name = "Andreas Kloeckner", email = "inform@tiker.net" },
 ]
