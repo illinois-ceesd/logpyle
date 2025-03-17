@@ -1,3 +1,4 @@
+import os
 import re
 import sqlite3
 from sqlite3 import Connection
@@ -208,7 +209,7 @@ def _normalize_types(x: Any) -> Any:
     return x
 
 
-def gather_multi_file(outfile: str, infiles: list[str], fmap: dict[str, str],
+def gather_multi_file(outfile: str, infiles: list[str], fmap: dict[str, str],  # noqa: C901
                       qmap: dict[str, str], fg: FeatureGatherer,
                       features: dict[str, Any],
                       dbname_to_run_id: dict[str, int]) -> sqlite3.Connection:
@@ -223,6 +224,11 @@ def gather_multi_file(outfile: str, infiles: list[str], fmap: dict[str, str],
             feature_col_name_map[fname] = tgt_name + "_"
         else:
             feature_col_name_map[fname] = tgt_name
+
+    if os.path.exists(outfile):  # pragma: no cover
+        print(f"Error: output file '{outfile}' already exists, exiting.")
+        import sys
+        sys.exit(1)
 
     import sqlite3
     db_conn = sqlite3.connect(outfile)
