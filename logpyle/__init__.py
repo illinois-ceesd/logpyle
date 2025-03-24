@@ -354,8 +354,8 @@ def _get_unique_id() -> str:
 
 
 def _get_unique_suffix() -> str:
-    from datetime import datetime
-    return "-" + datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+    import datetime
+    return "-" + datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d-%H%M%S")
 
 
 def _set_up_schema(db_conn: Connection) -> int:
