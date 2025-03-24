@@ -926,7 +926,7 @@ class LogManager:
 
         try:
             self.db_conn.execute(f"insert into {name} values (?,?,?)",
-                    (self.tick_count, self.rank, float(value)))
+                    (self.tick_count, self.rank, value))
         except Exception:
             print(f"while adding datapoint for '{name}':")
             raise
