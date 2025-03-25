@@ -4,7 +4,7 @@ Database Upgrade Functions
 .. autofunction:: upgrade_db
 .. note::
 
-   Currently, upgrades all schema versions to version 3.
+   Currently, upgrades all schema versions to version 4.
    Upgrading from version <=1 is untested.
 
 .. table:: Overview of known changes between schema versions
@@ -33,13 +33,14 @@ logger = logging.getLogger(__name__)
 
 def upgrade_conn(conn: sqlite3.Connection) -> sqlite3.Connection:
     from logpyle.runalyzer import is_gathered
+    gathered = is_gathered(conn)
+
+    # {{{ warnings table
+
     tmp = conn.execute("select * from warnings").description
     warning_columns = [col[0] for col in tmp]
 
-    # check if the provided connection has been gathered
-    gathered = is_gathered(conn)
-
-    # ensure that warnings table has unixtime column
+    # ensure that the warnings table has the 'unixtime' column
     if "unixtime" not in warning_columns:
         logger.info("Adding a unixtime column in the warnings table")
         conn.execute("""
@@ -47,7 +48,7 @@ def upgrade_conn(conn: sqlite3.Connection) -> sqlite3.Connection:
                 ADD unixtime integer DEFAULT NULL;
                          """)
 
-    # ensure that warnings table has rank column
+    # ensure that the warnings table has the 'rank' column
     # nowhere to grab the rank of the process that generated
     # the warning
     if "rank" not in warning_columns:
@@ -56,6 +57,63 @@ def upgrade_conn(conn: sqlite3.Connection) -> sqlite3.Connection:
             ALTER TABLE warnings
                 ADD rank integer DEFAULT NULL;
                          """)
+
+    # }}}
+
+    # {{{ constants table
+
+    if not gathered:
+        tmp = conn.execute("select * from constants").description
+        constants_columns = [col[0] for col in tmp]
+        rank = conn.execute("select rank from constants").fetchone()
+
+        # ensure that the constants table has the 'rank' column
+        if "rank" not in constants_columns:
+            logger.info("Adding a rank column in the constants table")
+            conn.execute("""INSERT INTO constants (name, value)
+                            VALUES ('rank', ?)""",
+                         (rank[0],))
+    else:
+        # transfer columns from runs table to rows in constants table
+        conn.execute("""
+                        CREATE TABLE constants (
+                            run_id INTEGER,
+                            rank INTEGER,
+                            name TEXT,
+                            value BLOB)""")
+        # Transfer columns from runs table to rows in constants table
+        # Dynamically handle unknown column names
+        tmp = conn.execute("PRAGMA table_info(runs)").fetchall()
+        columns = [col[1] for col in tmp if col[1] not in ("id", "dirname", "filename")]
+
+        # Insert columns from the runs table as rows into the constants table
+        for column in columns:
+            conn.execute(f"""
+                INSERT INTO constants (run_id, rank, name, value)
+                SELECT id, 0, ?, {column}
+                FROM runs
+            """, (column,))
+
+        # Remove transferred columns from the runs table
+        logger.info("Removing transferred columns from the runs table")
+        remaining_columns = [col[1] for col in tmp if col[1] not in columns]
+
+        # Create a temporary table with the remaining columns
+        conn.execute(f"""
+            CREATE TABLE runs_temp AS
+            SELECT {', '.join(remaining_columns)}
+            FROM runs
+        """)
+
+        # Drop the original runs table
+        conn.execute("DROP TABLE runs")
+
+        # Rename the temporary table to the original table's name
+        conn.execute("ALTER TABLE runs_temp RENAME TO runs")
+
+    # }}}
+
+    # {{{ logging table
 
     tables = [col[0] for col in conn.execute("""
                     SELECT name
@@ -81,14 +139,16 @@ def upgrade_conn(conn: sqlite3.Connection) -> sqlite3.Connection:
                 ADD run_id integer;
                              """)
 
-    schema_version = 3
+    # }}}
+
+    # {{{ update schema_version
+
+    schema_version = 4
     value = bytes(dumps(schema_version))
-    if gathered:
-        conn.execute("UPDATE runs SET schema_version=?",
-                     (schema_version,))
-    else:
-        conn.execute("UPDATE constants SET value=? WHERE name='schema_version'",
+    conn.execute("UPDATE constants SET value=? WHERE name='schema_version'",
                      (value,))
+
+    # }}}
 
     return conn
 
@@ -139,7 +199,7 @@ def upgrade_db(
 
         logger.info(f"Creating new Database: {new_conn_name}, a clone of {dbfile}")
 
-    logger.info(f"Upgrading {new_conn_name} to schema version 3")
+    logger.info(f"Upgrading {new_conn_name} to schema version 4")
 
     new_conn = upgrade_conn(new_conn)
 
