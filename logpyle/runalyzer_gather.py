@@ -126,9 +126,6 @@ class FeatureGatherer:
             features.extend(parse_dir_feature(feat, i)
                     for i, feat in enumerate(dn.split("-")))
 
-        for name, value in logmgr.constants.items():
-            features.append((name, *sql_type_and_value(value)))
-
         return features
 
 
@@ -252,6 +249,14 @@ def gather_multi_file(outfile: str, infiles: list[str], fmap: dict[str, str],  #
             )""")
 
     db_conn.execute("""
+      create table constants (
+        run_id integer,
+        rank integer,
+        name text,
+        value blob
+        )""")
+
+    db_conn.execute("""
       create table warnings (
         run_id integer,
         rank integer,
@@ -310,6 +315,7 @@ def gather_multi_file(outfile: str, infiles: list[str], fmap: dict[str, str],  #
                     ", ".join("?" * (len(data_table.column_names) + 1))),
                 my_data)
 
+        transfer_data_table_multi(db_conn, "constants", logmgr.get_constants())
         transfer_data_table_multi(db_conn, "warnings", logmgr.get_warnings())
         transfer_data_table_multi(db_conn, "logging", logmgr.get_logging())
 

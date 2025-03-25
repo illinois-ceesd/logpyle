@@ -386,11 +386,17 @@ Available Python symbols:
             self.db.print_cursor(self.db.q(args))
 
         elif cmd == "runprops" or cmd == "constants":
-            cursor = self.db.db.execute("select * from runs")
-            columns = [column[0] for column in cursor.description]
-            columns.sort()
-            for col in columns:
-                print(col)
+            cursor = self.db.db.execute("select * from constants")
+            tbl = Table()
+            tbl.add_row(tuple(column[0] for column in cursor.description))
+            for row in cursor:
+                from pickle import loads
+                value = str(loads(row[3])).replace("\n", " \\n ")
+
+                tbl.add_row((row[0], row[1], row[2], value))
+
+            import os
+            print(tbl.str_with_maxlen(os.get_terminal_size().columns))
         elif cmd == "quantities":
             self.db.print_cursor(self.db.q("select * from quantities order by name"))
         elif cmd == "warnings":

@@ -366,8 +366,11 @@ def _set_up_schema(db_conn: Connection) -> int:
         unit text,
         description text,
         default_aggregator blob)""")
+
+    # schema_version < 4 is missing the 'rank' field.
     db_conn.execute("""
       create table constants (
+        rank integer,
         name text,
         value blob)""")
 
@@ -396,7 +399,7 @@ def _set_up_schema(db_conn: Connection) -> int:
         lineno integer
         )""")
 
-    schema_version = 3
+    schema_version = 4
     return schema_version
 
 
@@ -850,6 +853,16 @@ class LogManager:
 
         return result
 
+    def get_constants(self) -> DataTable:
+        """Return a :class:`~pytools.datatable.DataTable` of constants logged by
+        this :class:`LogManager` instance."""
+        result = DataTable(["rank", "name", "value"])
+
+        for row in self.db_conn.execute("select rank, name, value from constants"):
+            result.insert_row(row)
+
+        return result
+
     def add_watches(self, watches: list[str | tuple[str, str]]) -> None:
         """Add quantities that are printed after every time step.
 
@@ -905,18 +918,13 @@ class LogManager:
         :arg name: the name of the constant.
         :arg value: the value of the constant.
         """
-        existed = name in self.constants
         self.constants[name] = value
 
         from pickle import dumps
         value = bytes(dumps(value))
 
-        if existed:
-            self.db_conn.execute("update constants set value = ? where name = ?",
-                    (value, name))
-        else:
-            self.db_conn.execute("insert into constants values (?,?)",
-                    (name, value))
+        self.db_conn.execute("INSERT OR REPLACE INTO constants VALUES (?,?,?)",
+                    (self.rank, name, value))
 
     def _insert_datapoint(self, name: str, value: float | None) -> None:
         if value is None:

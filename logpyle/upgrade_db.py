@@ -13,11 +13,13 @@ Database Upgrade Functions
    Schema version Logpyle version             Changes
    ============== =========================== ==================================
    0              pre v1 (``pytools.log``)    Initial version, no schema_version
-                                              yet
-   1              v1 -- v9 (``pytools.log``)  Added ``warnings`` table
-   2              v10 -- 2023.1               Added ``warnings.rank`` column
-   3              2023.2 --                   Added ``warnings.unixtime`` column
-                                              and ``logging`` table
+                                              yet.
+   1              v1 -- v9 (``pytools.log``)  Added ``warnings`` table.
+   2              v10 -- 2023.1               Added ``warnings.rank`` column.
+   3              2023.2 -- 2025.0            Added ``warnings.unixtime`` column
+                                              and ``logging`` table.
+   4              2025.1 --                   Added ``constants.rank`` column
+                                              and ``constants`` gathered table.
    ============== =========================== ==================================
 
 """
