@@ -138,7 +138,7 @@ def scan(fg: FeatureGatherer, dbnames: list[str],  # noqa: C901
 
     from pytools import ProgressBar
     if progress:
-        pb = ProgressBar("Scanning...",  # type: ignore[no-untyped-call]
+        pb = ProgressBar("Scanning...",
                          len(dbnames))
 
     for dbname in dbnames:
@@ -161,7 +161,7 @@ def scan(fg: FeatureGatherer, dbnames: list[str],  # noqa: C901
         dbname_to_run_id[dbname] = run_id
 
         if progress:
-            pb.progress()  # type: ignore[no-untyped-call]
+            pb.progress()
 
         for fname, ftype, _fvalue in fg.get_db_features(dbname, logmgr):
             if fname in features:
@@ -174,7 +174,7 @@ def scan(fg: FeatureGatherer, dbnames: list[str],  # noqa: C901
         logmgr.close()
 
     if progress:
-        pb.finished()  # type: ignore[no-untyped-call]
+        pb.finished()
 
     return features, dbname_to_run_id
 
@@ -211,7 +211,7 @@ def gather_multi_file(outfile: str, infiles: list[str], fmap: dict[str, str],  #
                       features: dict[str, Any],
                       dbname_to_run_id: dict[str, int]) -> sqlite3.Connection:
     from pytools import ProgressBar
-    pb = ProgressBar("Importing...", len(infiles))  # type: ignore[no-untyped-call]
+    pb = ProgressBar("Importing...", len(infiles))
 
     feature_col_name_map = {}
     for fname in features:
@@ -287,7 +287,7 @@ def gather_multi_file(outfile: str, infiles: list[str], fmap: dict[str, str],  #
     written_run_ids = set()
 
     for dbname in infiles:
-        pb.progress()  # type: ignore[no-untyped-call]
+        pb.progress()
 
         run_id = dbname_to_run_id[dbname]
 
@@ -347,7 +347,7 @@ def gather_multi_file(outfile: str, infiles: list[str], fmap: dict[str, str],  #
             db_conn.executemany(f"insert into {tgt_qname} values (?,?,?,?)",
                     cursor)
         logmgr.close()
-    pb.finished()  # type: ignore[no-untyped-call]
+    pb.finished()
 
     db_conn.commit()
     return db_conn
