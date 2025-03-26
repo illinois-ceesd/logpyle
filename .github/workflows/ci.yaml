@@ -247,7 +247,6 @@ jobs:
             # open html after being built
             htmlalyzer -b
     upgrade-db:
-        name: Upgrade-Database
         runs-on: ubuntu-latest
         steps:
         - uses: actions/checkout@v4
@@ -255,8 +254,9 @@ jobs:
           with:
             python-version: '3.x'
 
-        - name: Upgrade v2 to v3
+        - name: Upgrade v2 to v4
           run: |
+            set -x
             pip install -e .
 
             # test ungathered_v2 default name
@@ -269,7 +269,7 @@ jobs:
             runalyzer .github/workflows/log_ungathered_v2_upgrade.sqlite -c 'print([l[0] for l in q("select * from logging").description])' --nogather
             runalyzer .github/workflows/log_ungathered_v2_upgrade.sqlite -c 'assert "unixtime" in [l[0] for l in q("select * from warnings").description]' --nogather
             runalyzer .github/workflows/log_ungathered_v2_upgrade.sqlite -c 'assert "rank" in [l[0] for l in q("select * from warnings").description]' --nogather
-            runalyzer .github/workflows/log_ungathered_v2_upgrade.sqlite -c 'assert [l[0] for l in q("select schema_version")][0] == 3'
+            runalyzer .github/workflows/log_ungathered_v2_upgrade.sqlite -c 'from pickle import loads; assert loads(next(q("select value from constants where name = \"schema_version\""))[0]) == 4'
 
 
             # test gathered_v2 default name
@@ -280,7 +280,7 @@ jobs:
             runalyzer .github/workflows/log_gathered_v2_upgrade.sqlite -c 'print([l[0] for l in q("select * from logging").description])' --nogather
             runalyzer .github/workflows/log_gathered_v2_upgrade.sqlite -c 'assert "unixtime" in [l[0] for l in q("select * from warnings").description]' --nogather
             runalyzer .github/workflows/log_gathered_v2_upgrade.sqlite -c 'assert "rank" in [l[0] for l in q("select * from warnings").description]' --nogather
-            runalyzer .github/workflows/log_gathered_v2_upgrade.sqlite -c 'assert [l[0] for l in q("select schema_version")][0] == 3'
+            runalyzer .github/workflows/log_gathered_v2_upgrade.sqlite -c 'from pickle import loads; assert loads(next(q("select value from constants where name = \"schema_version\""))[0]) == 4'
 
 
             # test gathered custom name
@@ -291,12 +291,13 @@ jobs:
             runalyzer .github/workflows/log_gathered_v2_new.sqlite -c 'print([l[0] for l in q("select * from logging").description])' --nogather
             runalyzer .github/workflows/log_gathered_v2_new.sqlite -c 'assert "unixtime" in [l[0] for l in q("select * from warnings").description]' --nogather
             runalyzer .github/workflows/log_gathered_v2_new.sqlite -c 'assert "rank" in [l[0] for l in q("select * from warnings").description]' --nogather
-            runalyzer .github/workflows/log_gathered_v2_new.sqlite -c 'assert [l[0] for l in q("select schema_version")][0] == 3'
+            runalyzer .github/workflows/log_gathered_v2_new.sqlite -c 'from pickle import loads; assert loads(next(q("select value from constants where name = \"schema_version\""))[0]) == 4'
 
-        - name: Upgrade v3 to v3
+        - name: Upgrade v3 to v4
           # Tests upgrades on current version for stability and allows users
           # to blindly upgrade databases safely
           run: |
+            set -x
             pip install -e .
 
             # test ungathered_v3 default name
@@ -309,7 +310,7 @@ jobs:
             runalyzer .github/workflows/log_ungathered_v3_upgrade.sqlite -c 'print([l[0] for l in q("select * from logging").description])' --nogather
             runalyzer .github/workflows/log_ungathered_v3_upgrade.sqlite -c 'assert "unixtime" in [l[0] for l in q("select * from warnings").description]' --nogather
             runalyzer .github/workflows/log_ungathered_v3_upgrade.sqlite -c 'assert "rank" in [l[0] for l in q("select * from warnings").description]' --nogather
-            runalyzer .github/workflows/log_ungathered_v3_upgrade.sqlite -c 'assert [l[0] for l in q("select schema_version")][0] == 3'
+            runalyzer .github/workflows/log_ungathered_v3_upgrade.sqlite -c 'from pickle import loads; assert loads(next(q("select value from constants where name = \"schema_version\""))[0]) == 4'
 
             # test gathered_v3 default name
             upgrade-db .github/workflows/log_gathered_v3.sqlite
@@ -319,7 +320,7 @@ jobs:
             runalyzer .github/workflows/log_gathered_v3_upgrade.sqlite -c 'print([l[0] for l in q("select * from logging").description])' --nogather
             runalyzer .github/workflows/log_gathered_v3_upgrade.sqlite -c 'assert "unixtime" in [l[0] for l in q("select * from warnings").description]' --nogather
             runalyzer .github/workflows/log_gathered_v3_upgrade.sqlite -c 'assert "rank" in [l[0] for l in q("select * from warnings").description]' --nogather
-            runalyzer .github/workflows/log_gathered_v3_upgrade.sqlite -c 'assert [l[0] for l in q("select schema_version")][0] == 3'
+            runalyzer .github/workflows/log_gathered_v3_upgrade.sqlite -c 'from pickle import loads; assert loads(next(q("select value from constants where name = \"schema_version\""))[0]) == 4'
 
             # test gathered custom name
             upgrade-db .github/workflows/log_gathered_v3.sqlite --suffix '_new'
@@ -329,4 +330,4 @@ jobs:
             runalyzer .github/workflows/log_gathered_v3_new.sqlite -c 'print([l[0] for l in q("select * from logging").description])' --nogather
             runalyzer .github/workflows/log_gathered_v3_new.sqlite -c 'assert "unixtime" in [l[0] for l in q("select * from warnings").description]' --nogather
             runalyzer .github/workflows/log_gathered_v3_new.sqlite -c 'assert "rank" in [l[0] for l in q("select * from warnings").description]' --nogather
-            runalyzer .github/workflows/log_gathered_v3_new.sqlite -c 'assert [l[0] for l in q("select schema_version")][0] == 3'
+            runalyzer .github/workflows/log_gathered_v3_new.sqlite -c 'from pickle import loads; assert loads(next(q("select value from constants where name = \"schema_version\""))[0]) == 4'

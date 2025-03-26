@@ -65,14 +65,14 @@ def upgrade_conn(conn: sqlite3.Connection) -> sqlite3.Connection:
     if not gathered:
         tmp = conn.execute("select * from constants").description
         constants_columns = [col[0] for col in tmp]
-        rank = conn.execute("select rank from constants").fetchone()
 
         # ensure that the constants table has the 'rank' column
         if "rank" not in constants_columns:
             logger.info("Adding a rank column in the constants table")
-            conn.execute("""INSERT INTO constants (name, value)
-                            VALUES ('rank', ?)""",
-                         (rank[0],))
+            conn.execute("""
+                ALTER TABLE constants
+                    ADD rank integer DEFAULT NULL;
+                             """)
     else:
         # transfer columns from runs table to rows in constants table
         conn.execute("""
@@ -86,13 +86,16 @@ def upgrade_conn(conn: sqlite3.Connection) -> sqlite3.Connection:
         tmp = conn.execute("PRAGMA table_info(runs)").fetchall()
         columns = [col[1] for col in tmp if col[1] not in ("id", "dirname", "filename")]
 
+        # In schema_version < 4, we can not determine the rank after execution finished
+        rank = dumps(None)
+
         # Insert columns from the runs table as rows into the constants table
         for column in columns:
             conn.execute(f"""
                 INSERT INTO constants (run_id, rank, name, value)
-                SELECT id, 0, ?, {column}
+                SELECT id, ?, ?, {column}
                 FROM runs
-            """, (column,))
+            """, (rank, column))
 
         # Remove transferred columns from the runs table
         logger.info("Removing transferred columns from the runs table")
@@ -150,12 +153,13 @@ def upgrade_conn(conn: sqlite3.Connection) -> sqlite3.Connection:
 
     # }}}
 
+    conn.commit()
     return conn
 
 
 def upgrade_db(
-        dbfile: str, suffix: str, overwrite: bool
-        ) -> None:
+        dbfile: str, suffix: str, overwrite: bool = False
+        ) -> str:
     """
     Upgrade a database file to the most recent format. If the
     `overwrite` parameter is True, it simply modifies the existing
@@ -164,18 +168,13 @@ def upgrade_db(
     by appending the given suffix to the original file's base name
     using `filename + suffix + "." + file_ext`.
 
-    Parameters
-    ----------
-    dbfile
-      A database file path
+    :arg dbfile: The path and filename for the database to be upgraded.
+    :arg suffix: A suffix to be appended to the filename for the upgraded
+        database.
+    :arg overwrite: A boolean value indicating whether to overwrite the
+        original database or not. If *True*, *suffix* is ignored.
 
-    suffix
-      a suffix to be appended to the filename for the
-      upgraded database
-
-    overwrite
-      a boolean value indicating
-      whether to overwrite the original database or not
+    :returns: The filename of the upgraded database.
     """
 
     # original db files
@@ -208,3 +207,5 @@ def upgrade_db(
 
     new_conn.commit()
     new_conn.close()
+
+    return new_conn_name
