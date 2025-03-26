@@ -5,14 +5,14 @@ Database Upgrade Functions
 .. note::
 
    Currently, upgrades all schema versions to version 4.
-   Upgrading from version <=1 is untested.
+   Upgrading from versions <=1 is untested.
 
 .. table:: Overview of known changes between schema versions
 
-   ============== =========================== ==================================
+   ============== =========================== ======================================
    Schema version Logpyle version             Changes
-   ============== =========================== ==================================
-   0              pre v1 (``pytools.log``)    Initial version, no schema_version
+   ============== =========================== ======================================
+   0              pre v1 (``pytools.log``)    Initial version, no ``schema_version``
                                               yet.
    1              v1 -- v9 (``pytools.log``)  Added ``warnings`` table.
    2              v10 -- 2023.1               Added ``warnings.rank`` column.
@@ -20,7 +20,7 @@ Database Upgrade Functions
                                               and ``logging`` table.
    4              2025.1 --                   Added ``constants.rank`` column
                                               and ``constants`` gathered table.
-   ============== =========================== ==================================
+   ============== =========================== ======================================
 
 """
 import logging

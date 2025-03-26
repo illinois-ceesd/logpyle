@@ -12,8 +12,7 @@ jobs:
       runs-on: ubuntu-latest
       steps:
       - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.x'
       - name: Ruff check
@@ -161,10 +160,11 @@ jobs:
             python-version: '3.x'
         - name: "Main Script"
           run: |
-            curl -L -O https://tiker.net/ci-support-v0
-            . ci-support-v0
-            build_py_project_in_venv
-            build_docs
+            set -x
+            pip install -e .
+            pip install sphinx furo sphinx-copybutton
+            cd doc
+            make html
 
     mypy:
         runs-on: ubuntu-latest
@@ -177,9 +177,9 @@ jobs:
           run: |
             set -x
             sudo apt-get update && sudo apt-get install -y libopenmpi-dev
-            curl -L -O -k https://gitlab.tiker.net/inducer/ci-support/raw/main/prepare-and-run-mypy.sh
-            export EXTRA_INSTALL="numpy types-psutil pymbolic mpi4py matplotlib"
-            . ./prepare-and-run-mypy.sh python3
+            pip install -e .
+            pip install mypy types-psutil numpy mpi4py matplotlib
+            ./run-mypy.sh
 
     pytest:
         runs-on: ubuntu-latest
@@ -239,13 +239,14 @@ jobs:
         - name: Run
           run: |
             pip install -e .
-            python -m pip install pymbolic psutil matplotlib
+            python -m pip install psutil matplotlib
 
             # open default html
             htmlalyzer
 
             # open html after being built
             htmlalyzer -b
+
     upgrade-db:
         runs-on: ubuntu-latest
         steps:
@@ -294,8 +295,6 @@ jobs:
             runalyzer .github/workflows/log_gathered_v2_new.sqlite -c 'from pickle import loads; assert loads(next(q("select value from constants where name = \"schema_version\""))[0]) == 4'
 
         - name: Upgrade v3 to v4
-          # Tests upgrades on current version for stability and allows users
-          # to blindly upgrade databases safely
           run: |
             set -x
             pip install -e .
