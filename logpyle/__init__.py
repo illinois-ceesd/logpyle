@@ -792,13 +792,14 @@ class LogManager:
         if self.mpi_comm and self.mpi_comm.rank != self.head_rank:
             return
 
-        from pickle import loads
         for name, value in self.db_conn.execute("select name, value from constants"):
-            self.constants[name] = loads(value)
+            self.constants[name] = value
 
         self.schema_version = cast(int, self.constants.get("schema_version", 0))
 
         self.is_parallel = bool(self.constants["is_parallel"])
+
+        from pickle import loads
 
         for name, unit, description, def_agg in self.db_conn.execute(
                 "select name, unit, description, default_aggregator "
@@ -919,9 +920,6 @@ class LogManager:
         :arg value: the value of the constant.
         """
         self.constants[name] = value
-
-        from pickle import dumps
-        value = bytes(dumps(value))
 
         self.db_conn.execute("INSERT OR REPLACE INTO constants VALUES (?,?,?)",
                     (self.rank, name, value))
