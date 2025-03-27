@@ -30,7 +30,7 @@ sqlite_keywords = """
 
 
 def parse_dir_feature(feat: str, number: int) \
-                        -> tuple[str | Any, str, str | Any]:
+                        -> tuple[str | Any, str, str | Any]:  # pragma: no cover
     bool_match = bool_feat_re.match(feat)
     if bool_match is not None:
         return (bool_match.group(1), "integer", int(bool_match.group(2) == "True"))
@@ -46,7 +46,8 @@ def parse_dir_feature(feat: str, number: int) \
     return (f"dirfeat{number}", "text", feat)
 
 
-def larger_sql_type(type_a: str | None, type_b: str | None) -> str | None:
+def larger_sql_type(type_a: str | None, type_b: str | None) \
+                    -> str | None:  # pragma: no cover
     assert type_a in [None, "text", "real", "integer"]
     assert type_b in [None, "text", "real", "integer"]
 
