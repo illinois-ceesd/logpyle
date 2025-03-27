@@ -88,7 +88,7 @@ from pytools.datatable import DataTable
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
-    import mpi4py
+    import mpi4py  # pragma: no cover
 
 
 # {{{ abstract logging interface
@@ -635,7 +635,7 @@ class LogManager:
 
                 if mode == "wo":
                     # try again, someone might have created a file with the same name
-                    continue
+                    continue  # pragma: no cover
 
                 self._load()
 
@@ -686,7 +686,7 @@ class LogManager:
         # on why this only captures SIGTERM.
         import signal
 
-        def sighndl(_signo: int, _stackframe: Any) -> None:
+        def sighndl(_signo: int, _stackframe: Any) -> None:  # pragma: no cover
             self.weakref_finalize()
             sys.exit(_signo)
 
@@ -713,7 +713,7 @@ class LogManager:
 
         import warnings
         if enable:
-            if self.schema_version < 3:
+            if self.schema_version < 3:  # pragma: no cover
                 raise ValueError("Warnings capture needs at least schema_version 3, "
                                 f" got {self.schema_version}")
             if self.old_showwarning is None:
@@ -750,7 +750,7 @@ class LogManager:
         root_logger = logging.getLogger()
 
         if enable:
-            if self.schema_version < 3:
+            if self.schema_version < 3:  # pragma: no cover
                 raise ValueError("Logging capture needs at least schema_version 3, "
                                 f" got {self.schema_version}")
             if self.mode[0] == "w" and self.logging_handler is None:
@@ -777,7 +777,7 @@ class LogManager:
 
         result = DataTable(columns)
 
-        if self.schema_version < 3:
+        if self.schema_version < 3:  # pragma: no cover
             from warnings import warn
             warn("This database lacks a 'logging' table", stacklevel=2)
             return result
@@ -935,7 +935,7 @@ class LogManager:
         try:
             self.db_conn.execute(f"insert into {name} values (?,?,?)",
                     (self.tick_count, self.rank, float(value)))
-        except Exception:
+        except Exception:  # pragma: no cover
             print(f"while adding datapoint for '{name}':")
             raise
 
@@ -948,7 +948,7 @@ class LogManager:
         try:
             self.db_conn.execute(f"update {name} set value = {float(value)} \
                 where rank = {self.rank} and step = {self.tick_count}")
-        except Exception:
+        except Exception:  # pragma: no cover
             print(f"while adding datapoint for '{name}':")
             raise
 

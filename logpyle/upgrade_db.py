@@ -51,7 +51,7 @@ def upgrade_conn(conn: sqlite3.Connection) -> sqlite3.Connection:
     # ensure that the warnings table has the 'rank' column
     # nowhere to grab the rank of the process that generated
     # the warning
-    if "rank" not in warning_columns:
+    if "rank" not in warning_columns:  # pragma: no cover
         logger.info("Adding a rank column in the warnings table")
         conn.execute("""
             ALTER TABLE warnings
@@ -76,7 +76,7 @@ def upgrade_conn(conn: sqlite3.Connection) -> sqlite3.Connection:
     else:
         # transfer columns from runs table to rows in constants table
         conn.execute("""
-                        CREATE TABLE constants (
+                        CREATE TABLE IF NOT EXISTS constants (
                             run_id INTEGER,
                             rank INTEGER,
                             name TEXT,
