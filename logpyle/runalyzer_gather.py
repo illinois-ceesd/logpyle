@@ -30,7 +30,7 @@ sqlite_keywords = """
 
 
 def parse_dir_feature(feat: str, number: int) \
-                        -> tuple[str | Any, str, str | Any]:
+                        -> tuple[str | Any, str, str | Any]:  # pragma: no cover
     bool_match = bool_feat_re.match(feat)
     if bool_match is not None:
         return (bool_match.group(1), "integer", int(bool_match.group(2) == "True"))
@@ -46,7 +46,8 @@ def parse_dir_feature(feat: str, number: int) \
     return (f"dirfeat{number}", "text", feat)
 
 
-def larger_sql_type(type_a: str | None, type_b: str | None) -> str | None:
+def larger_sql_type(type_a: str | None, type_b: str | None) \
+                    -> str | None:  # pragma: no cover
     assert type_a in [None, "text", "real", "integer"]
     assert type_b in [None, "text", "real", "integer"]
 
@@ -126,9 +127,6 @@ class FeatureGatherer:
             features.extend(parse_dir_feature(feat, i)
                     for i, feat in enumerate(dn.split("-")))
 
-        for name, value in logmgr.constants.items():
-            features.append((name, *sql_type_and_value(value)))
-
         return features
 
 
@@ -141,7 +139,7 @@ def scan(fg: FeatureGatherer, dbnames: list[str],  # noqa: C901
 
     from pytools import ProgressBar
     if progress:
-        pb = ProgressBar("Scanning...",  # type: ignore[no-untyped-call]
+        pb = ProgressBar("Scanning...",
                          len(dbnames))
 
     for dbname in dbnames:
@@ -164,7 +162,7 @@ def scan(fg: FeatureGatherer, dbnames: list[str],  # noqa: C901
         dbname_to_run_id[dbname] = run_id
 
         if progress:
-            pb.progress()  # type: ignore[no-untyped-call]
+            pb.progress()
 
         for fname, ftype, _fvalue in fg.get_db_features(dbname, logmgr):
             if fname in features:
@@ -177,7 +175,7 @@ def scan(fg: FeatureGatherer, dbnames: list[str],  # noqa: C901
         logmgr.close()
 
     if progress:
-        pb.finished()  # type: ignore[no-untyped-call]
+        pb.finished()
 
     return features, dbname_to_run_id
 
@@ -214,7 +212,7 @@ def gather_multi_file(outfile: str, infiles: list[str], fmap: dict[str, str],  #
                       features: dict[str, Any],
                       dbname_to_run_id: dict[str, int]) -> sqlite3.Connection:
     from pytools import ProgressBar
-    pb = ProgressBar("Importing...", len(infiles))  # type: ignore[no-untyped-call]
+    pb = ProgressBar("Importing...", len(infiles))
 
     feature_col_name_map = {}
     for fname in features:
@@ -252,6 +250,14 @@ def gather_multi_file(outfile: str, infiles: list[str], fmap: dict[str, str],  #
             )""")
 
     db_conn.execute("""
+      create table constants (
+        run_id integer,
+        rank integer,
+        name text,
+        value blob
+        )""")
+
+    db_conn.execute("""
       create table warnings (
         run_id integer,
         rank integer,
@@ -282,7 +288,7 @@ def gather_multi_file(outfile: str, infiles: list[str], fmap: dict[str, str],  #
     written_run_ids = set()
 
     for dbname in infiles:
-        pb.progress()  # type: ignore[no-untyped-call]
+        pb.progress()
 
         run_id = dbname_to_run_id[dbname]
 
@@ -310,6 +316,7 @@ def gather_multi_file(outfile: str, infiles: list[str], fmap: dict[str, str],  #
                     ", ".join("?" * (len(data_table.column_names) + 1))),
                 my_data)
 
+        transfer_data_table_multi(db_conn, "constants", logmgr.get_constants())
         transfer_data_table_multi(db_conn, "warnings", logmgr.get_warnings())
         transfer_data_table_multi(db_conn, "logging", logmgr.get_logging())
 
@@ -341,7 +348,7 @@ def gather_multi_file(outfile: str, infiles: list[str], fmap: dict[str, str],  #
             db_conn.executemany(f"insert into {tgt_qname} values (?,?,?,?)",
                     cursor)
         logmgr.close()
-    pb.finished()  # type: ignore[no-untyped-call]
+    pb.finished()
 
     db_conn.commit()
     return db_conn
