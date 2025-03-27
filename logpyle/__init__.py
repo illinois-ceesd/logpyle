@@ -792,14 +792,20 @@ class LogManager:
         if self.mpi_comm and self.mpi_comm.rank != self.head_rank:
             return
 
+        from pickle import loads
+
         for name, value in self.db_conn.execute("select name, value from constants"):
+            try:
+                # Older versions of logpyle pickled constants
+                value = loads(value)
+            except Exception:
+                pass
+
             self.constants[name] = value
 
-        self.schema_version = cast(int, self.constants.get("schema_version", 0))
+        self.schema_version = int(str(self.constants.get("schema_version", 0)))
 
         self.is_parallel = bool(self.constants["is_parallel"])
-
-        from pickle import loads
 
         for name, unit, description, def_agg in self.db_conn.execute(
                 "select name, unit, description, default_aggregator "
