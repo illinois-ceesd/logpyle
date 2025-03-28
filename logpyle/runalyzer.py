@@ -390,8 +390,7 @@ Available Python symbols:
             tbl = Table()
             tbl.add_row(tuple(column[0] for column in cursor.description))
             for row in cursor:
-                from pickle import loads
-                value = str(loads(row[3])).replace("\n", " \\n ")
+                value = str(row[3]).replace("\n", " \\n ")
 
                 tbl.add_row((row[0], row[1], row[2], value))
 
