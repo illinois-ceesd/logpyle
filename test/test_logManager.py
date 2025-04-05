@@ -856,3 +856,13 @@ def test_atexit() -> None:
     del logmgr2
 
     # }}}
+
+
+def test_enable_save_on_sigterm(basic_logmgr: LogManager) -> None:
+    import signal
+
+    assert signal.getsignal(signal.SIGTERM) == signal.SIG_DFL
+
+    basic_logmgr.enable_save_on_sigterm()
+
+    assert signal.getsignal(signal.SIGTERM) != signal.SIG_DFL

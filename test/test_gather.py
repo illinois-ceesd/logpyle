@@ -32,7 +32,7 @@ def create_log(filename: str) -> None:
             warn("warning from fifth timestep", stacklevel=2)
 
         if i == 10:
-            logger.warning("test on tenth timestep")
+            logger.warning("logger test on tenth timestep")
 
         # do something ...
         logmgr.tick_after()
@@ -41,54 +41,56 @@ def create_log(filename: str) -> None:
 
 
 def test_auto_gather_single() -> None:
-    # run example
-    create_log("log.sqlite")
-    assert os.path.exists("log.sqlite"), "The logging file was not generated."
+    try:
+        # run example
+        create_log("log.sqlite")
+        assert os.path.exists("log.sqlite"), "The logging file was not generated."
 
-    # check schema
+        # check schema
 
-    # ensure quantity table exists
-    db = make_wrapped_db(["log.sqlite"], mangle=True, interactive=False)
-    cur = db.q("select * from quantities")
-    print("Quantity data:")
-    result = list(cur)
-    print(result)
-    assert len(result) == 8
+        # check quantity table
+        db = make_wrapped_db(["log.sqlite"], mangle=True, interactive=False)
+        cur = db.q("select * from quantities")
+        print("Quantity data:")
+        result = list(cur)
+        print(result)
+        assert len(result) == 8
 
-    # ensure warnings table exists
-    db = make_wrapped_db(["log.sqlite"], mangle=True, interactive=False)
-    cur = db.q("select * from warnings")
-    print("Warnings data:")
-    result = list(cur)
-    print(result)
-    assert len(result) == 1
+        # check warnings table
+        db = make_wrapped_db(["log.sqlite"], mangle=True, interactive=False)
+        cur = db.q("select * from warnings")
+        print("Warnings data:")
+        result = list(cur)
+        print(result)
+        assert len(result) == 1
 
-    # ensure logging in runs table exists
-    db = make_wrapped_db(["log.sqlite"], mangle=True, interactive=False)
-    cur = db.q("select * from logging")
-    print("Logging data:")
-    result = list(cur)
-    print(result)
-    assert len(result) == 1
+        # check logging table
+        db = make_wrapped_db(["log.sqlite"], mangle=True, interactive=False)
+        cur = db.q("select * from logging")
+        print("Logging data:")
+        result = list(cur)
+        print(result)
+        assert len(result) == 1
 
-    # check constant
-    db = make_wrapped_db(["log.sqlite"], mangle=True, interactive=False)
-    cur = db.q("select * from runs")
-    print("Constant data:")
-    result = [row[0] for row in cur.description]
-    print(result)
-    assert len(result) == 12
+        # check constants table
+        db = make_wrapped_db(["log.sqlite"], mangle=True, interactive=False)
+        cur = db.q("select * from constants")
+        print("Constant data:")
+        result = list(cur)
+        print(result)
+        assert len(result) == 9
 
-    db = make_wrapped_db(["log.sqlite"], mangle=True, interactive=False)
-    cur = db.q("select $fifteen")
-    print("Fifteen data:")
-    result = [row[0] for row in cur]
-    print(result)
-    assert len(result) == 20
-    assert all(num == 15 for num in result)
+        db = make_wrapped_db(["log.sqlite"], mangle=True, interactive=False)
+        cur = db.q("select $fifteen")
+        print("Fifteen data:")
+        result = [row[0] for row in cur]
+        print(result)
+        assert len(result) == 20
+        assert all(num == 15 for num in result)
 
-    # teardown test
-    os.remove("log.sqlite")
+    finally:
+        # teardown test
+        os.remove("log.sqlite")
 
 
 def test_auto_gather_multi() -> None:
@@ -98,52 +100,54 @@ def test_auto_gather_multi() -> None:
 
     n = 4
 
-    log_files = [f for f in os.listdir() if is_unique_filename(f)]
-    assert len(log_files) == 0  # no initial multi-log files
+    try:
+        log_files = [f for f in os.listdir() if is_unique_filename(f)]
+        assert len(log_files) == 0  # no initial multi-log files
 
-    filenames = []
-    for i in range(n):
-        name = f"multi-log-{i}.sqlite"
-        filenames.append(name)
-        create_log(name)
+        filenames = []
+        for i in range(n):
+            name = f"multi-log-{i}.sqlite"
+            filenames.append(name)
+            create_log(name)
 
-    log_files = [f for f in os.listdir() if is_unique_filename(f)]
-    assert len(log_files) == n, "The logging files were not generated."
+        log_files = [f for f in os.listdir() if is_unique_filename(f)]
+        assert len(log_files) == n, "The logging files were not generated."
 
-    # check schema
+        # check schema
 
-    # ensure quantity table exists
-    db = make_wrapped_db(filenames, mangle=True, interactive=False)
-    cur = db.q("select * from quantities")
-    print("Quantity data:")
-    result = list(cur)
-    print(result)
-    assert len(result) == 8
+        # check quantities table
+        db = make_wrapped_db(filenames, mangle=True, interactive=False)
+        cur = db.q("select * from quantities")
+        print("Quantity data:")
+        result = list(cur)
+        print(result)
+        assert len(result) == 8
 
-    # ensure warnings table exists
-    db = make_wrapped_db(filenames, mangle=True, interactive=False)
-    cur = db.q("select * from warnings")
-    print("Warnings data:")
-    result = list(cur)
-    print(result)
-    assert len(result) == 1
+        # check warnings table
+        db = make_wrapped_db(filenames, mangle=True, interactive=False)
+        cur = db.q("select * from warnings")
+        print("Warnings data:")
+        result = list(cur)
+        print(result)
+        assert len(result) == 1
 
-    # ensure logging in runs table exists
-    db = make_wrapped_db(filenames, mangle=True, interactive=False)
-    cur = db.q("select * from logging")
-    print("Logging data:")
-    result = list(cur)
-    print(result)
-    assert len(result) == n
+        # check logging table
+        db = make_wrapped_db(filenames, mangle=True, interactive=False)
+        cur = db.q("select * from logging")
+        print("Logging data:")
+        result = list(cur)
+        print(result)
+        assert len(result) == n
 
-    # check constant
-    db = make_wrapped_db(filenames, mangle=True, interactive=False)
-    cur = db.q("select * from runs")
-    print("Constant data:")
-    result = [row[0] for row in cur.description]
-    print(result)
-    assert len(result) == 12
+        # check constants table
+        db = make_wrapped_db(filenames, mangle=True, interactive=False)
+        cur = db.q("select * from constants")
+        print("Constant data:")
+        result = list(cur)
+        print(result)
+        assert len(result) == n * 9
 
-    # teardown test
-    for f in filenames:
-        os.remove(f)
+    finally:
+        # teardown test
+        for f in filenames:
+            os.remove(f)
