@@ -19,7 +19,7 @@ authors = [
 ]
 description = "Time series logging for Python"
 dependencies = [
-    "pytools @ git+https://github.com/inducer/pytools",
+    "pytools>=2025.1.2",
     "pymbolic",
 ]
 readme = "README.md"
