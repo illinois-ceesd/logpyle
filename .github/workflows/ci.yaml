@@ -178,7 +178,7 @@ jobs:
             set -x
             sudo apt-get update && sudo apt-get install -y libopenmpi-dev
             pip install -e .
-            pip install mypy types-psutil numpy mpi4py matplotlib
+            pip install mypy types-psutil numpy mpi4py matplotlib pandas-stubs sqlalchemy
             ./run-mypy.sh
 
     pytest:

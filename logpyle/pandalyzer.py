@@ -216,7 +216,7 @@ class PandalyzerConsole(code.InteractiveConsole):
             import readline
             import rlcompleter  # noqa: F401
 
-            histfile = os.path.join(os.environ["HOME"], ".runalyzerhist")
+            histfile = os.path.join(os.environ["HOME"], ".pandalyzerhist")
             if os.access(histfile, os.R_OK):
                 readline.read_history_file(histfile)
             atexit.register(readline.write_history_file, histfile)
