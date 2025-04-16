@@ -27,7 +27,6 @@ $new_file_html
 logpyle_py_file = "$logpyle_py_file"
 runalyzer_py_file = "$runalyzer_py_file"
 runalyzer_gather_py_file = "$runalyzer_gather_py_file"
-version_py_file = "$version_py_file"
 
 
 pymbolic_whl_file_str = "$pymbolic_whl_file_str"
@@ -49,7 +48,7 @@ async def import_logpyle() -> None:
     whl_binary_data = base64.decodebytes(whl_base_64)
     with open(pymbolic_whl_file_name, "wb") as f:
         f.write(whl_binary_data)
-    await micropip.install("emfs:"+pymbolic_whl_file_name)
+    await micropip.install("emfs:" + pymbolic_whl_file_name)
 
     # install logpyle in ecmascript virtual filesystem
     os.mkdir("./logpyle")
@@ -67,11 +66,6 @@ async def import_logpyle() -> None:
     py_base_64 = runalyzer_gather_py_file.encode("utf-8")
     py_binary_data = base64.decodebytes(py_base_64)
     with open("logpyle/runalyzer_gather.py", "wb") as f:
-        f.write(py_binary_data)
-    # copy version.py
-    py_base_64 = version_py_file.encode("utf-8")
-    py_binary_data = base64.decodebytes(py_base_64)
-    with open("logpyle/version.py", "wb") as f:
         f.write(py_binary_data)
 
 
@@ -98,7 +92,7 @@ def add_file_func() -> None:
     next_id = next_id + 1
 
 
-async def run_plot(event: Any) -> None:
+async def run_plot(event: Any) -> None:  # noqa: RUF029
     from logpyle.runalyzer import make_wrapped_db
     id = event.target.getAttribute("param")
     output = document.getElementById("output" + str(id))
@@ -106,7 +100,7 @@ async def run_plot(event: Any) -> None:
     run_db = make_wrapped_db(file_dict[id].names, True, True)
     q1 = document.getElementById("quantity1_" + str(id)).value
     q2 = document.getElementById("quantity2_" + str(id)).value
-    query = "select ${}, ${}".format(q1, q2)
+    query = f"select ${q1}, ${q2}"
     cursor = run_db.db.execute(run_db.mangle_sql(query))
     columnnames = [column[0] for column in cursor.description]
     run_db.plot_cursor(cursor, labels=columnnames)
@@ -114,7 +108,7 @@ async def run_plot(event: Any) -> None:
     output.id = "output" + str(id)
 
 
-async def run_chart(event: Any) -> None:
+async def run_chart(event: Any) -> None:  # noqa: RUF029
     id = event.target.getAttribute("param")
     x_quantity: str = document.getElementById("quantity1_" + str(id)).value
     x = file_dict[id].quantities[x_quantity]
@@ -147,7 +141,7 @@ async def run_chart(event: Any) -> None:
             )
 
 
-async def add_table_list(event: Any) -> None:
+async def add_table_list(event: Any) -> None:  # noqa: RUF029
     id = event.target.getAttribute("param")
     quantity = document.getElementById("tableQuantitySelect" + str(id)).value
     table_list = document.getElementById("tableList" + str(id))
@@ -165,7 +159,7 @@ async def add_table_list(event: Any) -> None:
     table_list.appendChild(item)
 
 
-async def add_line(event: Any) -> None:
+async def add_line(event: Any) -> None:  # noqa: RUF029
     id = event.target.getAttribute("param1")
     i = event.target.param2
     event.target.param2 = i + 1
@@ -190,7 +184,7 @@ async def add_line(event: Any) -> None:
     y_quantities.appendChild(y_div)
 
 
-async def remove_table_ele(event: Any) -> None:
+async def remove_table_ele(event: Any) -> None:  # noqa: RUF029
     event.target.parentElement.remove()
 
 
@@ -237,7 +231,7 @@ def print_table(event: Any) -> None:
 
     names = ["$" + s for s in names]
     query_args = ", ".join(names)
-    # shoud remake in the future to store the connection instead of
+    # should remake in the future to store the connection instead of
     # re-gathering it every time the button is pressed
     run_db = make_wrapped_db(file_dict[id].names, True, True)
     run_db.print_cursor(run_db.q("select " + query_args))
@@ -264,8 +258,8 @@ async def store_file(event: Any) -> None:
     run_db = make_wrapped_db(file_dict[id].names, True, True)
     cursor = run_db.db.execute("select * from runs")
     columns = [col[0] for col in cursor.description]
-    vals = list(list(cursor)[0])
-    for (col, val) in zip(columns, vals):
+    vals = list(next(iter(cursor)))
+    for (col, val) in zip(columns, vals, strict=False):
         file_dict[id].constants[col] = val
 
     # extract quantities from sqlite file
@@ -274,7 +268,7 @@ async def store_file(event: Any) -> None:
     for row in cursor:
         q_id, q_name, q_unit, q_desc, q_rank_agg = row
         tmp_cur = run_db.db.execute(run_db.mangle_sql(
-            "select ${}".format(q_name)))
+            f"select ${q_name}"))
 
         vals = list(tmp_cur)
         file_dict[id].quantities[q_name] = {"vals": vals, "id":  q_id,
@@ -337,7 +331,7 @@ async def store_file(event: Any) -> None:
     # create plot group
     chart_button = document.getElementById("chartsButton" + str(id))
     chart_button .addEventListener("click", create_proxy(run_chart))
-    # add quantites to quantity 1 dropdown
+    # add quantities to quantity 1 dropdown
     plot_q1_select = document.getElementById("quantity1_" + str(id))
     for quantity in file_dict[id].quantities:
         item = document.createElement("option")
@@ -347,7 +341,7 @@ async def store_file(event: Any) -> None:
         if quantity == "step":
             plot_q1_select.value = quantity
 
-    # add quantites to quantity 2 dropdown
+    # add quantities to quantity 2 dropdown
     plot_q2_select = document.getElementById("quantity2_" + str(id))
     for quantity in file_dict[id].quantities:
         item = document.createElement("option")
@@ -364,7 +358,7 @@ async def store_file(event: Any) -> None:
     table_button = document.getElementById("tableButton" + str(id))
     table_button.addEventListener("click", create_proxy(add_table_list))
 
-    # add quantites to table dropdown
+    # add quantities to table dropdown
     table_select = document.getElementById("tableQuantitySelect" + str(id))
     for quantity in file_dict[id].quantities:
         item = document.createElement("option")
@@ -383,6 +377,6 @@ async def store_file(event: Any) -> None:
 # init file storage structure
 file_dict: dict[str, Any] = {}
 # ensure logpyle and dependencies are present
-asyncio.ensure_future(import_logpyle())
-# ensure that one analysis pannel is present to begin with
+asyncio.ensure_future(import_logpyle())  # noqa: RUF006
+# ensure that one analysis panel is present to begin with
 add_file_func()

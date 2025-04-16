@@ -7,7 +7,7 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(description="Analyze a logpyle database.")
     parser.add_argument("-m", "--mangle", action="store_true",
-            help="(ignored)")
+            help="(ignored, mangling is enabled by default)")
     parser.add_argument("-n", "--nomangle", action="store_true",
             help="disable mangling of SQL queries")
     parser.add_argument("-c", "--commands", action="store",
@@ -26,6 +26,10 @@ def main() -> None:
     from logpyle.runalyzer import make_runalyzer_symbols, make_wrapped_db
 
     if args.mangle:
+        if args.nomangle:
+            raise RuntimeError("Cannot specify both -m/--mangle and "
+                               "-n/--nomangle.")
+
         from warnings import warn
         warn("The -m/--mangle option is deprecated, mangling is enabled by "
              "default. Disable mangling with -n/--nomangle.")
@@ -52,8 +56,11 @@ def main() -> None:
                 gather=gather)
         from logpyle.runalyzer import RunalyzerConsole
         cons = RunalyzerConsole(db)
-        cons.interact("Runalyzer running on Python %s\n"
-                "Run .help to see help for 'magic' commands" % sys.version)
+
+        from logpyle import __version__
+
+        cons.interact(f"Runalyzer {__version__} running on Python {sys.version}\n"
+                "Run .help to see help for 'magic' commands.")
 
 
 if __name__ == "__main__":

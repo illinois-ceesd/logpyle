@@ -15,7 +15,6 @@ def get_current_hash() -> str:
             "__init__.py",
             "runalyzer.py",
             "runalyzer_gather.py",
-            "version.py",
             "HTMLalyzer/templates/index.html",
             "HTMLalyzer/templates/newFile.html",
             "HTMLalyzer/main.css",
@@ -24,7 +23,7 @@ def get_current_hash() -> str:
             ]
 
     for file in files:
-        with open(html_path+"/../"+file, "rb") as f:
+        with open(html_path + "/../" + file, "rb") as f:
             binary_data = f.read()
             m = hashlib.sha256()
             m.update(binary_data)
@@ -59,22 +58,21 @@ def build() -> None:
             "__init__.py",
             "runalyzer.py",
             "runalyzer_gather.py",
-            "version.py",
             pymbolic_whl_path,
             ]
     files_dict = {}
     for name in filenames_to_copy:
-        with open(html_path+"/../"+name, "rb") as f:
+        with open(html_path + "/../" + name, "rb") as f:
             binary_data = f.read()
             data = base64.b64encode(binary_data)  # insert as single line of text
             files_dict[name] = data.decode("utf-8")
 
     # get templating files
-    with open(html_path+"/templates/index.html") as f:
+    with open(html_path + "/templates/index.html") as f:
         main_template = Template(f.read())
-    with open(html_path+"/templates/newFile.html", "r") as f:
+    with open(html_path + "/templates/newFile.html") as f:
         new_file_html = f.read()
-    with open(html_path+"/main.py", "r") as f:
+    with open(html_path + "/main.py") as f:
         main_py = f.read()
 
     # insert main.py dependencies as strings
@@ -86,12 +84,11 @@ def build() -> None:
             logpyle_py_file=files_dict["__init__.py"],
             runalyzer_py_file=files_dict["runalyzer.py"],
             runalyzer_gather_py_file=files_dict["runalyzer_gather.py"],
-            version_py_file=files_dict["version.py"],
             )
 
-    with open(html_path+"/main.css", "r") as f:
+    with open(html_path + "/main.css") as f:
         main_css = f.read()
-    with open(html_path+"/main.js", "r") as f:
+    with open(html_path + "/main.js") as f:
         main_js = f.read()
 
     # create HTMLalyzer as a string
@@ -103,11 +100,11 @@ def build() -> None:
 
     # write html file to logpyle/HTMLalyzer/
     filename = "htmlalyzer.html"
-    with open(html_path+"/"+filename, mode="w", encoding="utf-8") as message:
+    with open(html_path + "/" + filename, mode="w", encoding="utf-8") as message:
         message.write(content)
 
     # store file hashes
-    with open(html_path+"/file_hashes.txt", "w") as f:
+    with open(html_path + "/file_hashes.txt", "w") as f:
         hashes_str = get_current_hash()
         f.write(hashes_str)
 

@@ -17,28 +17,29 @@ except ImportError:
 
 
 import logging
-
-logger = logging.getLogger(__name__)
-
+from collections.abc import Callable, Generator, Sequence
 from dataclasses import dataclass
 from itertools import product
 from sqlite3 import Connection, Cursor
-from typing import (Any, Callable, Dict, Generator, List, Optional, Sequence, Set,
-                    Tuple, Type, Union)
+from typing import (
+    Any,
+)
 
 from pytools import Table
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
 class PlotStyle:
-    dashes: Tuple[int, ...]
+    dashes: tuple[int, ...]
     color: str
 
 
 PLOT_STYLES = [
         PlotStyle(dashes=dashes, color=color)
         for dashes, color in product(
-            [(), (12, 2), (4, 2),  (2, 2), (2, 8)],
+            [(), (12, 2), (4, 2), (2, 2), (2, 8)],
             ["blue", "green", "red", "magenta", "cyan"],
             )]
 
@@ -47,7 +48,7 @@ class RunDB:
     def __init__(self, db: Connection, interactive: bool) -> None:
         self.db = db
         self.interactive = interactive
-        self.rank_agg_tables: Set[Tuple[str, Callable[..., Any]]] = set()
+        self.rank_agg_tables: set[tuple[str, Callable[..., Any]]] = set()
 
     def __del__(self) -> None:
         self.db.close()
@@ -67,20 +68,18 @@ class RunDB:
 
         logger.info("Building temporary rank aggregation table {tbl_name}.")
 
-        self.db.execute("create temporary table %s as "
-                "select run_id, step, %s(value) as value "
-                "from %s group by run_id,step" % (
-                    tbl_name, rank_aggregator, qty))
-        self.db.execute("create index %s_run_step on %s (run_id,step)"
-                % (tbl_name, tbl_name))
+        self.db.execute(f"create temporary table {tbl_name} as "
+                f"select run_id, step, {rank_aggregator}(value) as value "
+                f"from {qty} group by run_id,step")
+        self.db.execute(f"create index {tbl_name}_run_step on {tbl_name} (run_id,step)")
         self.rank_agg_tables.add((qty, rank_aggregator))
         return tbl_name
 
-    def scatter_cursor(self, cursor: Cursor, labels: Optional[List[str]] = None,
+    def scatter_cursor(self, cursor: Cursor, labels: list[str] | None = None,
                        *args: Any, **kwargs: Any) -> None:
         import matplotlib.pyplot as plt
 
-        data_args = tuple(zip(*list(cursor)))
+        data_args = tuple(zip(*list(cursor), strict=False))
         plt.scatter(*(data_args + args), **kwargs)
 
         if isinstance(labels, list) and len(labels) == 2:
@@ -93,7 +92,7 @@ class RunDB:
         if self.interactive:
             plt.show()
 
-    def plot_cursor(self, cursor: Cursor, labels: Optional[List[str]] = None,
+    def plot_cursor(self, cursor: Cursor, labels: list[str] | None = None,  # noqa: C901
                     *args: Any, **kwargs: Any) -> None:
         from matplotlib.pyplot import legend, plot, show
 
@@ -107,8 +106,9 @@ class RunDB:
                 kwargs["dashes"] = style.dashes
                 kwargs["color"] = style.color
 
-            x, y = list(zip(*list(cursor)))
+            x, y = list(zip(*list(cursor), strict=False))
             p = plot(x, y, *args, **kwargs)
+            assert p[0].axes
 
             if isinstance(labels, list) and len(labels) == 2:
                 p[0].axes.set_xlabel(labels[0])
@@ -120,13 +120,13 @@ class RunDB:
         elif len(cursor.description) > 2:
             small_legend = kwargs.pop("small_legend", True)
 
-            def format_label(kv_pairs: Sequence[Tuple[str, Any]]) -> str:
+            def format_label(kv_pairs: Sequence[tuple[str, Any]]) -> str:
                 return " ".join(f"{column}:{value}"
                             for column, value in kv_pairs)
             format_label = kwargs.pop("format_label", format_label)
 
-            def do_plot(x: List[float], y: List[float],
-                        row_rest: Tuple[Any, ...]) -> None:
+            def do_plot(x: list[float], y: list[float],
+                        row_rest: tuple[Any, ...]) -> None:
                 my_kwargs = kwargs.copy()
                 style = PLOT_STYLES[style_idx[0] % len(PLOT_STYLES)]
                 if auto_style:
@@ -136,7 +136,7 @@ class RunDB:
                 my_kwargs.setdefault("label",
                         format_label(list(zip(
                             (col[0] for col in cursor.description[2:]),
-                            row_rest))))
+                            row_rest, strict=False))))
 
                 plot(x, y, *args, hold=True, **my_kwargs)
                 style_idx[0] += 1
@@ -160,10 +160,10 @@ class RunDB:
 
 
 def split_cursor(cursor: Cursor) -> Generator[
-        Tuple[List[Any], List[Any], Optional[Tuple[Any, ...]]], None, None]:
+        tuple[list[Any], list[Any], tuple[Any, ...] | None], None, None]:
 
-    x: List[Any] = []
-    y: List[Any] = []
+    x: list[Any] = []
+    y: list[Any] = []
     last_rest = None
     for row in cursor:
         row_tuple = tuple(row)
@@ -187,14 +187,14 @@ def split_cursor(cursor: Cursor) -> Generator[
 
 def table_from_cursor(cursor: Cursor) -> Table:
     tbl = Table()
-    tbl.add_row(tuple([column[0] for column in cursor.description]))
+    tbl.add_row(tuple(column[0] for column in cursor.description))
     for row in cursor:
         tbl.add_row(row)
     return tbl
 
 
 class MagicRunDB(RunDB):
-    def mangle_sql(self, qry: str) -> str:
+    def mangle_sql(self, qry: str) -> str:  # noqa: C901
         up_qry = qry.upper()
         if "FROM" in up_qry and "$$" not in up_qry:
             return qry
@@ -213,13 +213,13 @@ class MagicRunDB(RunDB):
                 return f"{rank_aggregator}_{qty_name}.value AS {qty_name}"
             else:
                 magic_columns.add((qty_name, None))
-                return "%s.value AS %s" % (qty_name, qty_name)
+                return f"{qty_name}.value AS {qty_name}"
 
         magic_column_re = re.compile(r"\$([a-zA-Z][A-Za-z0-9_]*)(\.[a-z]*)?")
         qry, _ = magic_column_re.subn(replace_magic_column, qry)
 
         other_clauses = [  # noqa: F841
-                "UNION",  "INTERSECT", "EXCEPT", "WHERE", "GROUP",
+                "UNION", "INTERSECT", "EXCEPT", "WHERE", "GROUP",
                 "HAVING", "ORDER", "LIMIT", ";"]
 
         from_clause = "from runs "
@@ -227,9 +227,8 @@ class MagicRunDB(RunDB):
         for tbl, rank_aggregator in magic_columns:
             if rank_aggregator is not None:
                 full_tbl = f"{rank_aggregator}_{tbl}"
-                full_tbl_src = "{} as {}".format(
-                        self.get_rank_agg_table(tbl, rank_aggregator),
-                        full_tbl)
+                full_tbl_src = \
+                    f"{self.get_rank_agg_table(tbl, rank_aggregator)} as {full_tbl}"
 
                 if last_tbl is not None:
                     addendum = f" and {last_tbl}.step = {full_tbl}.step"
@@ -240,23 +239,24 @@ class MagicRunDB(RunDB):
                 full_tbl_src = tbl
 
                 if last_tbl is not None:
-                    addendum = " and {}.step = {}.step and {}.rank={}.rank".format(
-                            last_tbl, full_tbl, last_tbl, full_tbl)
+                    addendum = f" and {last_tbl}.step = {full_tbl}.step and " \
+                               f"{last_tbl}.rank={full_tbl}.rank"
                 else:
                     addendum = ""
 
-            from_clause += " inner join {} on ({}.run_id = runs.id{}) ".format(
-                    full_tbl_src, full_tbl, addendum)
+            from_clause += \
+                f" inner join {full_tbl_src}" \
+                f" on ({full_tbl}.run_id = runs.id{addendum}) "
             last_tbl = full_tbl
 
-        def get_clause_indices(qry: str) -> Dict[str, int]:
-            other_clauses = ["UNION",  "INTERSECT", "EXCEPT", "WHERE", "GROUP",
+        def get_clause_indices(qry: str) -> dict[str, int]:
+            other_clauses = ["UNION", "INTERSECT", "EXCEPT", "WHERE", "GROUP",
                     "HAVING", "ORDER", "LIMIT", ";"]
 
             result = {}
             up_qry = qry.upper()
             for clause in other_clauses:
-                clause_match = re.search(r"\b%s\b" % clause, up_qry)
+                clause_match = re.search(rf"\b{clause}\b", up_qry)
                 if clause_match is not None:
                     result[clause] = clause_match.start()
 
@@ -264,12 +264,12 @@ class MagicRunDB(RunDB):
 
         # add 'from'
         if "$$" in qry:
-            qry = qry.replace("$$", " %s " % from_clause)
+            qry = qry.replace("$$", f" {from_clause} ")
         else:
             clause_indices = get_clause_indices(qry)
 
             if not clause_indices:
-                qry = qry+" "+from_clause
+                qry = qry + " " + from_clause
             else:
                 first_clause_idx = min(clause_indices.values())
                 qry = (
@@ -281,7 +281,7 @@ class MagicRunDB(RunDB):
 
 
 def make_runalyzer_symbols(db: RunDB) \
-        -> Dict[str, Union[RunDB, str, None, Callable[..., Any]]]:
+        -> dict[str, RunDB | str | Callable[..., Any] | None]:
     return {
             "__name__": "__console__",
             "__doc__": None,
@@ -340,14 +340,14 @@ class RunalyzerConsole(code.InteractiveConsole):
 
         return self.last_push_result
 
-    def execute_magic(self, cmdline: str) -> None:
+    def execute_magic(self, cmdline: str) -> None:  # noqa: C901
         cmd_end = cmdline.find(" ")
         if cmd_end == -1:
             cmd = cmdline[1:]
             args = ""
         else:
             cmd = cmdline[1:cmd_end]
-            args = cmdline[cmd_end+1:]
+            args = cmdline[cmd_end + 1:]
 
         if cmd == "help":
             print("""
@@ -388,11 +388,17 @@ Available Python symbols:
             self.db.print_cursor(self.db.q(args))
 
         elif cmd == "runprops" or cmd == "constants":
-            cursor = self.db.db.execute("select * from runs")
-            columns = [column[0] for column in cursor.description]
-            columns.sort()
-            for col in columns:
-                print(col)
+            cursor = self.db.db.execute("select * from constants")
+            tbl = Table()
+            tbl.add_row(tuple(column[0] for column in cursor.description))
+            for row in cursor:
+                from pickle import loads
+                value = str(loads(row[3])).replace("\n", " \\n ")
+
+                tbl.add_row((row[0], row[1], row[2], value))
+
+            import os
+            print(tbl.str_with_maxlen(os.get_terminal_size().columns))
         elif cmd == "quantities":
             self.db.print_cursor(self.db.q("select * from quantities order by name"))
         elif cmd == "warnings":
@@ -400,7 +406,7 @@ Available Python symbols:
         elif cmd == "logging":
             self.db.print_cursor(self.db.q("select * from logging"))
         elif cmd == "title":
-            from pylab import title
+            from matplotlib.pyplot import title
             title(args)
         elif cmd == "plot":
             cursor = self.db.db.execute(self.db.mangle_sql(args))
@@ -426,7 +432,7 @@ class Variance(VarianceAggregator):
 
 
 class StdDeviation(Variance):
-    def finalize(self) -> Optional[float]:
+    def finalize(self) -> float | None:
         result = Variance.finalize(self)  # type: ignore[no-untyped-call]
 
         if result is None:
@@ -490,7 +496,7 @@ def is_gathered(conn: sqlite3.Connection) -> bool:
     return False
 
 
-def auto_gather(filenames: List[str]) -> sqlite3.Connection:
+def auto_gather(filenames: list[str]) -> sqlite3.Connection:
     # allow for creating ungathered files.
     # Check if database has been gathered, if not, create one in memory
 
@@ -510,8 +516,12 @@ def auto_gather(filenames: List[str]) -> sqlite3.Connection:
         return sqlite3.connect(filenames[0])
 
     # create in memory database of files to be gathered
-    from logpyle.runalyzer_gather import (FeatureGatherer, gather_multi_file,
-                                          make_name_map, scan)
+    from logpyle.runalyzer_gather import (
+        FeatureGatherer,
+        gather_multi_file,
+        make_name_map,
+        scan,
+    )
     print("Creating an in memory database from provided files")
     from os.path import exists
     infiles = [f for f in filenames if exists(f)]
@@ -530,7 +540,7 @@ def auto_gather(filenames: List[str]) -> sqlite3.Connection:
 # {{{ main program
 
 def make_wrapped_db(
-        filenames: List[str], interactive: bool,
+        filenames: list[str], interactive: bool,
         mangle: bool, gather: bool = True
         ) -> RunDB:
     if gather:
@@ -550,7 +560,7 @@ def make_wrapped_db(
     db.create_function("pow", 2, pow)
 
     if mangle:
-        db_wrap_class: Type[RunDB] = MagicRunDB
+        db_wrap_class: type[RunDB] = MagicRunDB
     else:
         db_wrap_class = RunDB
 

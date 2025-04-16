@@ -8,38 +8,42 @@ on:
         - cron:  '5 0 * * *'
 
 jobs:
-    flake8:
-        runs-on: ubuntu-latest
-        steps:
-        - uses: actions/checkout@v4
-        - name: Set up Python
-          uses: actions/setup-python@v4
-          with:
-            # matches compat target in setup.py
-            python-version: '3.7'
-        - name: Run flake8
-          run: |
-            pip install -U flake8 pep8-naming flake8-quotes flake8-comprehensions flake8-isort types-psutil numpy flake8-bugbear
-            flake8 setup.py doc/conf.py logpyle bin/* examples/*.py test/*.py
+    ruff:
+      runs-on: ubuntu-latest
+      steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Ruff check
+        run: |
+          python -m pip install ruff
+          ruff check
+
+    typos:
+      runs-on: ubuntu-latest
+      steps:
+      - uses: actions/checkout@v4
+      - uses: crate-ci/typos@master
 
     examples:
         runs-on: ${{ matrix.os }}
         strategy:
           fail-fast: true
           matrix:
-            python-version: ['3.7', '3.8', '3.9', '3.10', '3.11', '3.12', '3.x']
+            python-version: ['3.10', '3.11', '3.12', '3.13', '3.x']
             os: [ubuntu-latest, macos-latest]
 
         steps:
         - uses: actions/checkout@v4
         - name: Set up Python ${{ matrix.python-version }} on ${{ matrix.os }}
-          uses: actions/setup-python@v4
+          uses: actions/setup-python@v5
           with:
             python-version: ${{ matrix.python-version }}
         - name: Install prerequisites
           run: |
             [[ $(uname) == "Darwin" ]] && brew install open-mpi
-            [[ $(uname) == "Linux" ]] && sudo apt-get update && sudo apt-get install -y mpich libmpich-dev
+            [[ $(uname) == "Linux" ]] && sudo apt-get update && sudo apt-get install -y libopenmpi-dev
             pip install wheel matplotlib mpi4py psutil
             pip install -e .
         - name: Run and test examples
@@ -53,7 +57,7 @@ jobs:
 
             ## Check for warnings and logging
             runalyzer summary.sqlite  -c 'db.print_cursor(db.q("select * from warnings"))'
-            runalyzer summary.sqlite  -c 'db.print_cursor(db.q("select * from warnings"))' | grep Oof
+            runalyzer summary.sqlite  -c 'db.print_cursor(db.q("select * from warnings"))' | grep "warnings capture test"
             runalyzer summary.sqlite  -c 'db.print_cursor(db.q("select * from logging"))'
             runalyzer summary.sqlite  -c 'db.print_cursor(db.q("select * from logging"))' | grep WARNING
 
@@ -89,7 +93,7 @@ jobs:
 
             ## Check for warnings and logging
             runalyzer summary.sqlite  -c 'db.print_cursor(db.q("select * from warnings"))'
-            runalyzer summary.sqlite  -c 'db.print_cursor(db.q("select * from warnings"))' | grep Oof
+            runalyzer summary.sqlite  -c 'db.print_cursor(db.q("select * from warnings"))' | grep "warnings capture test"
             runalyzer summary.sqlite  -c 'db.print_cursor(db.q("select * from logging"))'
             runalyzer summary.sqlite  -c 'db.print_cursor(db.q("select * from logging"))' | grep WARNING
 
@@ -151,34 +155,37 @@ jobs:
         runs-on: ubuntu-latest
         steps:
         - uses: actions/checkout@v4
-        - uses: actions/setup-python@v4
+        - uses: actions/setup-python@v5
           with:
             python-version: '3.x'
         - name: "Main Script"
           run: |
-            curl -L -O https://tiker.net/ci-support-v0
-            . ci-support-v0
-            build_py_project_in_venv
-            build_docs
+            set -x
+            pip install -e .
+            pip install sphinx furo sphinx-copybutton
+            cd doc
+            make html
 
     mypy:
         runs-on: ubuntu-latest
         steps:
         - uses: actions/checkout@v4
-        - uses: actions/setup-python@v4
+        - uses: actions/setup-python@v5
           with:
-            python-version: '3.x'
+            python-version: '3.12'
         - name: "Main Script"
           run: |
-            curl -L -O -k https://gitlab.tiker.net/inducer/ci-support/raw/main/prepare-and-run-mypy.sh
-            export EXTRA_INSTALL="pytools numpy types-psutil pymbolic"
-            . ./prepare-and-run-mypy.sh python3
+            set -x
+            sudo apt-get update && sudo apt-get install -y libopenmpi-dev
+            pip install -e .
+            pip install mypy types-psutil numpy mpi4py matplotlib
+            ./run-mypy.sh
 
     pytest:
         runs-on: ubuntu-latest
         steps:
         - uses: actions/checkout@v4
-        - uses: actions/setup-python@v4
+        - uses: actions/setup-python@v5
           with:
             python-version: '3.x'
 
@@ -189,14 +196,13 @@ jobs:
             pip install -e .
             python -m pip install pytest pymbolic psutil matplotlib mpi4py
 
-            # run current test coverage
             python -m pytest --durations=5 --tb=native -rxsw test/
 
     coverage:
       runs-on: ubuntu-latest
       steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.x'
       - name: Compare coverage with 'main' branch
@@ -226,31 +232,32 @@ jobs:
         runs-on: ubuntu-latest
         steps:
         - uses: actions/checkout@v4
-        - uses: actions/setup-python@v4
+        - uses: actions/setup-python@v5
           with:
             python-version: '3.x'
 
         - name: Run
           run: |
             pip install -e .
-            python -m pip install pymbolic psutil matplotlib
+            python -m pip install psutil matplotlib
 
             # open default html
             htmlalyzer
 
             # open html after being built
             htmlalyzer -b
+
     upgrade-db:
-        name: Upgrade-Database
         runs-on: ubuntu-latest
         steps:
         - uses: actions/checkout@v4
-        - uses: actions/setup-python@v4
+        - uses: actions/setup-python@v5
           with:
             python-version: '3.x'
 
-        - name: Upgrade v2 to v3
+        - name: Upgrade v2 to v4
           run: |
+            set -x
             pip install -e .
 
             # test ungathered_v2 default name
@@ -263,7 +270,7 @@ jobs:
             runalyzer .github/workflows/log_ungathered_v2_upgrade.sqlite -c 'print([l[0] for l in q("select * from logging").description])' --nogather
             runalyzer .github/workflows/log_ungathered_v2_upgrade.sqlite -c 'assert "unixtime" in [l[0] for l in q("select * from warnings").description]' --nogather
             runalyzer .github/workflows/log_ungathered_v2_upgrade.sqlite -c 'assert "rank" in [l[0] for l in q("select * from warnings").description]' --nogather
-            runalyzer .github/workflows/log_ungathered_v2_upgrade.sqlite -c 'assert [l[0] for l in q("select schema_version")][0] == 3'
+            runalyzer .github/workflows/log_ungathered_v2_upgrade.sqlite -c 'from pickle import loads; assert loads(next(q("select value from constants where name = \"schema_version\""))[0]) == 4'
 
 
             # test gathered_v2 default name
@@ -274,7 +281,7 @@ jobs:
             runalyzer .github/workflows/log_gathered_v2_upgrade.sqlite -c 'print([l[0] for l in q("select * from logging").description])' --nogather
             runalyzer .github/workflows/log_gathered_v2_upgrade.sqlite -c 'assert "unixtime" in [l[0] for l in q("select * from warnings").description]' --nogather
             runalyzer .github/workflows/log_gathered_v2_upgrade.sqlite -c 'assert "rank" in [l[0] for l in q("select * from warnings").description]' --nogather
-            runalyzer .github/workflows/log_gathered_v2_upgrade.sqlite -c 'assert [l[0] for l in q("select schema_version")][0] == 3'
+            runalyzer .github/workflows/log_gathered_v2_upgrade.sqlite -c 'from pickle import loads; assert loads(next(q("select value from constants where name = \"schema_version\""))[0]) == 4'
 
 
             # test gathered custom name
@@ -285,12 +292,11 @@ jobs:
             runalyzer .github/workflows/log_gathered_v2_new.sqlite -c 'print([l[0] for l in q("select * from logging").description])' --nogather
             runalyzer .github/workflows/log_gathered_v2_new.sqlite -c 'assert "unixtime" in [l[0] for l in q("select * from warnings").description]' --nogather
             runalyzer .github/workflows/log_gathered_v2_new.sqlite -c 'assert "rank" in [l[0] for l in q("select * from warnings").description]' --nogather
-            runalyzer .github/workflows/log_gathered_v2_new.sqlite -c 'assert [l[0] for l in q("select schema_version")][0] == 3'
+            runalyzer .github/workflows/log_gathered_v2_new.sqlite -c 'from pickle import loads; assert loads(next(q("select value from constants where name = \"schema_version\""))[0]) == 4'
 
-        - name: Upgrade v3 to v3
-          # Tests upgrades on current version for stability and allows users
-          # to blindly upgrade databases safely
+        - name: Upgrade v3 to v4
           run: |
+            set -x
             pip install -e .
 
             # test ungathered_v3 default name
@@ -303,7 +309,7 @@ jobs:
             runalyzer .github/workflows/log_ungathered_v3_upgrade.sqlite -c 'print([l[0] for l in q("select * from logging").description])' --nogather
             runalyzer .github/workflows/log_ungathered_v3_upgrade.sqlite -c 'assert "unixtime" in [l[0] for l in q("select * from warnings").description]' --nogather
             runalyzer .github/workflows/log_ungathered_v3_upgrade.sqlite -c 'assert "rank" in [l[0] for l in q("select * from warnings").description]' --nogather
-            runalyzer .github/workflows/log_ungathered_v3_upgrade.sqlite -c 'assert [l[0] for l in q("select schema_version")][0] == 3'
+            runalyzer .github/workflows/log_ungathered_v3_upgrade.sqlite -c 'from pickle import loads; assert loads(next(q("select value from constants where name = \"schema_version\""))[0]) == 4'
 
             # test gathered_v3 default name
             upgrade-db .github/workflows/log_gathered_v3.sqlite
@@ -313,7 +319,7 @@ jobs:
             runalyzer .github/workflows/log_gathered_v3_upgrade.sqlite -c 'print([l[0] for l in q("select * from logging").description])' --nogather
             runalyzer .github/workflows/log_gathered_v3_upgrade.sqlite -c 'assert "unixtime" in [l[0] for l in q("select * from warnings").description]' --nogather
             runalyzer .github/workflows/log_gathered_v3_upgrade.sqlite -c 'assert "rank" in [l[0] for l in q("select * from warnings").description]' --nogather
-            runalyzer .github/workflows/log_gathered_v3_upgrade.sqlite -c 'assert [l[0] for l in q("select schema_version")][0] == 3'
+            runalyzer .github/workflows/log_gathered_v3_upgrade.sqlite -c 'from pickle import loads; assert loads(next(q("select value from constants where name = \"schema_version\""))[0]) == 4'
 
             # test gathered custom name
             upgrade-db .github/workflows/log_gathered_v3.sqlite --suffix '_new'
@@ -323,4 +329,4 @@ jobs:
             runalyzer .github/workflows/log_gathered_v3_new.sqlite -c 'print([l[0] for l in q("select * from logging").description])' --nogather
             runalyzer .github/workflows/log_gathered_v3_new.sqlite -c 'assert "unixtime" in [l[0] for l in q("select * from warnings").description]' --nogather
             runalyzer .github/workflows/log_gathered_v3_new.sqlite -c 'assert "rank" in [l[0] for l in q("select * from warnings").description]' --nogather
-            runalyzer .github/workflows/log_gathered_v3_new.sqlite -c 'assert [l[0] for l in q("select schema_version")][0] == 3'
+            runalyzer .github/workflows/log_gathered_v3_new.sqlite -c 'from pickle import loads; assert loads(next(q("select value from constants where name = \"schema_version\""))[0]) == 4'
