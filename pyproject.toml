@@ -75,7 +75,6 @@ docstring-quotes = "double"
 inline-quotes = "double"
 multiline-quotes = "double"
 
-
 [tool.typos.default]
 extend-ignore-re = [
   "(?Rm)^.*(#|//)\\s*spellchecker:\\s*disable-line$"
