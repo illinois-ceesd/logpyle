@@ -1,6 +1,5 @@
 import code
-from typing import Optional
-from warnings import warn
+from typing import Any
 
 import pandas as pd
 from pytools import Table
@@ -38,7 +37,8 @@ from sqlalchemy import create_engine
 #     table_from_cursor(cursor)
 
 
-def table_from_df(df, header=None, skip_index=True) -> Optional[Table]:
+def table_from_df(df: pd.DataFrame, header: tuple[str, ...] | None = None,
+                  skip_index: bool = True) -> Table | None:
     if df is None:
         return None
 
@@ -47,7 +47,7 @@ def table_from_df(df, header=None, skip_index=True) -> Optional[Table]:
     if header:
         tbl.add_row(header)
     else:
-        tbl.add_row(df.columns)
+        tbl.add_row(df.columns)  # type: ignore[arg-type]
 
     for row in df.itertuples():
         if skip_index:
@@ -58,7 +58,7 @@ def table_from_df(df, header=None, skip_index=True) -> Optional[Table]:
     return tbl
 
 
-def pandalyzer_help():
+def pandalyzer_help() -> None:
     print("""
 Commands:
  help()                show this help message.
@@ -76,7 +76,7 @@ Available Python symbols:
 """)
 
 
-def make_pandalyzer_symbols(db):
+def make_pandalyzer_symbols(db: Any) -> dict[str, object]:
     return {
             "__name__": "__console__",
             "__doc__": None,
@@ -97,28 +97,20 @@ def make_pandalyzer_symbols(db):
 
 
 class RunDB:
-    def __init__(self, engine, interactive):
+    def __init__(self, engine: Any, interactive: bool) -> None:
         self.engine = engine
         self.interactive = interactive
-        self.rank_agg_tables = set()
-        self.tables = {}
+        self.rank_agg_tables: set[Any] = set()
+        self.tables: dict[str, pd.DataFrame] = {}
 
-    def _get_table(self, table_name: str):
+    def _get_table(self, table_name: str) -> pd.DataFrame:
         try:
             return self.tables[table_name]
         except KeyError:
-            try:
-                self.tables[table_name] = pd.read_sql_table(table_name, self.engine)
-                return self.tables[table_name]
-            except ValueError:
-                if table_name == "runs":
-                    warn(f"No such table '{table_name}'. "
-                          "Run runalyzer-gather first.")
-                else:
-                    warn(f"No such table '{table_name}'.")
-                return None
+            self.tables[table_name] = pd.read_sql_table(table_name, self.engine)
+            return self.tables[table_name]
 
-    def runprops(self, prop: Optional[str] = None):
+    def runprops(self, prop: str | None = None) -> None:
         if prop:
             tbl = Table()
             tbl.add_row(("Property", "Value"))
@@ -127,14 +119,14 @@ class RunDB:
             print(tbl)
         else:
             print(table_from_df(self._get_table("runs").transpose(),
-              header=["Property", "Value"], skip_index=False))
+              header=("Property", "Value"), skip_index=False))
 
-    def quantities(self, where=None) -> None:
+    def quantities(self, where: Any = None) -> None:
         res = self._get_table("quantities")
         print(len(res), "quantities.")
         print(table_from_df(res))
 
-    def plot(self, values: list, **kwargs):
+    def plot(self, values: list[str], **kwargs: Any) -> Any:
         from matplotlib.pyplot import legend, show
 
         if len(values) < 2:
@@ -179,13 +171,13 @@ class RunDB:
         self.dump("warnings")
 
 
-def make_db(file, interactive):
+def make_db(file: str, interactive: bool) -> RunDB:
     engine = create_engine(f"sqlite:///{file}")
     return RunDB(engine, interactive=interactive)
 
 
 class PandalyzerConsole(code.InteractiveConsole):
-    def __init__(self, db):
+    def __init__(self, db: Any) -> None:
         self.db = db
         code.InteractiveConsole.__init__(self,
                 make_pandalyzer_symbols(db))
@@ -220,7 +212,7 @@ class PandalyzerConsole(code.InteractiveConsole):
 
         self.last_push_result = False
 
-    def push(self, cmdline):
+    def push(self, cmdline: str) -> bool:
         self.last_push_result = code.InteractiveConsole.push(self, cmdline)
 
         return self.last_push_result

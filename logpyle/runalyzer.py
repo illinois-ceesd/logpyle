@@ -98,8 +98,6 @@ class RunDB:
 
         auto_style = kwargs.pop("auto_style", True)
 
-        print(cursor)
-
         if len(cursor.description) == 2:
             if auto_style:
                 style = PLOT_STYLES[0]
