@@ -6,6 +6,7 @@ build-backend = "setuptools.build_meta"
 script-files = [
     "bin/htmlalyzer",
     "bin/logtool",
+    "bin/pandalyzer",
     "bin/runalyzer-gather",
     "bin/runalyzer",
     "bin/upgrade-db",
@@ -21,6 +22,8 @@ description = "Time series logging for Python"
 dependencies = [
     "pytools>=2025.1.2",
     "pymbolic",
+    "pandas",
+    "sqlalchemy",
 ]
 readme = "README.md"
 license = { file="LICENSE" }
