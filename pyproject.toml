@@ -45,8 +45,9 @@ classifiers = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/illinois-ceesd/logpyle/"
-"Bug Tracker" = "https://github.com/illinois-ceesd/logpyle/issues"
+Homepage = "https://github.com/illinois-ceesd/logpyle/"
+Documentation = "https://logpyle.rtfd.io/en/latest"
+Issues = "https://github.com/illinois-ceesd/logpyle/issues"
 
 [tool.ruff]
 preview = true
@@ -75,7 +76,6 @@ extend-ignore = [
 docstring-quotes = "double"
 inline-quotes = "double"
 multiline-quotes = "double"
-
 
 [tool.typos.default]
 extend-ignore-re = [
