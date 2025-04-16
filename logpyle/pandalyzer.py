@@ -82,6 +82,7 @@ def make_pandalyzer_symbols(db: Any) -> dict[str, object]:
             "__doc__": None,
             "help": pandalyzer_help,
             "runprops": db.runprops,
+            "constants": db.runprops,
             "quantities": db.quantities,
             "warnings": db.warnings,
             "db": db,
@@ -114,12 +115,25 @@ class RunDB:
         if prop:
             tbl = Table()
             tbl.add_row(("Property", "Value"))
-            tbl.add_row((prop, self._get_table("runs")[prop].values[0]))
+            from pickle import loads
+
+            t = self._get_table("constants")
+            val = t[t["name"] == prop]["value"]
+            val = str(loads(val.values[0]))
+            tbl.add_row((prop, val))
 
             print(tbl)
         else:
-            print(table_from_df(self._get_table("runs").transpose(),
-              header=("Property", "Value"), skip_index=False))
+            tbl = Table()
+            tbl.add_row(("run_id", "rank", "Property", "Value"))
+            for row in self._get_table("constants").itertuples():
+                from pickle import loads
+                value = str(loads(row[4])).replace("\n", " \\n ")
+
+                tbl.add_row((row[1], row[2], row[3], value))
+
+            import os
+            print(tbl.str_with_maxlen(os.get_terminal_size().columns))
 
     def quantities(self, where: Any = None) -> None:
         res = self._get_table("quantities")
