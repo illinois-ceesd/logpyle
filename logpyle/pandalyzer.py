@@ -114,18 +114,21 @@ class RunDB:
     def runprops(self, prop: str | None = None) -> None:
         if prop:
             tbl = Table()
-            tbl.add_row(("Property", "Value"))
-            from pickle import loads
+            tbl.add_row(("Run_id", "Rank", "Property", "Value"))
 
-            t = self._get_table("constants")
-            val = t[t["name"] == prop]["value"]
-            val = str(loads(val.values[0]))
-            tbl.add_row((prop, val))
+            for row in self._get_table("constants").itertuples():
+                if row[3] != prop:
+                    continue
+                from pickle import loads
+                value = str(loads(row[4])).replace("\n", " \\n ")
+
+                tbl.add_row((row[1], row[2], row[3], value))
 
             print(tbl)
         else:
             tbl = Table()
-            tbl.add_row(("run_id", "rank", "Property", "Value"))
+            tbl.add_row(("Run_id", "Rank", "Property", "Value"))
+
             for row in self._get_table("constants").itertuples():
                 from pickle import loads
                 value = str(loads(row[4])).replace("\n", " \\n ")

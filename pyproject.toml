@@ -23,6 +23,7 @@ dependencies = [
     "pytools>=2025.1.2",
     "pymbolic",
     "pandas",
+    "sqlalchemy",
 ]
 readme = "README.md"
 license = { file="LICENSE" }
