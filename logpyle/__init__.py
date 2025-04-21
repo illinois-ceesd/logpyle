@@ -1006,7 +1006,15 @@ class LogManager:
         if self.tick_count + 1 >= self.next_watch_tick:
             self._watch_tick()
 
+        t_step = self.last_values["t_step"]
+        t_2step = self.last_values.get("t_2step", 0.0)
+
         self.t_log += time_monotonic() - tick_start_time
+
+        if (t_step + self.t_log) * 1.1 < t_2step:
+            from warnings import warn
+            warn("warning: t_step + t_log is less than t_2step "
+                 f"{t_step=}, {self.t_log=}, {t_2step=}", stacklevel=2)
 
         # Adjust log update time(s), t_log
         for gd in self.after_gather_descriptors:
