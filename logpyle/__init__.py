@@ -493,6 +493,7 @@ class LogManager:
 
     .. automethod:: tick_before
     .. automethod:: tick_after
+    .. automethod:: verify_steptime
     """
 
     def __init__(self, filename: str | None = None, mode: str = "r",  # noqa: C901
@@ -981,7 +982,25 @@ class LogManager:
 
         self.t_log = time_monotonic() - tick_start_time
 
-    def tick_after(self) -> None:
+    def verify_steptime(self, tolerance: float) -> None:
+        """Verify that the step time is within *tolerance* of t_2step.
+
+        :arg tolerance: tolerance factor for the step time.
+        """
+        t_step = self.last_values.get("t_step", 0.0)
+        t_2step = self.last_values.get("t_2step", 0.0)
+        t_log = self.last_values.get("t_log", 0.0)
+
+        assert t_step is not None
+        assert t_2step is not None
+        assert t_log is not None
+
+        if (t_step + t_log) * tolerance < t_2step:
+            from warnings import warn
+            warn("warning: (t_step + t_log) * tolerance is less than t_2step: "
+                f"{t_step=}, {t_log=}, {t_2step=}", stacklevel=2)
+
+    def tick_after(self, verify_steptime_tolerance: float | None = None) -> None:
         """Record data points from each added :class:`LogQuantity` that
         is an instance of :class:`PostLogQuantity`.
 
@@ -1006,17 +1025,10 @@ class LogManager:
         if self.tick_count + 1 >= self.next_watch_tick:
             self._watch_tick()
 
-        t_step = self.last_values.get("t_step", 0.0)
-        assert isinstance(t_step, float)
-        t_2step = self.last_values.get("t_2step", 0.0)
-        assert isinstance(t_2step, float)
-
         self.t_log += time_monotonic() - tick_start_time
 
-        if (t_step + self.t_log) * 1.1 < t_2step:
-            from warnings import warn
-            warn("warning: t_step + t_log is less than t_2step "
-                 f"{t_step=}, {self.t_log=}, {t_2step=}", stacklevel=2)
+        if verify_steptime_tolerance is not None:
+            self.verify_steptime(verify_steptime_tolerance)
 
         # Adjust log update time(s), t_log
         for gd in self.after_gather_descriptors:
