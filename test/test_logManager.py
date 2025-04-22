@@ -879,7 +879,8 @@ def test_verify_steptime(basic_logmgr: LogManager) -> None:
 
     basic_logmgr.tick_before()
     sleep(0.1)
-    basic_logmgr.tick_after()
+    with pytest.warns(UserWarning):
+        basic_logmgr.tick_after(verify_steptime_tolerance=1.1)
 
     with pytest.warns(UserWarning):
         basic_logmgr.verify_steptime(1.1)
