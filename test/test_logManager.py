@@ -866,3 +866,26 @@ def test_enable_save_on_sigterm(basic_logmgr: LogManager) -> None:
     basic_logmgr.enable_save_on_sigterm()
 
     assert signal.getsignal(signal.SIGTERM) != signal.SIG_DFL
+
+
+def test_verify_steptime(basic_logmgr: LogManager) -> None:
+    add_general_quantities(basic_logmgr)
+
+    basic_logmgr.tick_before()
+    sleep(0.1)
+    basic_logmgr.tick_after()
+
+    sleep(0.1)  # Do "work" in between ticks
+
+    basic_logmgr.tick_before()
+    sleep(0.1)
+    basic_logmgr.tick_after()
+
+    with pytest.warns(UserWarning):
+        basic_logmgr.verify_steptime(1.1)
+
+    import warnings
+    with warnings.catch_warnings():
+        # make sure this does not raise a warning
+        warnings.simplefilter("error")
+        basic_logmgr.verify_steptime(3.0)
