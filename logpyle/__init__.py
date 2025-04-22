@@ -1006,8 +1006,10 @@ class LogManager:
         if self.tick_count + 1 >= self.next_watch_tick:
             self._watch_tick()
 
-        t_step = self.last_values["t_step"]
+        t_step = self.last_values.get("t_step", 0.0)
+        assert isinstance(t_step, float)
         t_2step = self.last_values.get("t_2step", 0.0)
+        assert isinstance(t_2step, float)
 
         self.t_log += time_monotonic() - tick_start_time
 
