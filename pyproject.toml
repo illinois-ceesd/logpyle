@@ -1,8 +1,9 @@
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools>=77.0.3"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
+# script-files is the reason we cannot use hatchling as the build-backend
 script-files = [
     "bin/htmlalyzer",
     "bin/logtool",
@@ -23,14 +24,15 @@ dependencies = [
     "pymbolic",
 ]
 readme = "README.md"
-license = { file="LICENSE" }
+license = "MIT"
+license-files = [ "LICENSE" ]
+
 requires-python = ">=3.10"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Intended Audience :: Other Audience",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
     "Natural Language :: English",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3 :: Only",
