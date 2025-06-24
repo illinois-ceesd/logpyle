@@ -3,7 +3,7 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-# script-files is the reason we cannot use hatchling
+# script-files is the reason we cannot use hatchling as the build-backend
 script-files = [
     "bin/htmlalyzer",
     "bin/logtool",
