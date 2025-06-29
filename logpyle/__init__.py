@@ -793,10 +793,17 @@ class LogManager:
             return
 
         from pickle import loads
-        for name, value in self.db_conn.execute("select name, value from constants"):
-            self.constants[name] = loads(value)
 
-        self.schema_version = cast(int, self.constants.get("schema_version", 0))
+        for name, value in self.db_conn.execute("select name, value from constants"):
+            try:
+                # Older versions of logpyle pickled constants
+                value = loads(value)
+            except Exception:
+                pass
+
+            self.constants[name] = value
+
+        self.schema_version = int(str(self.constants.get("schema_version", 0)))
 
         self.is_parallel = bool(self.constants["is_parallel"])
 
@@ -919,9 +926,6 @@ class LogManager:
         :arg value: the value of the constant.
         """
         self.constants[name] = value
-
-        from pickle import dumps
-        value = bytes(dumps(value))
 
         self.db_conn.execute("INSERT OR REPLACE INTO constants VALUES (?,?,?)",
                     (self.rank, name, value))
