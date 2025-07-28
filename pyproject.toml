@@ -17,6 +17,7 @@ name = "logpyle"
 version = "2025.0"
 authors = [
   { name = "Andreas Kloeckner", email = "inform@tiker.net" },
+  { name = "Matthias Diener", email = "matthias.diener@gmail.com" },
 ]
 description = "Time series logging for Python"
 dependencies = [
