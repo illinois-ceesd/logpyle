@@ -14,7 +14,7 @@ script-files = [
 
 [project]
 name = "logpyle"
-version = "2025.0"
+version = "2025.1"
 authors = [
   { name = "Andreas Kloeckner", email = "inform@tiker.net" },
   { name = "Matthias Diener", email = "matthias.diener@gmail.com" },
